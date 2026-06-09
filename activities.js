@@ -67,7 +67,7 @@ const ACTIVITY_DATA = [
       {
         id: "dir-frontback",
         name: "Front-Back",
-        withCane: true,
+        withCane: false,
         sop: [
           "Stand facing the child.",
           "Cue 'front' and 'back' positions.",
@@ -93,7 +93,7 @@ const ACTIVITY_DATA = [
       {
         id: "sound-which",
         name: "Which Sound? (Identification)",
-        withCane: true,
+        withCane: false,
         sop: [
           "Play a sound from the speaker.",
           "Ask the child: \"Which sound is this?\"",
@@ -101,7 +101,7 @@ const ACTIVITY_DATA = [
         ],
         facilitatorNote: "Keep 3 steps away from the child when playing sounds on the speaker. When recording video, angle it to focus on both the child and the facilitators.",
         audioFile: "",
-        videoFile: "",
+        videoFile: "demo-sound.mp4",
         dataFields: [
           { id: "correct", label: "Correct identifications", type: "count" },
           { id: "result", label: "Overall", type: "result" },
@@ -137,7 +137,7 @@ const ACTIVITY_DATA = [
       {
         id: "snddir-clap",
         name: "Clapping Activity",
-        withCane: true,
+        withCane: false,
         sop: [
           "Facilitator claps from a position.",
           "Child identifies near vs far and direction.",

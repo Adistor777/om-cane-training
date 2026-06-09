@@ -5,3 +5,8 @@ www/
 .idea/
 *.iml
 *.log
+
+# Throwaway demo-video test clips in the project root (not real content)
+demo.mp4
+demo-sound.mp4
+*.mp4
