@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>O&M Cane Training — Teacher App</title>
+
+<!-- =========================================================================
+     THE APP. Content (categories, activities, SOPs, data fields) lives in
+     activities.js — edit THAT, not this. This file is look + behaviour.
+
+     ───────────────────────────────────────────────────────────────────────
+     DESIGN DIRECTION — "field notebook, not dashboard"
+     ───────────────────────────────────────────────────────────────────────
+     Quiet, editorial, confident. The personality lives in ONE place per
+     screen (the large Instrument Serif title) and ONE accent placement (the
+     category colour). Everything else is calm and out of the way so a teacher
+     can glance and log a result in seconds. The point of view is RESTRAINT —
+     the opposite of a busy, evenly-decorated layout.
+
+     ⚠ MAINTENANCE GUARDRAILS — READ BEFORE EDITING THE LOOK ⚠
+     This build deliberately SUBTRACTS. The most common way to wreck it is to
+     "helpfully" add decoration back. Don't. Specifically:
+
+       1. ONE accent, not five. The colour spine (the 5px stripe) lives ONLY
+          on category cards (screen 1), where it does real wayfinding. Do NOT
+          add a stripe to panels, the SOP box, records, or the form. On the
+          run screen the category colour appears in exactly TWO spots on
+          purpose: the Save button and the active result selection. If you're
+          tempted to colour a third thing — don't.
+
+       2. ONE shadow tier. The page is flat. The single real shadow
+          (--shadow-lift) is reserved for the primary form panel and for
+          hover-lifted cards, so "elevated" means "interactive/important."
+          Do NOT add a second shadow level or float the records.
+
+       3. The serif is SACRED and SINGULAR. Instrument Serif appears once per
+          screen, large, on the .lede only — never on labels, buttons, or
+          panel titles. Need a second heading? Use Inter 600, not the serif.
+
+       4. Differentiated radii are intentional: 20px containers / 14px records
+          / 11px controls. All-one-radius reads as a template; keep the
+          inner/outer contrast.
+
+       5. Colours are contrast-checked. Every category pair and every text/bg
+          pair meets WCAG AA (4.5:1). --ink-faint is #736b5e specifically
+          because lighter warm-grays fail at 12–13px on the warm paper. If you
+          lighten it for looks, you break accessibility for a blindness-
+          community tool. Re-check any colour change at 12px before shipping.
+
+       RULE OF THUMB: when something "looks too plain / too AI," SUBTRACT
+       (a stripe, a shadow, a gradient, a font) before you add. Adding
+       decoration to fix the look is what made the earlier versions worse.
+
+     See DESIGN_NOTES.md for the full rationale. Behaviour, data, storage, and
+     all accessibility fixes (post-save focus, SOP animation, reduced-motion,
+     fieldset/legend) are settled — don't regress them.
+     ========================================================================= -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @property --cat       { syntax:'<color>'; inherits:true; initial-value:#2f6f4e; }
+  @property --cat-deep  { syntax:'<color>'; inherits:true; initial-value:#1f4d36; }
+  @property --cat-soft  { syntax:'<color>'; inherits:true; initial-value:#e2efe5; }
+  @property --cat-line  { syntax:'<color>'; inherits:true; initial-value:#cce0d1; }
+  :root{
+    --ink:#22201b; --ink-soft:#6b6458; --ink-faint:#736b5e; /* faint passes WCAG AA at 12px on paper; don't lighten (guardrail #5) */
+    --paper:#f7f4ed; --card:#fffdf8; --line:#e8e0d0; --line-soft:#f0e9da;
+    --cat:#2f6f4e; --cat-deep:#1f4d36; --cat-soft:#e2efe5; --cat-line:#cce0d1;
+    --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s5:48px;
+    --t-display:38px; --t-title:18px; --t-body:17px; --t-bodysm:15px; --t-caption:13px; --t-micro:12px;
+    --r-lg:20px; --r-md:14px; --r-sm:11px;
+    --shadow-lift:0 1px 2px rgba(60,45,15,.05), 0 18px 40px -16px rgba(70,55,25,.22);
+    --shadow-rest:0 1px 2px rgba(60,45,15,.04);
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box;}
+  svg{ max-width:100%; }
+  .panel-title > svg, .media-slot > svg, .back > svg{ flex:0 0 auto; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{ margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
+    font-family:"Inter", system-ui, -apple-system, sans-serif; font-size:var(--t-body); line-height:1.5;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    /* App-feel on touch: smooth momentum scroll, no blue tap flash, no rubber-band overscroll into white. */
+    -webkit-overflow-scrolling:touch; overscroll-behavior-y:none;
+    -webkit-tap-highlight-color:transparent; }
+  /* Interactive controls shouldn't show a text-selection caret / iOS callout menu on long-press. */
+  .card, .back, .seg button, .save, details.sop summary, .tool-btn{
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;
+    touch-action:manipulation; }
+  /* But real text inputs must stay selectable. */
+  input, textarea{ -webkit-user-select:text; user-select:text; }
+  header{ position:sticky; top:0; z-index:20; background:rgba(255,253,248,.82);
+    backdrop-filter:saturate(120%) blur(12px); -webkit-backdrop-filter:saturate(120%) blur(12px);
+    border-bottom:1px solid var(--line); color:var(--ink);
+    /* Safe-area: clear the notch/status bar on top, and the rounded corners on the sides. */
+    padding:calc(var(--s2) + env(safe-area-inset-top)) calc(var(--s3) + env(safe-area-inset-right)) var(--s2) calc(var(--s3) + env(safe-area-inset-left));
+    display:flex; align-items:center; gap:var(--s2); }
+  header::before{ content:""; position:absolute; left:0; right:0; top:0; height:3px; background:var(--cat); }
+  .home-dot{ width:42px; height:42px; border-radius:12px; background:var(--cat-soft); color:var(--cat-deep);
+    flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    font-family:"Inter", sans-serif; font-weight:600; font-size:var(--t-title); }
+  .home-dot svg{ width:21px; height:21px; }
+  .brand{ font-size:var(--t-bodysm); margin:0; font-weight:600; line-height:1.2; color:var(--ink); letter-spacing:-.01em; }
+  .crumb{ font-size:var(--t-caption); margin-top:1px; color:var(--cat-deep); font-weight:500; }
+  .back{ width:42px; height:42px; flex:0 0 auto; background:transparent; border:1px solid var(--line);
+    color:var(--ink-soft); cursor:pointer; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    transition:background .15s ease, transform .15s ease, color .15s ease, border-color .15s; }
+  .back svg{ width:21px; height:21px; }
+  @media (hover:hover){
+    .back:hover{ background:var(--cat-soft); color:var(--cat-deep); border-color:var(--cat-line); transform:translateX(-2px); }
+  }
+  .back:active{ background:var(--cat-soft); color:var(--cat-deep); }
+  .back:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .wrap{ max-width:880px; margin:0 auto;
+    padding:var(--s5) calc(24px + env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left)); }
+  #screen{ animation:enterFwd .42s var(--ease) both; }
+  #screen[data-dir="back"]{ animation:enterBack .42s var(--ease) both; }
+  @keyframes enterFwd { from{opacity:0; transform:translateX(24px);} to{opacity:1; transform:translateX(0);} }
+  @keyframes enterBack{ from{opacity:0; transform:translateX(-24px);} to{opacity:1; transform:translateX(0);} }
+  .stagger .card{ animation:cardIn .46s var(--ease) both; }
+  .stagger .card:nth-child(1){animation-delay:0ms}
+  .stagger .card:nth-child(2){animation-delay:55ms}
+  .stagger .card:nth-child(3){animation-delay:110ms}
+  .stagger .card:nth-child(4){animation-delay:165ms}
+  .stagger .card:nth-child(5){animation-delay:210ms}
+  .stagger .card:nth-child(n+6){animation-delay:240ms}
+  @keyframes cardIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+  @media (prefers-reduced-motion:reduce){
+    #screen, #screen[data-dir="back"], .stagger .card{ animation:fade .2s ease both; }
+    @keyframes fade{ from{opacity:0;} to{opacity:1;} }
+    .card:hover{ transform:none !important; }
+    .card:active{ transform:none !important; }
+    .seg button:active, .save:active{ transform:none !important; }
+    details.sop summary .chev{ transition:none !important; }
+    details.disclosure > summary .chev{ transition:none !important; }
+    .sop-body{ transition:none !important; }
+  }
+  /* THE ONE SERIF MOMENT — .lede only, never elsewhere (guardrail #3). */
+  .lede{ font-family:"Instrument Serif", Georgia, serif; font-weight:400; font-size:var(--t-display);
+    line-height:1.04; letter-spacing:-.01em; margin:0 0 var(--s4); color:var(--ink); max-width:20ch; }
+  .lede small{ display:block; font-family:"Inter", sans-serif; font-weight:400; font-size:var(--t-bodysm);
+    line-height:1.5; color:var(--ink-soft); margin-top:var(--s2); max-width:52ch; letter-spacing:0; }
+  .lede:focus{ outline:none; }
+  .grid{ display:grid; gap:20px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); }
+  .card{ --c:var(--cat); background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+    padding:28px; box-shadow:var(--shadow-rest); cursor:pointer; text-align:left; font:inherit; color:inherit;
+    width:100%; position:relative; overflow:hidden;
+    transition:transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s; }
+  @media (hover:hover){
+    .card:hover{ transform:translateY(-4px); box-shadow:var(--shadow-lift); border-color:var(--c); }
+  }
+  .card:active{ transform:translateY(-1px); box-shadow:var(--shadow-lift); border-color:var(--c); }
+  .card:focus-visible{ outline:3px solid var(--c); outline-offset:3px; }
+  /* The wayfinding spine — the ONLY place it's allowed. See guardrail #1. */
+  .card::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--c); }
+  .card .kicker{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .card .blob{ width:34px; height:34px; border-radius:10px; flex:0 0 auto; background:var(--c);
+    display:flex; align-items:center; justify-content:center; color:#fff;
+    font-family:"Inter",sans-serif; font-weight:700; font-size:var(--t-bodysm); letter-spacing:-.02em; }
+  .card h2{ font-family:"Inter", sans-serif; font-weight:600; font-size:var(--t-title); margin:0; line-height:1.25; letter-spacing:-.01em; }
+  .card p{ margin:0; font-size:var(--t-bodysm); color:var(--ink-soft); line-height:1.5; }
+  .card .meta{ display:flex; align-items:center; gap:var(--s1); margin-top:18px; flex-wrap:wrap; }
+  .card .count-text{ font-size:var(--t-micro); color:var(--ink-faint); font-weight:500; letter-spacing:.01em; }
+  .card.activity h2{ margin-bottom:0; }
+  .tag{ display:inline-block; font-size:var(--t-micro); padding:3px 11px; border-radius:999px; font-weight:600; letter-spacing:.01em; }
+  .tag.cane{ background:#f3e2d6; color:#8a3c12; }
+  .tag.nocane{ background:var(--cat-soft); color:var(--cat-deep); }
+  .pill.saved{ display:inline-block; font-size:var(--t-micro); padding:3px 11px; border-radius:999px; font-weight:600; background:transparent; color:var(--ink-faint); border:1px solid var(--line); }
+  /* RUN-SCREEN PANELS: near-flat, NO colour spine (guardrail #1). */
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+    padding:var(--s4); margin-bottom:var(--s3); position:relative; }
+  /* Only the primary form panel is elevated — that's what makes it the hero (guardrail #2). */
+  .panel.primary{ box-shadow:var(--shadow-lift); border-color:var(--line); }
+  /* Past-results is a quiet list: flat, transparent, border-only. Don't float it. */
+  .panel.quiet{ box-shadow:none; background:transparent; border:none; padding:var(--s2) 0 0; }
+  .panel-title{ font-family:"Inter", sans-serif; font-weight:600; font-size:var(--t-title);
+    margin:0 0 var(--s3); color:var(--ink); display:flex; align-items:center; gap:10px; letter-spacing:-.01em; }
+  .panel-title svg{ width:19px; height:19px; flex:0 0 auto; color:var(--cat-deep); }
+  .panel.quiet .panel-title{ color:var(--ink-soft); font-size:var(--t-bodysm); margin-bottom:var(--s2); }
+  .panel.quiet .panel-title svg{ width:17px; height:17px; }
+  details.sop{ margin-bottom:var(--s3); background:transparent; border:1px solid var(--line);
+    border-radius:var(--r-lg); position:relative; overflow:hidden; padding:var(--s3) var(--s4); }
+  details.sop summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px;
+    font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-title); color:var(--ink); user-select:none; letter-spacing:-.01em; }
+  details.sop summary > svg{ width:19px; height:19px; flex:0 0 auto; color:var(--cat-deep); }
+  details.sop summary::-webkit-details-marker{ display:none; }
+  details.sop summary .chev{ margin-left:auto; transition:transform .24s var(--ease); width:19px; height:19px; flex:0 0 auto; color:var(--ink-faint); }
+  details.sop summary .chev svg{ width:19px; height:19px; display:block; }
+  details.sop[open] summary .chev{ transform:rotate(180deg); }
+  details.sop summary:focus-visible{ outline:3px solid var(--cat); outline-offset:3px; border-radius:8px; }
+  details.sop:not([open]) .sop-body{ display:grid; }
+  .sop-body{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .26s var(--ease); }
+  details.sop[open] .sop-body{ grid-template-rows:1fr; }
+  .sop-body > .sop-inner{ overflow:hidden; min-height:0; }
+  details.sop[open] .sop-body > .sop-inner{ padding-top:var(--s3); }
+  /* Hub demographics disclosure — same slide-down mechanism as the SOP
+     (grid-rows 0fr→1fr), styled as a tappable form-opener. One container; the
+     form inside renders bare so there's no double framing or second shadow. */
+  details.disclosure{ margin-bottom:var(--s3); background:var(--card); border:1px solid var(--line);
+    border-radius:var(--r-lg); position:relative; overflow:hidden; }
+  details.disclosure > summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:12px;
+    padding:18px var(--s3); font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-bodysm);
+    color:var(--ink); user-select:none; letter-spacing:-.005em; }
+  details.disclosure > summary::-webkit-details-marker{ display:none; }
+  details.disclosure > summary > svg{ width:20px; height:20px; flex:0 0 auto; color:var(--cat-deep);
+    background:var(--cat-soft); border-radius:11px; padding:9px; box-sizing:content-box; }
+  details.disclosure > summary .disclosure-label{ flex:1; min-width:0; }
+  details.disclosure > summary .chev{ margin-left:auto; transition:transform .24s var(--ease); width:19px; height:19px; flex:0 0 auto; color:var(--ink-faint); }
+  details.disclosure > summary .chev svg{ width:19px; height:19px; display:block; }
+  details.disclosure[open] > summary .chev{ transform:rotate(180deg); }
+  details.disclosure > summary:focus-visible{ outline:3px solid var(--cat); outline-offset:-3px; border-radius:var(--r-lg); }
+  details.disclosure:not([open]) .sop-body{ display:grid; }
+  details.disclosure[open] .sop-body{ grid-template-rows:1fr; }
+  details.disclosure[open] .sop-body > .sop-inner{ padding:0 var(--s3) var(--s3); }
+  @media (hover:hover){ details.disclosure > summary:hover{ background:var(--cat-soft); } }
+  .sop-list{ margin:0; padding:0; list-style:none; counter-reset:step; }
+  .sop-list li{ counter-increment:step; position:relative; padding:0 0 var(--s3) 42px; margin:0; color:var(--ink); }
+  .sop-list li:last-child{ padding-bottom:0; }
+  .sop-list li::before{ content:counter(step); position:absolute; left:0; top:-2px; width:28px; height:28px;
+    border-radius:50%; background:var(--cat-soft); color:var(--cat-deep);
+    font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-caption); display:flex; align-items:center; justify-content:center; }
+  .sop-list li:not(:last-child)::after{ content:""; position:absolute; left:13px; top:30px; bottom:6px; width:2px; background:var(--cat-line); }
+  .note{ background:#fbf3da; border:1px solid #ecdca6; border-radius:var(--r-md);
+    padding:var(--s2) var(--s3); margin-top:var(--s3); font-size:var(--t-bodysm); color:#5c4a1e; }
+  .note strong{ display:block; margin-bottom:4px; font-weight:600; color:#7a5e16; }
+  .media-slot{ margin-top:var(--s2); border:1.5px dashed var(--line); border-radius:var(--r-md);
+    padding:var(--s2) var(--s3); font-size:var(--t-bodysm); color:var(--ink-faint); text-align:left; display:flex; align-items:center; gap:10px; }
+  .media-slot svg{ width:18px; height:18px; flex:0 0 auto; }
+  fieldset{ border:none; margin:0; padding:0; }
+  .field{ margin-bottom:var(--s3); }
+  .field > label{ display:block; font-weight:600; margin-bottom:10px; font-size:var(--t-bodysm); color:var(--ink); letter-spacing:-.005em; }
+  .field input[type=number], .field input[type=text], .field textarea{ width:100%; padding:13px 15px; border:1px solid var(--line); border-radius:var(--r-sm);
+    font:inherit; background:#fff; color:var(--ink); transition:border-color .15s, box-shadow .15s; }
+  .field input[type=number]::placeholder, .field input[type=text]::placeholder, .field textarea::placeholder{ color:var(--ink-faint); }
+  .field input[type=number]:focus, .field input[type=text]:focus, .field textarea:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .field textarea{ min-height:84px; resize:vertical; }
+  .seg{ display:flex; gap:var(--s1); flex-wrap:wrap; }
+  .seg button{ flex:1; min-width:96px; padding:13px; border:1px solid var(--line); border-radius:var(--r-sm);
+    background:#fff; cursor:pointer; font:inherit; font-size:var(--t-bodysm); font-weight:500; color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .12s var(--ease), background .15s, border-color .15s, color .15s; }
+  @media (hover:hover){
+    .seg button:hover{ border-color:var(--cat-line); color:var(--ink); }
+  }
+  .seg button:active{ transform:scale(.97); }
+  .seg button[aria-pressed="true"]{ background:var(--cat); color:#fff; border-color:var(--cat); font-weight:600; }
+  .seg button:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .checkrow{ display:flex; align-items:center; gap:12px; }
+  .checkrow input{ width:24px; height:24px; accent-color:var(--cat); }
+  .checkrow label{ margin:0; font-weight:600; font-size:var(--t-bodysm); color:var(--ink); }
+  .save{ background:var(--cat); color:#fff; border:none; border-radius:var(--r-sm); padding:16px 24px;
+    font-size:var(--t-body); font-weight:600; cursor:pointer; font-family:"Inter",sans-serif; width:100%;
+    letter-spacing:-.005em; transition:transform .12s, filter .15s, background .15s; margin-top:var(--s1); }
+  @media (hover:hover){
+    .save:hover{ filter:brightness(1.07); transform:translateY(-1px); }
+  }
+  .save:active{ transform:translateY(0) scale(.99); }
+  .save:disabled{ opacity:.55; cursor:default; transform:none; filter:none; }
+  .save:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+  .record{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-md);
+    padding:var(--s2) var(--s3); margin-bottom:10px; }
+  .record .who{ font-weight:600; color:var(--ink); }
+  .record .when{ color:var(--ink-faint); font-size:var(--t-caption); }
+  .record .vals{ margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+  .record .vals span{ display:inline-block; background:var(--line-soft); color:var(--ink-soft);
+    padding:3px 11px; border-radius:999px; font-size:var(--t-caption); font-weight:500; }
+  .record .vals span.val-result{ background:var(--cat-soft); color:var(--cat-deep); font-weight:600; }
+  /* Per-record delete: a quiet icon button, neutral until interacted with, then
+     the existing semantic rust (#8a3c12 — same as the "with cane" tag, NOT a new
+     accent). Border-only, no new shadow tier. */
+  .record .rec-head{ display:flex; align-items:flex-start; gap:var(--s2); }
+  .record .rec-meta{ flex:1; min-width:0; }
+  .rec-del{ flex:0 0 auto; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+    background:transparent; border:1px solid var(--line); border-radius:var(--r-sm); color:var(--ink-faint);
+    cursor:pointer; padding:0; transition:background .15s, border-color .15s, color .15s; }
+  .rec-del svg{ width:16px; height:16px; }
+  @media (hover:hover){ .rec-del:hover{ border-color:#dcab8e; color:#8a3c12; background:#f6e3d6; } }
+  .rec-del:active{ background:#f3e2d6; color:#8a3c12; }
+  .rec-del:focus-visible{ outline:3px solid #8a3c12; outline-offset:2px; }
+  /* "Remove" on the Manage-data child rows: reuse the .swap chip, rust on intent. */
+  .swap.danger{ display:inline-flex; align-items:center; gap:7px; }
+  .swap.danger svg{ width:15px; height:15px; }
+  @media (hover:hover){ .swap.danger:hover{ border-color:#dcab8e; color:#8a3c12; } }
+  .swap.danger:active{ background:#f6e3d6; color:#8a3c12; }
+  /* Danger zone: border-only block, no shadow (guardrail #2), rust framing only. */
+  .danger-zone{ margin-top:var(--s5); border:1px solid #ecceb9; border-radius:var(--r-lg);
+    padding:var(--s4); background:transparent; }
+  .danger-zone .panel-title{ margin-bottom:var(--s2); }
+  .danger-zone .panel-title svg{ color:#8a3c12; }
+  .save.danger-btn{ background:#8a3c12; }
+  @media (hover:hover){ .save.danger-btn:hover{ filter:brightness(1.08); } }
+  .empty{ color:var(--ink-faint); font-style:italic; }
+  /* Quiet utility button (export). Border-only, neutral — not an accent surface
+     (guardrail #1) and not elevated (guardrail #2). A tool, not a hero. */
+  .tools{ display:flex; justify-content:flex-end; margin-top:var(--s4); }
+  .tool-btn{ display:inline-flex; align-items:center; gap:9px; background:transparent;
+    border:1px solid var(--line); color:var(--ink-soft); cursor:pointer; font:inherit;
+    font-size:var(--t-bodysm); font-weight:600; padding:11px 16px; border-radius:var(--r-sm);
+    min-height:44px; transition:background .15s, border-color .15s, color .15s; }
+  .tool-btn svg{ width:18px; height:18px; flex:0 0 auto; }
+  @media (hover:hover){
+    .tool-btn:hover{ border-color:var(--ink-faint); color:var(--ink); }
+  }
+  .tool-btn:active{ background:var(--line-soft); }
+  .tool-btn:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+  .studentbar{ display:flex; align-items:center; gap:14px; margin-bottom:var(--s3); background:transparent; border:none; padding:0; }
+  .studentbar label{ font-weight:600; flex:0 0 auto; color:var(--ink-soft); font-size:var(--t-bodysm); }
+  .studentbar input{ padding:12px 15px; border:1px solid var(--line); border-radius:var(--r-sm); font:inherit;
+    flex:1; background:var(--card); min-width:0; color:var(--ink); }
+  .studentbar input::placeholder{ color:var(--ink-faint); }
+  .studentbar input:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  /* Active-child chip on the activity screen: a quiet selector, not an accent surface. */
+  .activechild{ display:flex; align-items:center; gap:12px; margin-bottom:var(--s3); padding:12px 15px;
+    border:1px solid var(--line); border-radius:var(--r-sm); background:var(--card); }
+  .activechild .avatar{ width:38px; height:38px; border-radius:10px; flex:0 0 auto; object-fit:cover;
+    background:var(--cat-soft); color:var(--cat-deep); display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:var(--t-bodysm); }
+  .activechild .who{ font-weight:600; color:var(--ink); font-size:var(--t-bodysm); flex:1; min-width:0; }
+  .activechild .who small{ display:block; font-weight:500; color:var(--ink-faint); font-size:var(--t-micro); margin-top:1px; }
+  .activechild .swap{ flex:0 0 auto; background:transparent; border:1px solid var(--line); color:var(--ink-soft);
+    cursor:pointer; font:inherit; font-size:var(--t-caption); font-weight:600; padding:8px 12px; border-radius:var(--r-sm); min-height:44px;
+    transition:background .15s, border-color .15s, color .15s; }
+  @media (hover:hover){ .activechild .swap:hover{ border-color:var(--ink-faint); color:var(--ink); } }
+  .activechild .swap:active{ background:var(--line-soft); }
+  .activechild .swap:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+  /* Child cards on screen 1 reuse .card; the avatar replaces the .blob. */
+  .card .avatar-img{ width:34px; height:34px; border-radius:10px; flex:0 0 auto; object-fit:cover; }
+  .card.child[aria-current="true"]{ border-color:var(--cat); box-shadow:var(--shadow-lift); }
+  .card.child[aria-current="true"]::before{ background:var(--cat); }
+  .card.child .check{ margin-left:auto; color:var(--cat-deep); width:20px; height:20px; flex:0 0 auto; }
+  .card.add{ display:flex; align-items:center; justify-content:center; gap:10px; color:var(--ink-soft);
+    border-style:dashed; min-height:96px; font-weight:600; font-size:var(--t-bodysm); }
+  .card.add svg{ width:20px; height:20px; }
+  .card.add::before{ display:none; }
+  /* Photo capture control in the profile form. */
+  .photo-field{ display:flex; align-items:center; gap:16px; }
+  .photo-preview{ width:72px; height:72px; border-radius:var(--r-md); flex:0 0 auto; object-fit:cover;
+    border:1px solid var(--line); background:var(--cat-soft); color:var(--cat-deep);
+    display:flex; align-items:center; justify-content:center; }
+  .photo-preview svg{ width:26px; height:26px; }
+  .photo-actions{ display:flex; flex-direction:column; gap:8px; }
+  .section-label{ font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-bodysm); color:var(--ink-soft);
+    margin:var(--s4) 0 var(--s2); letter-spacing:-.005em; }
+  /* Welcome (page 1) — calm, centered, one primary action. */
+  .welcome{ min-height:60vh; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:var(--s2); }
+  .welcome-mark{ width:60px; height:60px; border-radius:16px; background:var(--cat-soft); color:var(--cat-deep);
+    display:flex; align-items:center; justify-content:center; margin-bottom:var(--s2); }
+  .welcome-mark svg{ width:30px; height:30px; }
+  .welcome .lede{ margin-bottom:var(--s3); }
+  .welcome-btn{ width:auto; min-width:200px; }
+  /* Hub action rows (page 2). Border-only; the primary one carries the accent. */
+  .hub-actions{ display:flex; flex-direction:column; gap:var(--s2); margin-top:var(--s3); }
+  .action-row{ display:flex; align-items:center; gap:14px; width:100%; text-align:left; font:inherit;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg); padding:18px var(--s3);
+    cursor:pointer; color:var(--ink); transition:transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s; }
+  .action-row .action-ic{ width:40px; height:40px; border-radius:11px; flex:0 0 auto; background:var(--cat-soft); color:var(--cat-deep);
+    display:flex; align-items:center; justify-content:center; }
+  .action-row .action-ic svg{ width:20px; height:20px; }
+  .action-row .action-text{ flex:1; min-width:0; }
+  .action-row .action-text strong{ display:block; font-weight:600; font-size:var(--t-bodysm); color:var(--ink); }
+  .action-row .action-text small{ display:block; font-weight:400; font-size:var(--t-micro); color:var(--ink-faint); margin-top:2px; }
+  .action-row .action-go{ flex:0 0 auto; color:var(--ink-faint); display:flex; }
+  .action-row .action-go svg{ width:20px; height:20px; }
+  .action-row.primary-action{ border-color:var(--cat); }
+  .action-row.primary-action .action-ic{ background:var(--cat); color:#fff; }
+  @media (hover:hover){ .action-row:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lift); border-color:var(--cat); } }
+  .action-row:active{ transform:translateY(0); box-shadow:var(--shadow-lift); }
+  .action-row:disabled{ opacity:.55; cursor:default; }
+  .action-row:disabled:hover, .action-row:disabled:active{ transform:none; box-shadow:none; border-color:var(--line); }
+  .action-row:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  /* Flat activity card (page 3) — keeps the colour spine; adds a category line. */
+  .card.activity.flat{ padding-left:24px; }
+  .card.activity.flat .flat-cat{ font-size:var(--t-micro); color:var(--ink-faint); font-weight:500; margin:4px 0 0; }
+  .toast{ position:fixed; bottom:28px; left:50%; transform:translate(-50%,12px); background:var(--ink); color:#fff;
+    padding:14px 24px; border-radius:var(--r-sm); opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s var(--ease); z-index:60; box-shadow:0 14px 34px rgba(0,0,0,.24); font-weight:500; font-size:var(--t-bodysm); }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+  .visually-hidden{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+  @media (max-width:640px){
+    .wrap{ padding:var(--s4) calc(18px + env(safe-area-inset-right)) calc(110px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left)); }
+    :root{ --t-display:30px; }
+    .lede{ max-width:none; }
+    .studentbar{ flex-wrap:wrap; }
+    .seg{ flex-direction:column; }
+    .seg button{ width:100%; min-height:50px; }
+    .save{ padding:18px 24px; }
+    .panel{ padding:var(--s3); }
+    .card{ padding:var(--s3); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <button class="back" id="backBtn" aria-label="Go back" style="display:none;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <span class="home-dot" id="homeDot" aria-hidden="true"></span>
+  <div>
+    <p class="brand" id="brand">O&amp;M Cane Training</p>
+    <div class="crumb" id="crumb">Choose an activity category</div>
+  </div>
+</header>
+<main class="wrap"><div id="screen"></div></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="activities.js"></script>
+<script>
+const screen  = document.getElementById('screen');
+const brandEl = document.getElementById('brand');
+const crumbEl = document.getElementById('crumb');
+const backBtn = document.getElementById('backBtn');
+const homeDot = document.getElementById('homeDot');
+const toastEl = document.getElementById('toast');
+let state = { category:null, activity:null };
+const ICON = {
+  compass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="16 8 10.5 10.5 8 16 13.5 13.5 16 8"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+  audio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  video:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="m22 8-6 4 6 4V8Z"/></svg>',
+  chevron:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  chevronRight:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>',
+  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 4 5-4"/><path d="M5 21h14"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"/></svg>'
+};
+const CATEGORY_PALETTE = [
+  { c:"#2f6f4e", deep:"#1f4d36", soft:"#e2efe5", line:"#cce0d1" },
+  { c:"#1f6f86", deep:"#124a5b", soft:"#dceef2", line:"#c2e0e8" },
+  { c:"#6a4ea8", deep:"#47326f", soft:"#eae3f5", line:"#dccff0" },
+  { c:"#b5521f", deep:"#8a3c12", soft:"#f6e3d6", line:"#eccdb6" },
+  { c:"#8a6f2b", deep:"#5f4c1c", soft:"#f3ead0", line:"#e6d6a8" },
+  { c:"#3a7d5d", deep:"#265a41", soft:"#e2f0e8", line:"#c8e2d2" },
+  { c:"#9a4060", deep:"#702c45", soft:"#f4e0e8", line:"#ecc6d5" },
+];
+function themeFor(catIndex){
+  const p = CATEGORY_PALETTE[catIndex % CATEGORY_PALETTE.length];
+  document.body.style.setProperty('--cat',      p.c);
+  document.body.style.setProperty('--cat-deep', p.deep);
+  document.body.style.setProperty('--cat-soft', p.soft);
+  document.body.style.setProperty('--cat-line', p.line);
+}
+function resetTheme(){ themeFor(0); }
+function catColor(i){ return CATEGORY_PALETTE[i % CATEGORY_PALETTE.length].c; }
+/* ---------------------------------------------------------------------------
+   STORAGE SEAM — the ONLY place that touches the storage backend.
+   Backend: Capacitor Preferences on native (Android/iOS), localStorage on the
+   plain web. Selected ONCE at boot in Store.init(). Nothing else in this file
+   knows which backend is live.
+
+   THE SYNC/ASYNC SPLIT (read this before editing):
+   Native Preferences is asynchronous (every get/set returns a Promise); there
+   is no synchronous native storage. But every render function here reads
+   storage synchronously while building HTML, and rewriting all of them to
+   await reads would be a huge, fragile change. So the seam keeps a synchronous
+   in-memory CACHE that mirrors the backend:
+
+     • Store.init()  — async, run ONCE at boot. Loads the whole backend into the
+                       cache. Until it resolves, reads would be empty, so boot
+                       waits for it.
+     • READS  (getJSON/getString/_keys) — synchronous, served from the cache.
+                       Render code stays unchanged.
+     • WRITES (setJSON/setString/_remove) — ASYNC. They update the cache
+                       synchronously (so a following read is correct), then
+                       write through to the backend and READ BACK to verify.
+                       The returned Promise resolves true only when the backend
+                       confirms the write. Callers `await` this and warn the
+                       teacher on false — the write-verify guarantee is intact
+                       end-to-end, not faked off the cache.
+
+   Why verify at all: inside a native WebView a quota/serialise/OS error can
+   fail SILENTLY — the worst outcome for a children's data tool. A failed write
+   surfaces to the teacher (who can export a CSV) instead of vanishing.
+
+   TO CHANGE BACKENDS: edit ONLY the four _backend* bodies + the detection in
+   init(). The cache, verify, and public API stay put.
+   --------------------------------------------------------------------------- */
+const Store = {
+  _cache: {},            // key -> string value (mirror of the backend)
+  _ready: false,
+  _native: false,
+  _prefs: null,          // Capacitor Preferences plugin handle, when native
+
+  // ---- backend primitives (the ONLY backend-specific code) ----------------
+  async _backendEntries(){
+    if(this._native){
+      const { keys } = await this._prefs.keys();
+      const out = {};
+      for(const k of keys){ const { value } = await this._prefs.get({ key:k }); out[k] = value; }
+      return out;
+    }
+    const out = {};
+    try { for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); out[k] = localStorage.getItem(k); } } catch(e){}
+    return out;
+  },
+  async _backendSet(key, val){
+    if(this._native){ await this._prefs.set({ key, value: val }); return true; }
+    try { localStorage.setItem(key, val); return true; } catch(e){ return false; }
+  },
+  async _backendGet(key){
+    if(this._native){ const { value } = await this._prefs.get({ key }); return value; }
+    try { return localStorage.getItem(key); } catch(e){ return null; }
+  },
+  async _backendRemove(key){
+    if(this._native){ await this._prefs.remove({ key }); return; }
+    try { localStorage.removeItem(key); } catch(e){}
+  },
+
+  // ---- boot: detect backend, fill the cache once --------------------------
+  async init(){
+    // Capacitor injects window.Capacitor; Preferences is registered as a plugin.
+    const cap = window.Capacitor;
+    if(cap && cap.isNativePlatform && cap.isNativePlatform() && cap.Plugins && cap.Plugins.Preferences){
+      this._native = true;
+      this._prefs = cap.Plugins.Preferences;
+    }
+    this._cache = await this._backendEntries();
+    this._ready = true;
+  },
+
+  // ---- synchronous reads (served from cache) ------------------------------
+  _get(key){ return Object.prototype.hasOwnProperty.call(this._cache, key) ? this._cache[key] : null; },
+  _keys(){ return Object.keys(this._cache); },
+  getJSON(key, fallback){
+    const raw = this._get(key);
+    if(raw == null) return fallback;
+    try { return JSON.parse(raw); } catch(e){ return fallback; }
+  },
+  getString(key, fallback){ const v = this._get(key); return v == null ? fallback : v; },
+
+  // ---- asynchronous writes (cache + write-through + read-back verify) -----
+  // Resolves true only if the backend confirms the value was stored.
+  async setJSON(key, value){
+    const serialised = JSON.stringify(value);
+    this._cache[key] = serialised;                 // sync cache update first
+    const ok = await this._backendSet(key, serialised);
+    if(!ok) return false;
+    const check = await this._backendGet(key);     // read-back verify
+    return check === serialised;
+  },
+  async setString(key, value){
+    this._cache[key] = value;
+    const ok = await this._backendSet(key, value);
+    if(!ok) return false;
+    const check = await this._backendGet(key);
+    return check === value;
+  },
+  async _remove(key){
+    delete this._cache[key];
+    await this._backendRemove(key);
+  }
+};
+
+const REC_PREFIX = 'rec_';
+function loadRecords(activityId){
+  const v = Store.getJSON(REC_PREFIX+activityId, []);
+  return Array.isArray(v) ? v : [];
+}
+// Returns true on confirmed save, false if the write could not be verified.
+async function saveRecord(activityId, record){
+  const all = loadRecords(activityId); all.unshift(record);
+  return Store.setJSON(REC_PREFIX+activityId, all);
+}
+function getStudent(){ return Store.getString('studentName', ''); }
+function setStudent(v){ return Store.setString('studentName', v); }
+
+/* ---------------------------------------------------------------------------
+   CHILD PROFILES — captured once per child, referenced by every session.
+   Demographics are profile data, NOT per-record data, so they live in their
+   own keyspace behind the same Store seam. Fields are exactly the set the
+   content team specified: name, age, height, weight, dominant hand, photo.
+   `capturedOn` is stored so a stale age is at least detectable later.
+   Photo is a downscaled low-res data URL (or '' if none).
+   --------------------------------------------------------------------------- */
+const PROFILE_KEY = 'profiles';
+function loadProfiles(){
+  const v = Store.getJSON(PROFILE_KEY, []);
+  return Array.isArray(v) ? v : [];
+}
+// Returns true on confirmed save, false if the write could not be verified.
+async function saveProfiles(list){ return Store.setJSON(PROFILE_KEY, list); }
+function profileById(id){ return loadProfiles().find(p=>p.id===id) || null; }
+async function upsertProfile(profile){
+  const list = loadProfiles();
+  const i = list.findIndex(p=>p.id===profile.id);
+  if(i===-1) list.unshift(profile); else list[i] = profile;
+  return saveProfiles(list);
+}
+function newProfileId(){ return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+// The active child whose name flows into saved records.
+function getActiveProfileId(){ return Store.getString('activeProfile', ''); }
+function setActiveProfileId(v){ return Store.setString('activeProfile', v); }
+function getActiveProfile(){ const id = getActiveProfileId(); return id ? profileById(id) : null; }
+
+/* ---------------------------------------------------------------------------
+   DELETION / ENTRY MANAGEMENT — all routed through the Store seam, same as
+   reads and writes, so the Capacitor swap still only touches _get/_set/etc.
+   Deletion is a first-class feature here, not a debug path: this is children's
+   disability data, and a teacher must be able to remove a wrong record, remove
+   a child, or wipe the device cleanly. Every destructive call is explicit and
+   confirmed at the UI layer; the CSV export is the only backup, so the UI
+   points at it first.
+   --------------------------------------------------------------------------- */
+// Remove a single session record by its index within one activity's list.
+// Returns true on confirmed write (or confirmed key removal when none remain).
+async function deleteRecord(activityId, index){
+  const all = loadRecords(activityId);
+  if(index < 0 || index >= all.length) return false;
+  all.splice(index, 1);
+  if(all.length === 0){ await Store._remove(REC_PREFIX+activityId); return true; }
+  return Store.setJSON(REC_PREFIX+activityId, all);
+}
+// How many saved records reference a given child, across every activity.
+function recordCountForProfile(profileId){
+  let n = 0;
+  Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0).forEach(k=>{
+    const recs = Store.getJSON(k, []);
+    if(Array.isArray(recs)) n += recs.filter(r=>r.profileId===profileId).length;
+  });
+  return n;
+}
+// Remove a child AND sweep every session record linked to them (by profileId).
+// If the deleted child was active, clears the active selection too.
+async function deleteProfile(profileId){
+  // 1. sweep linked records out of every activity bucket
+  const recKeys = Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0);
+  for(const k of recKeys){
+    const recs = Store.getJSON(k, []);
+    if(!Array.isArray(recs)) continue;
+    const kept = recs.filter(r=>r.profileId !== profileId);
+    if(kept.length === recs.length) continue;       // nothing for this child here
+    if(kept.length === 0) await Store._remove(k);
+    else await Store.setJSON(k, kept);
+  }
+  // 2. remove the profile itself
+  const kept = loadProfiles().filter(p=>p.id !== profileId);
+  const ok = await saveProfiles(kept);
+  // 3. if this child was the active one, clear the selection + legacy name
+  if(getActiveProfileId() === profileId){ await setActiveProfileId(''); await setStudent(''); }
+  return ok;
+}
+// The danger-zone reset. Removes profiles, every activity's records, the active
+// selection and legacy name. Deliberately KEEPS welcomeSeen so a teacher isn't
+// dumped back to the intro screen after a data wipe.
+async function clearAllData(){
+  const recKeys = Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0);
+  for(const k of recKeys){ await Store._remove(k); }
+  await Store._remove(PROFILE_KEY);
+  await setActiveProfileId('');
+  await setStudent('');
+}
+
+/* ---------------------------------------------------------------------------
+   EXPORT — the data escape hatch. Until a native app adds real
+   storage/cloud, this is how a teacher's session data leaves the device so it
+   can't be silently lost. Builds one CSV across ALL activities.
+   --------------------------------------------------------------------------- */
+function activityNameById(id){
+  for(const cat of ACTIVITY_DATA){
+    for(const act of cat.activities){
+      if(act.id === id) return { category: cat.category, activity: act.name };
+    }
+  }
+  return { category: '', activity: id }; // id no longer in activities.js — still export it
+}
+function gatherAllRecords(){
+  const rows = [];
+  Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0).forEach(k=>{
+    const id = k.slice(REC_PREFIX.length);
+    const meta = activityNameById(id);
+    const recs = Store.getJSON(k, []);
+    if(!Array.isArray(recs)) return;
+    recs.forEach(r=>{
+      // Join the child's demographics onto the row. Prefer profileId; fall back
+      // to matching by name for any record saved before profiles existed.
+      let p = r.profileId ? profileById(r.profileId) : null;
+      if(!p && r.student) p = loadProfiles().find(x=>x.name===r.student) || null;
+      rows.push({ category: meta.category, activity: meta.activity,
+        student: r.student || (p?p.name:''), when: r.when || '',
+        age: p?ageFromDOB(p.dob):'', dob: p?(p.dob||''):'', height: p?p.height:'', weight: p?p.weight:'',
+        hand: p?p.dominantHand:'', values: r.values || {} });
+    });
+  });
+  return rows;
+}
+function csvCell(v){
+  const s = String(v == null ? '' : v);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function buildCSV(rows){
+  // Value columns = union of all field labels across every record, stable order.
+  const valueCols = [];
+  rows.forEach(r=>Object.keys(r.values).forEach(label=>{ if(valueCols.indexOf(label)===-1) valueCols.push(label); }));
+  const header = ['Category','Activity','Student','DOB','Age','Height (cm)','Weight (kg)','Dominant hand','When', ...valueCols];
+  const lines = [header.map(csvCell).join(',')];
+  rows.forEach(r=>{
+    const base = [r.category, r.activity, r.student, r.dob, r.age, r.height, r.weight, r.hand, r.when];
+    const vals = valueCols.map(c=> r.values[c] != null ? r.values[c] : '');
+    lines.push(base.concat(vals).map(csvCell).join(','));
+  });
+  return '\ufeff' + lines.join('\r\n'); // BOM so Excel reads UTF-8 (Indian-language names) correctly
+}
+async function exportCSV(){
+  const rows = gatherAllRecords();
+  if(!rows.length){ toast('No saved results to export yet.'); return; }
+  const csv = buildCSV(rows);
+  const stamp = new Date().toISOString().slice(0,10);
+  const filename = `om-records-${stamp}.csv`;
+
+  // NATIVE PATH: the browser <a download> trick does not reliably save a file
+  // inside a Capacitor WebView (no download manager). Write the file to the
+  // app's data directory via Filesystem, then hand it to the OS share sheet so
+  // the teacher can save it to Files/Drive/email — the native equivalent of a
+  // download. CSV is the only backup, so a failure here must be loud.
+  const cap = window.Capacitor;
+  if(cap && cap.isNativePlatform && cap.isNativePlatform()){
+    try {
+      const Filesystem = cap.Plugins.Filesystem;
+      const Share = cap.Plugins.Share;
+      const writeRes = await Filesystem.writeFile({
+        path: filename,
+        data: csv,
+        directory: 'CACHE',            // Directory.Cache — fine for a transient export
+        encoding: 'utf8'
+      });
+      // getUri gives a file:// path the share sheet can attach.
+      const uriRes = await Filesystem.getUri({ path: filename, directory: 'CACHE' });
+      await Share.share({
+        title: 'O&M records export',
+        text: `O&M records (${rows.length} ${rows.length===1?'record':'records'})`,
+        url: uriRes.uri,
+        dialogTitle: 'Save or send your records CSV'
+      });
+      toast(`Exported ${rows.length} ${rows.length===1?'record':'records'}.`);
+    } catch(e){
+      toast('Export failed — could not write the file. Try again.');
+    }
+    return;
+  }
+
+  // WEB PATH (unchanged): anchor download.
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  toast(`Exported ${rows.length} ${rows.length===1?'record':'records'}.`);
+}
+function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'), 1800); }
+
+/* Age is derived from date of birth, never stored as a fixed number — so a
+   record never shows a stale age. Returns '' if no/invalid DOB. */
+function ageFromDOB(dob){
+  if(!dob) return '';
+  const b = new Date(dob); if(isNaN(b)) return '';
+  const now = new Date();
+  let a = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if(m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
+  return a >= 0 && a < 130 ? String(a) : '';
+}
+
+/* Downscale a chosen image to a low-res square data URL before storing it.
+   Keeps localStorage small and limits how identifiable a stored photo is.
+   ~160px longest side, JPEG q0.7. Returns a Promise<dataURL>. */
+function downscaleImage(file, max){
+  max = max || 160;
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error('read failed'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('decode failed'));
+      img.onload = ()=>{
+        let { width:w, height:h } = img;
+        if(w > h && w > max){ h = Math.round(h*max/w); w = max; }
+        else if(h >= w && h > max){ w = Math.round(w*max/h); h = max; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function paint(html, dir, stagger, opts){
+  opts = opts || {};
+  if(dir === 'none'){
+    screen.removeAttribute('data-dir'); screen.classList.remove('stagger'); screen.style.animation = 'none'; screen.innerHTML = html;
+  } else {
+    screen.setAttribute('data-dir', dir || 'fwd');
+    screen.style.animation = 'none'; void screen.offsetWidth; screen.style.animation = '';
+    screen.classList.toggle('stagger', !!stagger); screen.innerHTML = html;
+  }
+  if(!opts.skipLedeFocus){
+    const h1 = screen.querySelector('.lede');
+    if(h1){ h1.setAttribute('tabindex','-1'); h1.focus({preventScroll:true}); }
+  }
+}
+/* ===========================================================================
+   THREE-PAGE FLOW
+   Page 1  showWelcome      — app name, tagline, enter. Shown once (a Store flag
+                              records that it's been seen), then launch skips here.
+   Page 2  showHub          — the child-capture form inline (collapses to a chip
+                              once a child is saved) + the action buttons.
+   Page 3  showActivityList — a flat list of every activity, category hue kept as
+                              a quiet left spine. Tap an activity -> its run screen.
+   =========================================================================== */
+const WELCOME_SEEN = 'welcomeSeen';
+function showWelcome(dir){
+  state = { category:null, activity:null };
+  crumbEl.textContent = 'Welcome';
+  backBtn.style.display = 'none';
+  homeDot.innerHTML = ICON.home;
+  resetTheme();
+  paint(`
+    <div class="welcome">
+      <div class="welcome-mark">${ICON.compass}</div>
+      <h1 class="lede">O&amp;M Cane Training<small>A calm space for teachers to set up a child, run orientation &amp; mobility activities, and record how each session goes — all on this device.</small></h1>
+      <button class="save welcome-btn" onclick="enterFromWelcome()">Get started</button>
+    </div>
+  `, dir || 'fwd', false);
+}
+async function enterFromWelcome(){
+  await Store.setString(WELCOME_SEEN, '1');
+  showHub('fwd');
+}
+function avatarFor(p, cls){
+  cls = cls || 'avatar-img';
+  if(p && p.photo) return `<img class="${cls}" src="${p.photo}" alt="">`;
+  const initial = (p && p.name ? p.name : '?').trim().charAt(0).toUpperCase();
+  if(cls==='avatar-img') return `<span class="blob">${esc(initial)}</span>`;
+  return `<span class="${cls}">${esc(initial)}</span>`;
+}
+function showHub(dir, opts){
+  opts = opts || {};
+  state = { category:null, activity:null };
+  crumbEl.textContent = 'Set up & teach';
+  backBtn.style.display = 'none';
+  homeDot.innerHTML = ICON.home;
+  resetTheme();
+  const active = getActiveProfile();
+  // The demographics form now lives behind a slide-down disclosure (same
+  // grid-rows animation as the SOP). Collapsed by default — even with no child
+  // yet — and opened by tapping the "Add child" / "Edit" trigger. When editing
+  // an existing child we open it on paint via opts.editForm.
+  const formOpen = !!opts.editForm;
+  const summaryLabel = active ? 'Edit child' : 'Add child';
+  const summaryIcon = active ? ICON.edit : ICON.plus;
+  // When a child exists and the form is closed, the compact chip shows above it.
+  const chip = active
+    ? `<div class="activechild">${avatarFor(active,'avatar')}<span class="who">${esc(active.name)}<small>${childSub(active) || 'Active child'}</small></span></div>`
+    : '';
+  const childBlock = `
+    ${chip}
+    <details class="disclosure" id="childForm" ${formOpen?'open':''}>
+      <summary onclick="setTimeout(wirePhotoState,0)">${summaryIcon}<span class="disclosure-label">${summaryLabel}</span><span class="chev">${ICON.chevron}</span></summary>
+      <div class="sop-body"><div class="sop-inner">${profileFormMarkup(active, true)}</div></div>
+    </details>`;
+  const teachDisabled = active ? '' : 'disabled';
+  paint(`
+    <h1 class="lede">Today<small>Set up the child, then teach a session.</small></h1>
+    ${childBlock}
+    <div class="hub-actions">
+      <button class="action-row primary-action" ${teachDisabled} onclick="${active?"showActivityList('fwd')":''}">
+        <span class="action-ic">${ICON.compass}</span>
+        <span class="action-text"><strong>Teach O&amp;M skills</strong><small>${active? 'Run an activity and record the result' : 'Save a child first'}</small></span>
+        <span class="action-go">${ICON.chevronRight}</span>
+      </button>
+      <button class="action-row" onclick="exportCSV()">
+        <span class="action-ic">${ICON.download}</span>
+        <span class="action-text"><strong>Export records</strong><small>Download all sessions as a CSV</small></span>
+      </button>
+      <button class="action-row" onclick="showManageData('fwd')">
+        <span class="action-ic">${ICON.shield}</span>
+        <span class="action-text"><strong>Manage data</strong><small>Edit or remove children and saved records</small></span>
+        <span class="action-go">${ICON.chevronRight}</span>
+      </button>
+    </div>
+  `, dir || 'back', false);
+  wirePhotoState();
+}
+function childSub(p){
+  const age = ageFromDOB(p.dob);
+  return [age?age+' yrs':'', p.dominantHand?p.dominantHand+'-handed':''].filter(Boolean).join(' · ');
+}
+/* ---------------------------------------------------------------------------
+   MANAGE DATA (page) — the entry-management surface. Kept OFF the primary
+   teach path on its own screen so destructive controls aren't a stray tap
+   away. Three tiers: per-record delete lives on the activity screen; per-child
+   delete lives here; the full wipe is a clearly-marked danger zone. Every
+   destructive action confirms and nudges toward CSV export first, because the
+   export is the only backup.
+   --------------------------------------------------------------------------- */
+function showManageData(dir){
+  state = { category:null, activity:null };
+  crumbEl.textContent = 'Manage data';
+  backBtn.style.display = 'flex';
+  backBtn.onclick = ()=>showHub('back');
+  homeDot.innerHTML = ICON.shield;
+  resetTheme();
+  const profiles = loadProfiles();
+  const childRows = profiles.length
+    ? profiles.map(p=>{
+        const n = recordCountForProfile(p.id);
+        const sub = [childSub(p), `${n} ${n===1?'result':'results'}`].filter(Boolean).join(' · ');
+        return `<div class="activechild">${avatarFor(p,'avatar')}<span class="who">${esc(p.name)}<small>${esc(sub)}</small></span><button type="button" class="swap danger" onclick="confirmDeleteChild('${p.id}')">${ICON.trash} Remove</button></div>`;
+      }).join('')
+    : '<p class="empty">No children saved yet.</p>';
+  paint(`
+    <h1 class="lede">Manage data<small>Remove a child and their results, or clear everything on this device. Export a CSV first — it is the only backup.</small></h1>
+    <button class="action-row" onclick="exportCSV()" style="margin-bottom:var(--s3)">
+      <span class="action-ic">${ICON.download}</span>
+      <span class="action-text"><strong>Export everything first</strong><small>Download all sessions as a CSV before deleting</small></span>
+    </button>
+    <h2 class="section-label">Children on this device</h2>
+    ${childRows}
+    <div class="danger-zone">
+      <h2 class="panel-title" style="color:#8a3c12">${ICON.trash} Danger zone</h2>
+      <p style="margin:0 0 var(--s3); font-size:var(--t-bodysm); color:var(--ink-soft);">This permanently removes every child profile and every saved result from this device. It cannot be undone.</p>
+      <button type="button" class="save danger-btn" onclick="confirmClearAll()">Clear all data</button>
+    </div>
+  `, dir || 'fwd', false);
+}
+async function confirmDeleteChild(id){
+  const p = profileById(id); if(!p) return;
+  const n = recordCountForProfile(id);
+  const msg = `Remove ${p.name}${n? ` and their ${n} saved ${n===1?'result':'results'}`:''}?\n\nThis cannot be undone. If you haven't exported a CSV backup, cancel and export first.`;
+  if(!window.confirm(msg)) return;
+  const ok = await deleteProfile(id);
+  toast(ok ? `Removed ${p.name}` : 'Could not remove — please try again.');
+  showManageData('none');
+}
+async function confirmClearAll(){
+  const profiles = loadProfiles().length;
+  if(!profiles && !gatherAllRecords().length){ toast('There is no data to clear.'); return; }
+  // Two-step confirm for the irreversible wipe.
+  if(!window.confirm('Clear ALL data on this device?\n\nEvery child and every saved result will be permanently deleted. Export a CSV backup first if you need one.')) return;
+  if(!window.confirm('Are you sure? This cannot be undone.')) return;
+  await clearAllData();
+  toast('All data cleared');
+  showHub('back');
+}
+function showActivityList(dir){
+  state = { category:null, activity:null };
+  crumbEl.textContent = 'Activities';
+  backBtn.style.display = 'flex';
+  backBtn.onclick = ()=>showHub('back');
+  homeDot.innerHTML = ICON.list;
+  resetTheme();
+  // Flatten every activity across categories; keep the category hue as a spine.
+  const rows = [];
+  ACTIVITY_DATA.forEach((cat,ci)=>{
+    cat.activities.forEach((act,ai)=>{
+      const col = catColor(ci);
+      const n = loadRecords(act.id).length;
+      const tag = act.withCane ? '<span class="tag cane">With cane</span>' : '<span class="tag nocane" style="background:var(--cat-soft);color:var(--cat-deep)">Without cane</span>';
+      rows.push(`<button class="card activity flat" style="--c:${col}" onclick="showActivity(${ci},${ai})">
+        <h2>${esc(act.name)}</h2>
+        <p class="flat-cat">${esc(cat.category)}</p>
+        <div class="meta">${tag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</div>
+      </button>`);
+    });
+  });
+  paint(`<h1 class="lede">All activities<small>Pick an activity to read the steps and record a result.</small></h1><div class="grid">${rows.join('')}</div>`, dir || 'fwd', true);
+}
+async function selectChild(id){
+  await setActiveProfileId(id);
+  const p = profileById(id);
+  if(p) await setStudent(p.name);
+  showHub('none');
+}
+/* The demographic capture form, rendered INLINE on the hub. Fields: name, DOB
+   (age is derived), height, weight, dominant hand, low-res photo. */
+let pendingPhoto = null; // holds a freshly downscaled data URL before save
+function profileFormMarkup(editing, bare){
+  pendingPhoto = editing ? (editing.photo || null) : null;
+  const v = (k)=> editing && editing[k] != null ? esc(String(editing[k])) : '';
+  const hand = editing ? editing.dominantHand : '';
+  const photoInner = pendingPhoto ? `<img id="photoImg" class="photo-preview" src="${pendingPhoto}" alt="Current photo">`
+                                  : `<span id="photoImg" class="photo-preview">${ICON.user}</span>`;
+  const ageHint = editing && editing.dob && ageFromDOB(editing.dob) ? ` <span style="font-weight:500;color:var(--ink-faint)">(age ${ageFromDOB(editing.dob)})</span>` : '';
+  // The form body. When `bare`, it has no panel wrapper or title — the
+  // disclosure on the Hub supplies the container and the "Add/Edit child"
+  // label, so we don't double the framing (guardrail #2: one shadow tier).
+  const body = `
+      <form id="profileForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Child details</legend>
+        <div class="field"><label for="p_name">Name</label><input type="text" id="p_name" value="${v('name')}" placeholder="Child's name" autocomplete="off"></div>
+        <div class="field"><label for="p_dob">Date of birth${ageHint}</label><input type="date" id="p_dob" value="${v('dob')}"></div>
+        <div class="field"><label for="p_height">Height (cm)</label><input type="number" id="p_height" min="0" step="0.1" value="${v('height')}" placeholder="e.g. 124"></div>
+        <div class="field"><label for="p_weight">Weight (kg)</label><input type="number" id="p_weight" min="0" step="0.1" value="${v('weight')}" placeholder="e.g. 26"></div>
+        <div class="field"><label id="lbl_hand">Dominant hand</label>
+          <div class="seg" id="p_hand" data-value="${hand||''}" role="group" aria-labelledby="lbl_hand">
+            ${['Left','Right','Unknown'].map(h=>`<button type="button" onclick="pickSeg('p_hand','${h}',this)" aria-pressed="${hand===h}">${h}</button>`).join('')}
+          </div>
+        </div>
+        <div class="field"><label>Photo <span style="font-weight:500;color:var(--ink-faint)">(optional, stored low-resolution)</span></label>
+          <div class="photo-field">
+            ${photoInner}
+            <div class="photo-actions">
+              <button type="button" class="tool-btn" onclick="document.getElementById('p_photo').click()">${ICON.video} Choose photo</button>
+              <button type="button" class="tool-btn" id="photoClear" onclick="clearPhoto()" ${pendingPhoto?'':'style="display:none"'}>Remove</button>
+            </div>
+            <input type="file" id="p_photo" accept="image/*" style="display:none" onchange="handlePhotoPick(this)">
+          </div>
+        </div>
+        <button type="button" class="save" id="saveProfileBtn" onclick="handleProfileSave('${editing ? editing.id : ''}')">${ editing ? 'Save changes' : 'Save child'}</button>
+      </fieldset></form>`;
+  if(bare) return body;
+  return `
+    <div class="panel primary">
+      <h2 class="panel-title">${ICON.edit} ${editing ? 'Edit child' : 'Add a child'}</h2>
+      ${body}
+    </div>`;
+}
+function wirePhotoState(){ /* placeholder for any post-paint wiring; photo input is inline */ }
+function handlePhotoPick(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  downscaleImage(file, 160).then(dataUrl=>{
+    pendingPhoto = dataUrl;
+    const img = document.getElementById('photoImg');
+    if(img){
+      const fresh = document.createElement('img');
+      fresh.id = 'photoImg'; fresh.className = 'photo-preview'; fresh.src = dataUrl; fresh.alt = 'Selected photo';
+      img.replaceWith(fresh);
+    }
+    const clr = document.getElementById('photoClear'); if(clr) clr.style.display = '';
+  }).catch(()=>toast('Could not read that image.'));
+}
+function clearPhoto(){
+  pendingPhoto = null;
+  const img = document.getElementById('photoImg');
+  if(img){
+    const fresh = document.createElement('span');
+    fresh.id = 'photoImg'; fresh.className = 'photo-preview'; fresh.innerHTML = ICON.user;
+    img.replaceWith(fresh);
+  }
+  const clr = document.getElementById('photoClear'); if(clr) clr.style.display = 'none';
+  const file = document.getElementById('p_photo'); if(file) file.value = '';
+}
+async function handleProfileSave(existingId){
+  const name = (document.getElementById('p_name').value || '').trim();
+  if(!name){ toast('Please enter the child\u2019s name.'); return; }
+  const btn = document.getElementById('saveProfileBtn');
+  if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
+  const profile = {
+    id: existingId || newProfileId(),
+    name,
+    dob: (document.getElementById('p_dob').value || '').trim(),
+    height: (document.getElementById('p_height').value || '').trim(),
+    weight: (document.getElementById('p_weight').value || '').trim(),
+    dominantHand: document.getElementById('p_hand').dataset.value || '',
+    photo: pendingPhoto || '',
+    capturedOn: existingId ? (profileById(existingId)||{}).capturedOn || new Date().toISOString() : new Date().toISOString()
+  };
+  const ok = await upsertProfile(profile);
+  if(!ok){
+    toast('Could not save — storage may be full. Export your data, then try again.');
+    return;
+  }
+  // A newly added child becomes the active one.
+  await setActiveProfileId(profile.id);
+  await setStudent(profile.name);
+  pendingPhoto = null;
+  toast(existingId ? 'Child updated' : 'Child saved');
+  showHub('none'); // back to the hub; form collapses to the active-child chip
+}
+function showActivity(catIndex, actIndex, opts){
+  opts = opts || {};
+  const cat = ACTIVITY_DATA[catIndex];
+  const act = cat.activities[actIndex];
+  state = { category:catIndex, activity:actIndex };
+  crumbEl.textContent = cat.category;
+  backBtn.style.display = 'flex';
+  backBtn.onclick = ()=>showActivityList('back');
+  homeDot.textContent = (cat.category||'?').trim().charAt(0).toUpperCase();
+  themeFor(catIndex);
+  const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
+  const noteHtml = act.facilitatorNote ? `<div class="note"><strong>Facilitator note</strong>${esc(act.facilitatorNote)}</div>` : '';
+  const audioHtml = act.audioFile ? `<audio controls src="${esc(act.audioFile)}" style="width:100%;margin-top:16px;"></audio>` : `<div class="media-slot">${ICON.audio}<span>Audio narration slot — add a filename in activities.js (audioFile) once generated.</span></div>`;
+  const videoHtml = act.videoFile ? `<video controls src="${esc(act.videoFile)}" style="width:100%;margin-top:16px;border-radius:14px;"></video>` : `<div class="media-slot">${ICON.video}<span>Demo video slot — add a filename in activities.js (videoFile) when available.</span></div>`;
+  const fields = act.dataFields.map(f=>buildField(f)).join('');
+  const resultLabels = act.dataFields.filter(f=>f.type==='result').map(f=>f.label);
+  const records = loadRecords(act.id);
+  const recHtml = records.length ? records.map((r,i)=>renderRecord(r, resultLabels, act.id, i)).join('') : '<p class="empty">No results logged yet — run the activity, then record below.</p>';
+  const sopOpen = opts.sopCollapsed ? '' : 'open';
+  const activeChild = getActiveProfile();
+  const childBar = activeChild
+    ? `<div class="activechild">${avatarFor(activeChild,'avatar')}<span class="who">${esc(activeChild.name)}<small>${childSub(activeChild) || 'Active child'}</small></span><button type="button" class="swap" onclick="showHub('back')">Change</button></div>`
+    : `<div class="activechild"><span class="avatar">${ICON.user}</span><span class="who">No child selected<small>Pick or add a child before recording</small></span><button type="button" class="swap" onclick="showHub('back')">Choose</button></div>`;
+  paint(`
+    <h1 class="lede">${esc(act.name)}<small>${esc(cat.category)}</small></h1>
+    ${childBar}
+    <div class="panel primary" id="formPanel">
+      <h2 class="panel-title">${ICON.edit} Record a result</h2>
+      <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${fields}<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button></fieldset></form>
+    </div>
+    <details class="sop" id="sopPanel" ${sopOpen}>
+      <summary>${ICON.compass} How to run this <span class="chev">${ICON.chevron}</span></summary>
+      <div class="sop-body"><div class="sop-inner"><ol class="sop-list">${sopSteps}</ol>${noteHtml}${audioHtml}${videoHtml}</div></div>
+    </details>
+    <div class="panel quiet"><h2 class="panel-title">${ICON.list} Past results</h2><div id="recordList">${recHtml}</div></div>
+  `, opts.dir || 'fwd', false, { skipLedeFocus: !!opts.focusForm });
+  if(opts.focusForm){
+    const panel = document.getElementById('formPanel');
+    if(panel){ panel.scrollIntoView({behavior:'smooth', block:'start'}); }
+    const firstInput = screen.querySelector('#dataForm input, #dataForm textarea, .seg button');
+    if(firstInput){ firstInput.focus({preventScroll:true}); }
+  }
+}
+function buildField(f){
+  if(f.type === 'count'){ return `<div class="field"><label for="f_${f.id}">${esc(f.label)}</label><input type="number" id="f_${f.id}" min="0" placeholder="0"></div>`; }
+  if(f.type === 'result'){
+    return `<div class="field"><label id="lbl_${f.id}">${esc(f.label)}</label><div class="seg" id="f_${f.id}" data-value="" role="group" aria-labelledby="lbl_${f.id}">${['Independent','Prompted','Unable'].map(v=>`<button type="button" onclick="pickSeg('f_${f.id}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
+  }
+  if(f.type === 'checkbox'){ return `<div class="field"><div class="checkrow"><input type="checkbox" id="f_${f.id}"><label for="f_${f.id}">${esc(f.label)}</label></div></div>`; }
+  return `<div class="field"><label for="f_${f.id}">${esc(f.label)}</label><textarea id="f_${f.id}" placeholder="Type any observations..."></textarea></div>`;
+}
+function pickSeg(groupId, value, btn){
+  const group = document.getElementById(groupId);
+  group.dataset.value = value;
+  [...group.children].forEach(b=>b.setAttribute('aria-pressed','false'));
+  btn.setAttribute('aria-pressed','true');
+}
+async function handleSave(activityId){
+  const cat = ACTIVITY_DATA[state.category];
+  const act = cat.activities[state.activity];
+  const child = getActiveProfile();
+  if(!child){ toast('Choose or add a child first.'); return; }
+  const student = child.name;
+  const btn = document.getElementById('saveBtn');
+  if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
+  const values = {};
+  act.dataFields.forEach(f=>{
+    const el = document.getElementById('f_'+f.id);
+    if(f.type === 'count')        values[f.label] = el.value || '0';
+    else if(f.type === 'result')  values[f.label] = el.dataset.value || '—';
+    else if(f.type === 'checkbox')values[f.label] = el.checked ? 'Yes' : 'No';
+    else                          values[f.label] = el.value || '';
+  });
+  const ok = await saveRecord(activityId, { student, profileId: child.id, when:new Date().toLocaleString(), values });
+  if(!ok){
+    toast('Could not save — storage may be full. Export your data, then try again.');
+    return;
+  }
+  toast('Saved');
+  showActivity(state.category, state.activity, { sopCollapsed:true, focusForm:true, dir:'none' });
+}
+function renderRecord(r, resultLabels, activityId, index){
+  resultLabels = resultLabels || [];
+  const entries = Object.entries(r.values).filter(([k,v])=>v && v!=='' && v!=='—');
+  entries.sort((a,b)=>{ const ar = resultLabels.includes(a[0]) ? 0 : 1; const br = resultLabels.includes(b[0]) ? 0 : 1; return ar - br; });
+  const pills = entries.map(([k,v])=>{ const isResult = resultLabels.includes(k); return `<span class="${isResult ? 'val-result' : ''}">${esc(k)}: ${esc(v)}</span>`; }).join('');
+  const del = (activityId != null && index != null)
+    ? `<button type="button" class="rec-del" aria-label="Delete this result" onclick="confirmDeleteRecord('${esc(activityId)}',${index})">${ICON.trash}</button>`
+    : '';
+  return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="who">${esc(r.student)}</span> <span class="when">· ${esc(r.when)}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}</div></div>`;
+}
+async function confirmDeleteRecord(activityId, index){
+  if(!window.confirm('Delete this saved result?\n\nThis cannot be undone.')) return;
+  const ok = await deleteRecord(activityId, index);
+  if(!ok){ toast('Could not delete — please try again.'); return; }
+  toast('Result deleted');
+  // Re-render the current activity screen in place (no entrance slide).
+  showActivity(state.category, state.activity, { sopCollapsed:true, dir:'none', skipLedeFocus:true });
+}
+// Always open on the Welcome page. (Earlier this was show-once via a
+// `welcomeSeen` flag; the app now lands on Welcome every launch by request.)
+//
+// BOOT: storage is now cache-backed and the cache is filled asynchronously
+// (localStorage on web, Capacitor Preferences on native). We MUST wait for
+// Store.init() before the first paint, or render code reads an empty cache and
+// the teacher sees no children/records on a cold start. If init somehow fails,
+// we still paint Welcome (which reads nothing) so the app is never a blank
+// screen, and surface a toast.
+(async function boot(){
+  try { await Store.init(); }
+  catch(e){ setTimeout(()=>toast('Storage failed to load — please restart the app.'), 400); }
+  showWelcome('fwd');
+})();
+</script>
+</body>
+</html>
