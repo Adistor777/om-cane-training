@@ -3,91 +3,107 @@
 **Purpose:** paste this into a new chat (or keep it in Project knowledge) so the
 assistant has full context without re-explaining.
 
-**Last updated:** End of a short PLANNING session. No code changed. The session
-clarified the next three workstreams — (1) real-phone test, (2) tests + GitHub,
-(3) a "looks more sophisticated / like Nike" design question — and set up the
-next chat to act on them. Key outcome: the GitHub push and the design direction
-were both pinned down enough to execute next time.
+**Last updated:** End of an EXECUTION session. Two of the three queued items got
+DONE; the third (design) is picked and mid-flight. Key outcomes: (1) the project
+is now on GitHub — the single-copy risk is gone; (2) native storage re-verified
+on the Pixel 10 emulator; (3) design direction decided — **path (a), sharpen the
+field-notebook** — and the 7 per-category monoline icons are designed + previewed;
+user wants them wired into `index.html` NEXT chat.
 
-**What changed this session (planning only, no code):**
+**What changed this session:**
 
-1. **Mapped the real "now what."** Per the tracker, the honest next action is
-   still: **run on a real Android phone over USB** (BUILD-ANDROID.md step 10) +
-   repeat the cold-restart storage test there. Emulator is done; the phone is the
-   environment that matters for the pilot. After that, the gating items are
-   DECISIONS not code: pooling shape + offline-upload behaviour (both block
-   session video). Nothing else is meaningfully unblocked.
+1. **GitHub — DONE. The single-copy risk is closed.** The whole repo is now
+   pushed to a PRIVATE GitHub repo. Specifics that matter for next time:
+   - Repo URL: `https://github.com/Adistor777/om-cane-training.git`
+   - `.gitignore` excludes `node_modules/`, `android/`, `www/`, plus `.DS_Store`,
+     `.idea/`, `*.iml`, `*.log`. Verified via `git status` that the three generated
+     folders were NOT staged before the first commit.
+   - First commit = 15 files (source + docs + the 2 PDFs + the manager SVG +
+     `three_pages_warm_palette.html` + `package-lock.json`). Author was first
+     auto-guessed (Mac hostname), then fixed with
+     `git config --global user.name/email` + `git commit --amend --reset-author
+     --no-edit` → now `Aditya Shetty <adityaprakash.shetty@gmail.com>`.
+   - Pushed over HTTPS; auth via Personal Access Token (cached now, won't
+     re-prompt unless machine changes / token expires).
+   - **Day-to-day save loop from now on:** `git add .` → `git commit -m "..."` →
+     `git push`. Do it at the end of any session that changed something.
+   - Deliverable produced: `GITHUB-SETUP.md` (click-by-click, step+Check style),
+     downloaded by the user. Keep next to BUILD-ANDROID.md.
 
-2. **Tests — clarified honestly.** There are currently NO automated tests and no
-   harness; "testing" so far = manual on-device verification (cold-restart, export
-   share sheet, etc.). If we want real tests, the highest-value first targets are
-   the `Store` seam (write → read-back → verify) and the CSV builder — the places
-   where silent failure actually hurts children's data. UI tests are NOT the
-   priority. This is a deliberate add for a future session, not something that
-   exists yet.
+2. **Real-device test — DONE on emulator (again), good enough for now.** User
+   has a Mac + an iPhone, NO Android phone. The app is an ANDROID Capacitor wrap;
+   the iPhone can't run it natively (no iOS target added yet). Rather than add iOS
+   (Xcode + Apple Dev acct — deferred, "wrap last"), re-ran the existing Android
+   emulator:
+   - `npx cap run android` built clean, all 4 plugins found, deployed to
+     **Pixel_10_Pro_XL** emulator (note: the device is a Pixel 10 Pro XL now, not
+     the Pixel 7 in BUILD-ANDROID.md; still API 37 arm64).
+   - **Cold-restart storage test PASSED again:** added a child, fully killed the
+     app (swiped from recents), relaunched from the drawer — the child persisted.
+     Native Capacitor Preferences confirmed durable; no localStorage fallback; no
+     shim needed.
+   - The emulator is the same engine a physical Android phone runs, so the only
+     thing a real phone would add is hardware-specific quirks — defer to when a
+     pilot phone is in hand. Nothing is blocked by deferring it.
 
-3. **GitHub — pinned down, ready to execute next chat.** Push is overdue (single
-   copy of a months-long project = real risk). The assistant CANNOT do the push
-   (auth/credentials/repo creation are the user's to do). Two things settled:
-   - **.gitignore must exclude** `node_modules/`, `android/`, `www/` — all
-     generated, regenerate from `npm install` + `npx cap sync`. Repo = SOURCE
-     only: `index.html`, `activities.js`, `capacitor.config.json`, `package.json`,
-     the `.md` docs.
-   - **Private repo** — children's-disability-data context; default private.
-   - NEXT-CHAT DELIVERABLE the user wants: click-by-click GitHub setup (create
-     repo → `.gitignore` → first commit → push) in the same step + "Check" style
-     as BUILD-ANDROID.md.
+3. **Design — PICKED (a) and IN FLIGHT.** User chose **(a) sharpen the
+   field-notebook**, not the Nike-ish redirection (good, on-brand, accessibility-
+   preserving). Started on the single highest-leverage move: **per-category
+   monoline icons** to replace the single-letter `.blob` on screen 1.
+   - Designed + previewed all 7, each in its category hue:
+     1 Direction → **compass** (the one already in ICON)
+     2 Sound → **ear**
+     3 Sound + Direction → **ear + radiating waves** (busiest; simplify to ear +
+       one wave if it reads muddy at 34px on-device)
+     4 Straight Line Travel → **footprints**
+     5 Push Toy → **cart on wheels** (least literal; hand-pushing-block is the
+       fallback)
+     6 Terrain Game → **layered waves / terrain lines** (cleanest)
+     7 Other Activities → **concentric target** (cleanest)
+   - All strictly monoline, `viewBox 0 0 24 24`, `stroke="currentColor"`,
+     `stroke-width="2"`, no fill — drop straight into the `ICON` object, inherit
+     white from `.blob`. NO layout/contrast/guardrail change. This is addition of
+     MEANING, not decoration, so it's compatible with the "subtract, don't add"
+     rule.
+   - **Icons are POSITIONAL** — keyed by category index, same as `CATEGORY_PALETTE`.
+     If the content team reorders categories in `activities.js`, the icon follows
+     the slot, not the name. Consistent with how the palette already behaves.
+   - **NEXT-CHAT ACTION the user asked for:** wire all 7 into `index.html` (swap
+     the letter in `.blob` for the per-category icon). User wants to do this in a
+     fresh chat. They have NOT yet seen the icons rendered at the true 34px in the
+     real app — verify on-device after wiring; the two flagged icons (Sound+Dir,
+     Push Toy) are the ones to check.
+   - After icons: the rest of path (a) is serif `.lede` typographic confidence +
+     more generous whitespace/rhythm. Lower priority than the icons.
 
-4. **"Make it look more sophisticated, like the Nike app" — framed, not yet done.**
-   Flagged the tension: DESIGN_NOTES.md is built on RESTRAINT ("field notebook,
-   not dashboard"); the Nike app is the opposite philosophy (bold condensed type,
-   full-bleed imagery, high-contrast spectacle, motion). They're both
-   "sophisticated" but in incompatible directions, and Nike's spectacle leans on
-   visual moves that do nothing for — or actively hurt — a low-vision / screen-
-   reader user. Accessibility is the brand here, not polish. Offered two paths and
-   the user needs to pick in the next chat:
-   - **(a) RECOMMENDED — sharpen the existing field-notebook direction to its most
-     polished form:** real per-category monoline icons (compass, ear, footprints,
-     mat — already a TRACKER follow-up; screen 1 currently uses a single letter in
-     the `.blob`), bolder typographic confidence on the serif `.lede`, more
-     generous whitespace/rhythm. Safe, on-brand, accessibility-preserving,
-     subtraction-compatible. The per-category icons are the single highest-leverage
-     move.
-   - **(b) A bolder Nike-ish redirection as a SEPARATE comparison mockup** —
-     legitimate only if the user has decided field-notebook isn't landing; means
-     consciously rewriting DESIGN_NOTES.md and re-checking accessibility (contrast,
-     type sizes, motion, reduced-motion).
-   - **USER STILL OWES THE PICK: (a) or (b).** Assistant recommended (a).
-
-**Files in `om-app` (unchanged this session):**
+**Files in `om-app`:**
 `index.html`, `activities.js`, `capacitor.config.json` (appId `org.omcane.trainer`),
-`package.json` (Cap 8 + 4 plugins), `BUILD-ANDROID.md`, `README.md`, `DESIGN_NOTES.md`,
-`MEMORY.md`, `TRACKER.md`, plus generated `android/` + `www/` + `node_modules/`. Only
-`www/` gets bundled into the app.
+`package.json` (Cap 8 + 4 plugins), `package-lock.json`, `BUILD-ANDROID.md`,
+`README.md`, `DESIGN_NOTES.md`, `MEMORY.md`, `TRACKER.md`, `GITHUB-SETUP.md` (NEW),
+two PDFs (`Compliance-Risks-and-How-We-Tackle-Them.pdf`,
+`OM-Cane-Training-Native-Build-Log.pdf`), `session_video_flow_for_manager_v2.svg`,
+`three_pages_warm_palette.html`, plus generated `android/` + `www/` + `node_modules/`.
+Only `www/` gets bundled into the app. Generated folders are gitignored.
 
 **WHERE THINGS STAND (exact resume point):**
-- **Emulator phase COMPLETE** (prior session): app builds, runs, persists data across
-  cold restart, CSV export opens the share sheet. Native Capacitor Preferences confirmed
-  live (no localStorage fallback; the registration shim is NOT needed).
-- Environment: fresh M5 MacBook Air; emulator API 37, arm64-v8a (chosen over the
-  recommended 35/36 — compileSdk 36, runs on anything ≥24, works fine, but RULE OUT the
-  37-vs-36 gap first if anything misbehaves). Node v26, Homebrew 5.1.14, JAVA_HOME set to
-  Android Studio's bundled jbr-21 in `~/.zshrc` (persists; don't redo; don't install Java
-  separately).
-- **THREE THINGS QUEUED FOR THE NEXT CHAT** (in rough priority):
-  1. GitHub setup — click-by-click guide, private repo, the `.gitignore` above. Highest
-     value; the project being a single copy is the live risk.
-  2. Real-phone test over USB (BUILD-ANDROID.md step 10) + cold-restart test on the phone.
-  3. Design: the user picks (a) sharpen field-notebook (recommended; per-category icons
-     first) or (b) a Nike-ish comparison mockup.
-- Errors NOT hit but still possible on other machines / the phone: `invalid source
-  release: 21` (point Gradle JDK at bundled jbr-21 in Android Studio settings) and
-  AGP/Gradle version complaints (AGP Upgrade Assistant → 8.13).
+- **GitHub: LIVE + private.** Single-copy risk closed. Save loop = add/commit/push.
+- **Emulator phase COMPLETE**, storage re-verified on Pixel 10 Pro XL emulator
+  (API 37 arm64). CSV export → share sheet confirmed in prior sessions.
+- Environment: M5 MacBook Air; emulator API 37 arm64-v8a (chosen over recommended
+  35/36 — works; RULE OUT the 37-vs-36 gap first if anything misbehaves). Node v26,
+  Homebrew, JAVA_HOME → Android Studio's bundled jbr-21 in `~/.zshrc` (persists;
+  don't redo; don't install Java separately).
+- **DESIGN: path (a) chosen.** 7 monoline category icons designed; NEXT step is
+  wiring them into `index.html`'s `.blob`. Then serif/type/whitespace polish.
+- **The true blockers for the next FEATURE (session video) are still DECISIONS,
+  not code:** pooling shape + offline-upload behaviour. Both still owed by the user.
 
 **Still NOT done in the wrap (deliberately later):** app icon + splash art
-(`@capacitor/assets`, cosmetic), Play Store signed-AAB release, iOS, and session
-video (adds camera permissions to the Android manifest — the one thing that will
-re-touch the native shell; blocked on pooling + offline-upload decisions anyway).
+(`@capacitor/assets`, cosmetic), Play Store signed-AAB release, iOS
+(`npx cap add ios` — needs Xcode + Apple Developer acct; deferred, the iPhone is
+why this came up but it's not worth a session yet), and session video (adds camera
+permissions to the Android manifest — the one thing that re-touches the native
+shell; blocked on pooling + offline-upload decisions anyway).
 
 ---
 
@@ -97,11 +113,11 @@ re-touch the native shell; blocked on pooling + offline-upload decisions anyway)
   SOPs, or scoring rubric — a content team hands those over. User builds *how the app
   holds and captures* that content.
 - **User skill level:** can design/build, but newer to terminal/servers and backend
-  concepts. On a **Mac (fresh M5 MacBook Air, Apple Silicon)**, uses **PyCharm**. No
-  Word (no Office subscription) — deliver manager-facing docs as **PDF**. Explain
-  plainly, click-by-click, with exact commands + a "Check" per step. Works through
-  terminal steps one at a time, asks before moving on. Decides quickly once given clear
-  trade-offs + the assistant's stated reasoning.
+  concepts. On a **Mac (M5 MacBook Air, Apple Silicon)**, uses **PyCharm**. Has an
+  **iPhone**, NO Android phone. No Word (no Office subscription) — deliver manager-facing
+  docs as **PDF**. Explain plainly, click-by-click, with exact commands + a "Check" per
+  step. Works through terminal steps one at a time, asks before moving on. Decides quickly
+  once given clear trade-offs + the assistant's stated reasoning.
 - **The product:** a web app (wrapped native via Capacitor 8, Android) for TEACHERS who
   train blind / visually-impaired children to use a **smart cane**. Teachers set up a
   child, run structured activities per child, follow an SOP per activity, and **collect
@@ -117,6 +133,7 @@ re-touch the native shell; blocked on pooling + offline-upload decisions anyway)
 - App is the **teacher's tool**. It does **NOT** pair with the cane.
 - **Native via Capacitor 8, Android first, NO bundler.** Wrap is BUILT + RUNNING +
   storage-verified on the emulator. iOS additive later.
+- **On GitHub now** — private repo, source + docs only, generated folders gitignored.
 - **Local-first for everything EXCEPT session video.** Profiles, records, photo, consent
   flag stay on-device. Only session VIDEO goes to the cloud (too big for local).
 - **Consent: HANDLED by compliance team.** They obtain parental/guardian consent. Photo +
@@ -146,13 +163,12 @@ re-touch the native shell; blocked on pooling + offline-upload decisions anyway)
   restrained, editorial). 7-hue CATEGORY_PALETTE; do NOT set per-category colours in
   activities.js. Guardrails: one accent, one shadow tier, serif only on `.lede`,
   differentiated radii (20/14/11), all hues WCAG AA, `--ink-faint #736b5e` (don't lighten).
-  NOTE: a "make it look like Nike / more sophisticated" question is OPEN — see top of file;
-  recommendation is to sharpen restraint (icons/type/space), not pivot to spectacle.
+  **DESIGN DIRECTION RESOLVED:** the "Nike / more sophisticated" question → picked
+  **(a) sharpen restraint** (icons → type → whitespace), NOT spectacle. Per-category
+  monoline icons are the first move, designed and pending wire-in.
 
 ## 3. OPEN QUESTIONS (need answers)
 
-- **DESIGN DIRECTION (NEW, needs the user's pick):** (a) sharpen field-notebook
-  [recommended] vs (b) bolder Nike-ish comparison mockup. See top of file.
 - **POOLING SHAPE (BIGGEST):** central corpus (org analyses program-wide) vs per-teacher
   backup. Sets the consent/compliance bar + whether to turn on the Supabase DB. User said
   they'd return with a detailed answer; STILL OWED.
@@ -200,9 +216,10 @@ stigma/confidence as a design goal, offline-first, accessible teacher interface.
 
 - **Files in `om-app`:** `index.html` (app — UI + behaviour + cache-backed async storage seam
   + profiles + deletion + native-aware CSV export), `activities.js` (ALL content — the only
-  file the content team edits), `capacitor.config.json`, `package.json`, `BUILD-ANDROID.md`,
-  `DESIGN_NOTES.md`, `README.md`, `MEMORY.md`, `TRACKER.md`, plus generated `android/` +
-  `www/` + `node_modules/`.
+  file the content team edits), `capacitor.config.json`, `package.json`, `package-lock.json`,
+  `BUILD-ANDROID.md`, `GITHUB-SETUP.md`, `DESIGN_NOTES.md`, `README.md`, `MEMORY.md`,
+  `TRACKER.md`, 2 PDFs, manager SVG, `three_pages_warm_palette.html`, plus generated
+  `android/` + `www/` + `node_modules/`.
 - **Screens:** Welcome (every launch) → Hub → flat Activities list → run-activity screen,
   PLUS Manage-data. Run screen: child chip, form FIRST, collapsible SOP, Past results last.
 - **Child profiles:** name, DOB (age derived), height, weight, dominant hand, optional
@@ -210,19 +227,18 @@ stigma/confidence as a design goal, offline-first, accessible teacher interface.
 - **Data fields (per activity):** count / result (Independent-Prompted-Unable) / checkbox /
   notes.
 - **Storage:** cache-backed async `Store` seam. Native = Capacitor Preferences (CONFIRMED
-  live on device); web = localStorage; chosen at boot. Keys: `profiles`, `activeProfile`,
-  `welcomeSeen`, `studentName` (legacy), `rec_<activityId>`. Writes read-back-verified; CSV
-  export includes DOB + derived Age + demographics, native share sheet (CONFIRMED) or web
-  download.
+  live on device, re-verified on Pixel 10 emulator); web = localStorage; chosen at boot.
+  Keys: `profiles`, `activeProfile`, `welcomeSeen`, `studentName` (legacy),
+  `rec_<activityId>`. Writes read-back-verified; CSV export includes DOB + derived Age +
+  demographics, native share sheet (CONFIRMED) or web download.
 - **Tech:** plain HTML/CSS/JS, **no build step** (deliberate), Capacitor wrap for native.
-- **Status:** Native Android wrap BUILT, RUNNING, and storage-VERIFIED on the emulator. Web
+- **Status:** Native Android wrap BUILT, RUNNING, storage-VERIFIED on the emulator. Web
   version still works by double-clicking index.html or local server.
 
 ## 7. SETTLED ENGINEERING (do not regress)
 
-- **Storage seam (cache-backed async):** see "What the Phase-1 code does" history. Do NOT
-  re-inline storage; do NOT bolt the future video uploader onto `Store` — it'll be a
-  SEPARATE seam mirroring this pattern.
+- **Storage seam (cache-backed async):** Do NOT re-inline storage; do NOT bolt the future
+  video uploader onto `Store` — it'll be a SEPARATE seam mirroring this pattern.
 - **Java/JDK on the build Mac:** JAVA_HOME → Android Studio's bundled jbr-21, set in
   `~/.zshrc`. Don't install Java separately.
 - **Deletion helpers:** `deleteRecord`, `deleteProfile` (sweeps linked records), `clearAllData`
@@ -241,6 +257,8 @@ stigma/confidence as a design goal, offline-first, accessible teacher interface.
   exists — a saved child is not a saved result.
 - **Post-save flow / SOP disclosure / result-pill priority / segmented control (no
   checkmark) / reduced-motion / accessibility plumbing / contrast:** all as before, intact.
+- **`.blob` currently shows a single LETTER** — about to be replaced by per-category
+  monoline icons (path (a) design work). Icons are positional (by category index).
 
 ## 8. HOW TO RUN / BUILD IT
 
@@ -248,21 +266,18 @@ stigma/confidence as a design goal, offline-first, accessible teacher interface.
   or PyCharm + browser icon. Edit activities.js, refresh.
 - **Native (Capacitor 8, Android) — BUILT:** the three-line loop to push a change and
   rebuild: `cp index.html activities.js www/` → `npx cap sync android` → `npx cap run
-  android`. JAVA_HOME is already set in `~/.zshrc`.
+  android`. JAVA_HOME is already set in `~/.zshrc`. Emulator = Pixel 10 Pro XL, API 37 arm64.
+- **Save to GitHub:** `git add .` → `git commit -m "..."` → `git push`. Repo:
+  `github.com/Adistor777/om-cane-training` (private).
 - Mobile look in a browser: device/responsive mode, iPhone preset.
 
 ## 9. NEXT STEPS
 
-- **NEXT CHAT — three queued items (rough priority):**
-  1. **GitHub** — click-by-click guide (create repo → `.gitignore` excluding
-     `node_modules/`, `android/`, `www/` → first commit → push), PRIVATE repo, BUILD-ANDROID
-     step+Check style. The push is the user's to do (auth/credentials); assistant supplies the
-     exact sequence. Highest value — the project is a single copy = live risk.
-  2. **Real-phone test** over USB (BUILD-ANDROID.md step 10) + repeat cold-restart storage
-     test on the phone (the environment that matters for the pilot).
-  3. **Design pick:** user chooses (a) sharpen field-notebook [recommended — per-category
-     monoline icons first, then serif/type confidence + whitespace] or (b) a Nike-ish
-     comparison mockup (means rewriting DESIGN_NOTES.md + re-checking accessibility).
+- **NEXT CHAT — primary action:** wire the 7 per-category monoline icons into
+  `index.html`'s `.blob` (swap the single letter). Icons keyed by category index. Then
+  verify on-device at true 34px (check Sound+Direction and Push Toy especially). After
+  that, the rest of path (a): serif `.lede` type confidence + whitespace.
+- **Then (lower priority within design):** serif/type/whitespace polish.
 - **Tests (deliberate future add):** first targets = `Store` seam (write/read-back/verify)
   and the CSV builder. NOT UI. None exist yet.
 - **AWAIT the user's pooling answer** + the offline-upload decision (both gate session video).
@@ -271,7 +286,8 @@ stigma/confidence as a design goal, offline-first, accessible teacher interface.
   `Uploader` seam mirroring `Store`, India-region Supabase bucket, structured filenames, save
   link into record, offline handling, delete-everywhere); (4) admin access (Supabase dashboard,
   config only).
-- **Then:** app icon/splash, eventually Play Store + iOS.
+- **Then:** app icon/splash, eventually Play Store + iOS (iOS needs Xcode + Apple Dev acct;
+  the user has an iPhone, so iOS testing is possible later but not worth a session yet).
 - **Pooling (when greenlit):** enable Supabase Postgres + sync; delete-everywhere; maybe
   Option B admin dashboard.
 - v1 content still needs: real SOP text, Sarvam audio per language, per-student progress.

@@ -119,16 +119,16 @@
   #screen[data-dir="back"]{ animation:enterBack .42s var(--ease) both; }
   @keyframes enterFwd { from{opacity:0; transform:translateX(24px);} to{opacity:1; transform:translateX(0);} }
   @keyframes enterBack{ from{opacity:0; transform:translateX(-24px);} to{opacity:1; transform:translateX(0);} }
-  .stagger .card{ animation:cardIn .46s var(--ease) both; }
-  .stagger .card:nth-child(1){animation-delay:0ms}
-  .stagger .card:nth-child(2){animation-delay:55ms}
-  .stagger .card:nth-child(3){animation-delay:110ms}
-  .stagger .card:nth-child(4){animation-delay:165ms}
-  .stagger .card:nth-child(5){animation-delay:210ms}
-  .stagger .card:nth-child(n+6){animation-delay:240ms}
+  .stagger .card, .stagger .cat-group{ animation:cardIn .46s var(--ease) both; }
+  .stagger .card:nth-child(1), .stagger .cat-group:nth-of-type(1){animation-delay:0ms}
+  .stagger .card:nth-child(2), .stagger .cat-group:nth-of-type(2){animation-delay:55ms}
+  .stagger .card:nth-child(3), .stagger .cat-group:nth-of-type(3){animation-delay:110ms}
+  .stagger .card:nth-child(4), .stagger .cat-group:nth-of-type(4){animation-delay:165ms}
+  .stagger .card:nth-child(5), .stagger .cat-group:nth-of-type(5){animation-delay:210ms}
+  .stagger .card:nth-child(n+6), .stagger .cat-group:nth-of-type(n+6){animation-delay:240ms}
   @keyframes cardIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
   @media (prefers-reduced-motion:reduce){
-    #screen, #screen[data-dir="back"], .stagger .card{ animation:fade .2s ease both; }
+    #screen, #screen[data-dir="back"], .stagger .card, .stagger .cat-group{ animation:fade .2s ease both; }
     @keyframes fade{ from{opacity:0;} to{opacity:1;} }
     .card:hover{ transform:none !important; }
     .card:active{ transform:none !important; }
@@ -167,6 +167,7 @@
   .tag{ display:inline-block; font-size:var(--t-micro); padding:3px 11px; border-radius:999px; font-weight:600; letter-spacing:.01em; }
   .tag.cane{ background:#f3e2d6; color:#8a3c12; }
   .tag.nocane{ background:var(--cat-soft); color:var(--cat-deep); }
+  .tag.neutral{ background:transparent; color:var(--ink-soft); border:1px solid var(--line); }
   .pill.saved{ display:inline-block; font-size:var(--t-micro); padding:3px 11px; border-radius:999px; font-weight:600; background:transparent; color:var(--ink-faint); border:1px solid var(--line); }
   /* RUN-SCREEN PANELS: near-flat, NO colour spine (guardrail #1). */
   .panel{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
@@ -373,6 +374,21 @@
   /* Flat activity card (page 3) — keeps the colour spine; adds a category line. */
   .card.activity.flat{ padding-left:24px; }
   .card.activity.flat .flat-cat{ font-size:var(--t-micro); color:var(--ink-faint); font-weight:500; margin:4px 0 0; }
+  /* GROUPED activities list (screen 3). The category hue appears ONCE per group
+     on the header (icon chip + name); the cards beneath are neutral — no colour
+     spine — so colour groups rather than stipples (guardrail #1). */
+  .cat-group{ margin-bottom:var(--s4); }
+  .cat-group:last-child{ margin-bottom:0; }
+  .cat-head{ display:flex; align-items:center; gap:11px; margin-bottom:var(--s2); }
+  .cat-ic{ width:34px; height:34px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#fff; }
+  .cat-ic svg{ width:19px; height:19px; }
+  .cat-name{ font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-bodysm); letter-spacing:-.005em; }
+  .cat-cards{ display:grid; gap:10px; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); }
+  /* Neutral grouped card: no ::before spine, flatter padding than the screen-1
+     category cards. Inherits the base .card shadow + hover-lift tiers. */
+  .card.activity.grouped{ padding:16px 18px; }
+  .card.activity.grouped::before{ display:none; }
+  .card.activity.grouped h2{ margin:0; }
   .toast{ position:fixed; bottom:28px; left:50%; transform:translate(-50%,12px); background:var(--ink); color:#fff;
     padding:14px 24px; border-radius:var(--r-sm); opacity:0; pointer-events:none;
     transition:opacity .25s, transform .25s var(--ease); z-index:60; box-shadow:0 14px 34px rgba(0,0,0,.24); font-weight:500; font-size:var(--t-bodysm); }
@@ -427,8 +443,29 @@ const ICON = {
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>',
-  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"/></svg>'
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"/></svg>',
+  // ---- per-category monoline icons (positional, see CATEGORY_ICONS) --------
+  catEar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 3-2 4-3 5.5-.8 1.2-.5 2.5-1.5 3.5a2.5 2.5 0 0 1-4-2"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .3"/></svg>',
+  catSoundDir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M8 9.5a4 4 0 0 0 0 5"/><path d="M16 9.5a4 4 0 0 1 0 5"/><path d="M5 7a8 8 0 0 0 0 10"/><path d="M19 7a8 8 0 0 1 0 10"/></svg>',
+  catFootprints:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5c1.5 0 2 1.5 2 3.5s-.5 4-2 4-2-2-2-4 .5-3.5 2-3.5Z"/><path d="M5.5 14.5c0 1.5 3 1.5 3 0"/><path d="M17 9.5c1.5 0 2 1.5 2 3.5s-.5 4-2 4-2-2-2-4 .5-3.5 2-3.5Z"/><path d="M15.5 19.5c0 1.5 3 1.5 3 0"/></svg>',
+  catPushToy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5 H8"/><path d="M6.5 5 L13.5 16"/><path d="M9 16 H19"/><circle cx="10.5" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg>',
+  catTerrain:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8c3-2 5-2 9 0s6 2 9 0"/><path d="M3 13c3-2 5-2 9 0s6 2 9 0"/><path d="M3 18c3-2 5-2 9 0s6 2 9 0"/></svg>',
+  catDots:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="1.6"/><circle cx="12" cy="7" r="1.6"/><circle cx="17" cy="7" r="1.6"/><circle cx="7" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="17" cy="12" r="1.6"/><circle cx="7" cy="17" r="1.6"/><circle cx="12" cy="17" r="1.6"/><circle cx="17" cy="17" r="1.6"/></svg>'
 };
+/* Per-category icons are POSITIONAL — keyed by category index, exactly like
+   CATEGORY_PALETTE. If the content team reorders categories in activities.js,
+   the icon follows the slot, not the name. Index past the end falls back to a
+   neutral dot grid (the "other" mark). */
+const CATEGORY_ICONS = [
+  ICON.compass,       // 0 Direction
+  ICON.catEar,        // 1 Sound
+  ICON.catSoundDir,   // 2 Sound + Direction
+  ICON.catFootprints, // 3 Straight Line Travel
+  ICON.catPushToy,    // 4 Push Toy
+  ICON.catTerrain,    // 5 Terrain Game
+  ICON.catDots,       // 6 Other Activities
+];
+function catIcon(i){ return CATEGORY_ICONS[i] || ICON.catDots; }
 const CATEGORY_PALETTE = [
   { c:"#2f6f4e", deep:"#1f4d36", soft:"#e2efe5", line:"#cce0d1" },
   { c:"#1f6f86", deep:"#124a5b", soft:"#dceef2", line:"#c2e0e8" },
@@ -958,21 +995,35 @@ function showActivityList(dir){
   backBtn.onclick = ()=>showHub('back');
   homeDot.innerHTML = ICON.list;
   resetTheme();
-  // Flatten every activity across categories; keep the category hue as a spine.
-  const rows = [];
+  // GROUPED list: activities cluster under their category. The category hue +
+  // icon live ONCE per group, on the header — so colour does wayfinding
+  // (grouping) instead of stippling every card. Cards themselves are neutral
+  // (no colour spine), keeping the cane/no-cane tag + saved count. This is
+  // guardrail #1 working AS intended: one accent per group, not five per screen.
+  const groups = [];
   ACTIVITY_DATA.forEach((cat,ci)=>{
-    cat.activities.forEach((act,ai)=>{
-      const col = catColor(ci);
+    if(!cat.activities || !cat.activities.length) return; // hide empty categories
+    const col = catColor(ci);
+    const pal = CATEGORY_PALETTE[ci % CATEGORY_PALETTE.length];
+    const cards = cat.activities.map((act,ai)=>{
       const n = loadRecords(act.id).length;
-      const tag = act.withCane ? '<span class="tag cane">With cane</span>' : '<span class="tag nocane" style="background:var(--cat-soft);color:var(--cat-deep)">Without cane</span>';
-      rows.push(`<button class="card activity flat" style="--c:${col}" onclick="showActivity(${ci},${ai})">
+      // Cane status is a per-card BINARY, so it gets two treatments, not seven.
+      // With-cane = the locked rust semantic marker. Without-cane = neutral pill
+      // (no category hue) — colour identity is the header's job, not the tag's.
+      const tag = act.withCane
+        ? '<span class="tag cane">With cane</span>'
+        : '<span class="tag neutral">Without cane</span>';
+      return `<button class="card activity grouped" onclick="showActivity(${ci},${ai})">
         <h2>${esc(act.name)}</h2>
-        <p class="flat-cat">${esc(cat.category)}</p>
         <div class="meta">${tag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</div>
-      </button>`);
-    });
+      </button>`;
+    }).join('');
+    groups.push(`<section class="cat-group">
+      <div class="cat-head"><span class="cat-ic" style="background:${col}">${catIcon(ci)}</span><span class="cat-name" style="color:${pal.deep}">${esc(cat.category)}</span></div>
+      <div class="cat-cards">${cards}</div>
+    </section>`);
   });
-  paint(`<h1 class="lede">All activities<small>Pick an activity to read the steps and record a result.</small></h1><div class="grid">${rows.join('')}</div>`, dir || 'fwd', true);
+  paint(`<h1 class="lede">All activities<small>Pick an activity to read the steps and record a result.</small></h1>${groups.join('')}`, dir || 'fwd', true);
 }
 async function selectChild(id){
   await setActiveProfileId(id);
@@ -1084,7 +1135,7 @@ function showActivity(catIndex, actIndex, opts){
   crumbEl.textContent = cat.category;
   backBtn.style.display = 'flex';
   backBtn.onclick = ()=>showActivityList('back');
-  homeDot.textContent = (cat.category||'?').trim().charAt(0).toUpperCase();
+  homeDot.innerHTML = catIcon(catIndex);
   themeFor(catIndex);
   const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
   const noteHtml = act.facilitatorNote ? `<div class="note"><strong>Facilitator note</strong>${esc(act.facilitatorNote)}</div>` : '';

@@ -1,11 +1,12 @@
 # PROJECT TRACKER — O&M Cane Training App
 
 A living checklist. Say "wrap up" at the end of a session to refresh this + MEMORY.md.
-Last updated: end of a short PLANNING session (no code changed). Clarified the next three
-workstreams — GitHub, real-phone test, and a "look more sophisticated / Nike" design question —
-and pinned down GitHub + the design options enough to execute in the next chat.
+Last updated: end of an EXECUTION session. GitHub DONE (private repo live, single-copy risk
+closed); storage re-verified on the Pixel 10 emulator; design direction PICKED — path (a),
+sharpen field-notebook — and the 7 per-category monoline icons designed + previewed, pending
+wire-in next chat.
 
-## DONE (v0 → UI redesign → mobile-prep → profiles → 3-page → entry mgmt → planning → native wrap WRITTEN → native wrap BUILT & VERIFIED on emulator)
+## DONE (v0 → UI redesign → mobile-prep → profiles → 3-page → entry mgmt → planning → native wrap BUILT & VERIFIED → GitHub + design pick)
 - [x] Decided: app is the TEACHER's tool; does NOT pair with the cane
 - [x] Web app first; Capacitor → built, running, storage-verified on emulator
 - [x] Activities live as editable DATA (activities.js), not hardcoded
@@ -25,30 +26,31 @@ and pinned down GitHub + the design options enough to execute in the next chat.
 - [x] Store seam → cache-backed async hybrid (write-verify honest); all callers awaited
 - [x] CSV export made backend-aware (native Filesystem+Share / web anchor)
 - [x] capacitor.config.json + package.json (Cap 8 + 4 plugins); BUILD-ANDROID.md guide
-- [x] Android build finished + verified on emulator: Java fix (JAVA_HOME → bundled jbr-21),
-      cold-restart storage test PASSED, CSV export → share sheet OPENS, build-log PDF produced
+- [x] Android build finished + verified on emulator: Java fix, cold-restart PASSED,
+      CSV export → share sheet OPENS, build-log PDF produced
 
-## THIS SESSION (planning only — no code)
-- [x] Confirmed the real "now what": real-phone test is the next on-device action; the true
-      blockers after that are DECISIONS (pooling shape + offline upload), not code
-- [x] Clarified tests honestly: NONE exist; manual on-device verification only so far.
-      Highest-value first tests = `Store` seam + CSV builder. Not UI. Deliberate future add.
-- [x] GitHub pinned down for next chat: PRIVATE repo; `.gitignore` excludes
-      `node_modules/`, `android/`, `www/`; repo = source + docs only; assistant supplies the
-      click-by-click, user does the auth/push
-- [x] Design question framed: "sophisticated / like Nike" is in TENSION with the restraint
-      design system. Two paths offered; USER MUST PICK next chat:
-      (a) sharpen field-notebook [recommended — per-category icons first] or
-      (b) a bolder Nike-ish comparison mockup (means rewriting DESIGN_NOTES.md + re-checking a11y)
+## THIS SESSION (execution)
+- [x] **GITHUB — DONE.** Private repo live at `github.com/Adistor777/om-cane-training`.
+      `.gitignore` excludes `node_modules/`, `android/`, `www/` (+ .DS_Store, .idea/, etc.);
+      verified via `git status` before commit. 15 files committed (source + docs + PDFs +
+      SVG + lockfile). Author fixed to real email via `--amend --reset-author`. Pushed over
+      HTTPS w/ Personal Access Token. `GITHUB-SETUP.md` deliverable produced + downloaded.
+      Single-copy data-loss risk is CLOSED.
+- [x] **STORAGE re-verified** on the Pixel 10 Pro XL emulator (API 37 arm64): added a child,
+      cold-killed the app, relaunched — child persisted. Native Preferences durable; no shim.
+- [x] Clarified: user has Mac + iPhone, NO Android phone. App is an Android wrap; iPhone can't
+      run it natively (no iOS target). Decided NOT to add iOS this session ("wrap last") —
+      emulator is the same engine, real-phone test deferred to when a pilot phone is in hand.
+- [x] **DESIGN — PICKED path (a):** sharpen field-notebook (NOT Nike spectacle).
+- [x] Designed + previewed all 7 per-category monoline icons in their hues. All monoline,
+      viewBox 0 0 24 24, stroke=currentColor, drop-in for the ICON set. Positional (by index).
 
-## QUEUED FOR NEXT CHAT (rough priority)
-- [ ] 1. GITHUB — click-by-click setup guide: create PRIVATE repo → `.gitignore`
-        (`node_modules/`, `android/`, `www/`) → first commit → push. Step + "Check" style.
-        HIGHEST VALUE: project is currently a single copy = live data-loss risk.
-- [ ] 2. REAL PHONE — enable USB debugging; `adb devices`; `npx cap run android`; pick the
-        physical device (BUILD-ANDROID.md step 10). Repeat the cold-restart storage test there.
-- [ ] 3. DESIGN PICK — user chooses (a) sharpen field-notebook (per-category monoline icons →
-        serif/type confidence → whitespace) or (b) Nike-ish comparison mockup.
+## QUEUED FOR NEXT CHAT
+- [ ] 1. WIRE THE ICONS — swap the single letter in `.blob` for the per-category monoline
+        icon in `index.html`. Keyed by category index. Then verify on-device at true 34px;
+        check Sound+Direction (busiest) and Push Toy (least literal) especially — simplify
+        if muddy.
+- [ ] 2. Rest of path (a): serif `.lede` typographic confidence + more generous whitespace.
 
 ## WAITING ON INPUT (needed to proceed on features)
 - [ ] USER: detailed POOLING answer — central corpus vs per-teacher backup
@@ -60,24 +62,24 @@ and pinned down GitHub + the design options enough to execute in the next chat.
 - [ ] O&M LEAD: (1) "Unable" distinct from "Independent"? (2) "with cane" tag colour?
 
 ## TO BUILD — CAPACITOR WRAP (finishing)
-- [x] Build + run on emulator + storage test
-- [ ] Run on a real phone (queued, item 2 above)
+- [x] Build + run on emulator + storage test (re-verified on Pixel 10 this session)
+- [ ] Run on a real Android phone (deferred — user has no Android phone; do at pilot time)
 - [ ] App icon + splash (`@capacitor/assets`) — cosmetic
 - [ ] Play Store signed AAB — only for public distribution, not pilot
-- [ ] iOS (`npx cap add ios`) — needs Xcode + Apple Developer acct $99/yr
+- [ ] iOS (`npx cap add ios`) — needs Xcode + Apple Developer acct $99/yr (user has an iPhone)
 
 ## TO BUILD — TESTS (deliberate add, when chosen)
 - [ ] Smoke tests on the `Store` seam: write → read-back → verify
 - [ ] CSV builder tests (escaping, BOM, demographics join, column union)
 - [ ] (NOT UI tests — low value for now)
 
-## TO BUILD — DESIGN (after the pick above)
-- [ ] If (a): per-category monoline icons in the card `.blob` (compass, ear, footprints, mat…)
-        — extend the existing SVG ICON set; then serif `.lede` type confidence + whitespace
-- [ ] If (b): separate Nike-ish comparison mockup + rewrite DESIGN_NOTES.md + re-check
-        contrast / type sizes / motion / reduced-motion
+## TO BUILD — DESIGN (path (a) chosen; in progress)
+- [x] Design pick made: (a) sharpen field-notebook
+- [x] 7 per-category monoline icons designed + previewed
+- [ ] Wire icons into the `.blob` (NEXT CHAT, item 1) + on-device verify at 34px
+- [ ] Serif `.lede` type confidence + whitespace (after icons)
 
-## TO BUILD — FEATURES (after the wrap is verified on a phone, in order)
+## TO BUILD — FEATURES (after design polish, in order)
 - [ ] 1. DEMO VIDEO — wire bundled clips into the existing `videoFile` slot (blocked on clips)
 - [ ] 2. CONSENT FIELD — per-child flag (obtained / by / date), BEFORE any video flows
 - [ ] 3. SESSION VIDEO capture + upload:
@@ -102,12 +104,14 @@ and pinned down GitHub + the design options enough to execute in the next chat.
 - [ ] Per-student progress over time
 - [x] Exportable progress (CSV) — DONE (and verified on native). Printable view + JSON
       re-import still open.
-- [ ] Real per-category icons in the card blob (now also tracked under DESIGN above)
+- [ ] Real per-category icons in the card blob — DESIGNED this session; wire-in queued
 
 ## HOUSEKEEPING (low priority)
 - [ ] Update the storage guardrail comment in index.html if needed (now cache-backed async)
+- [ ] Habit: run the 3-line git save loop at the end of any session that changed code
 
 ## QUICK NEXT ACTION
-- [ ] Next chat: do the GitHub setup first (biggest risk reducer), then the design pick
-- [ ] When you have a phone + cable: run on a real device + repeat the cold-restart test
-- [ ] STILL OWED: practice edit of activities.js (add one activity); the pooling + offline calls
+- [ ] Next chat: wire the 7 icons into `.blob`, then verify on-device at 34px
+- [ ] After any code change: `git add .` → `git commit -m "..."` → `git push`
+- [ ] STILL OWED by user: practice edit of activities.js (add one activity); pooling +
+      offline-upload decisions
