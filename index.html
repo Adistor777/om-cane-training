@@ -229,6 +229,12 @@
   .media-slot{ margin-top:var(--s2); border:1.5px dashed var(--line); border-radius:var(--r-md);
     padding:var(--s2) var(--s3); font-size:var(--t-bodysm); color:var(--ink-faint); text-align:left; display:flex; align-items:center; gap:10px; }
   .media-slot svg{ width:18px; height:18px; flex:0 0 auto; }
+  /* SOP audio language switcher: reuses .seg styling (same control as the result
+     picker), inherits the category accent. The native-script labels (हिन्दी /
+     தமிழ் / বাংলা) let a teacher recognise their language at a glance. */
+  .audio-lang{ margin-top:var(--s2); }
+  .audio-lang .audio-lang-label{ display:block; font-size:var(--t-micro); color:var(--ink-faint); font-weight:500; margin-bottom:8px; }
+  .audio-lang audio{ width:100%; margin-top:12px; }
   fieldset{ border:none; margin:0; padding:0; }
   .field{ margin-bottom:var(--s3); }
   .field > label{ display:block; font-weight:600; margin-bottom:10px; font-size:var(--t-bodysm); color:var(--ink); letter-spacing:-.005em; }
@@ -1127,6 +1133,68 @@ async function handleProfileSave(existingId){
   toast(existingId ? 'Child updated' : 'Child saved');
   showHub('none'); // back to the hub; form collapses to the active-child chip
 }
+/* ---------------------------------------------------------------------------
+   SOP AUDIO — multi-language narration.
+   Two paths, in priority order:
+     1. act.sopTranslations present → language switcher + derived audio path.
+        Files are produced by generate-audio.js and named audio/{id}_{lang}.mp3.
+        This derived-path convention is the contract between the script and the
+        app — change it in BOTH places or neither.
+     2. act.audioFile present (legacy single-file) → play it directly.
+     3. neither → the dashed placeholder.
+   The chosen language is remembered through the Store seam (key 'audioLang').
+   --------------------------------------------------------------------------- */
+const AUDIO_LANGS = [
+  { code:'hi', label:'हिन्दी' },   // Hindi
+  { code:'ta', label:'தமிழ்' },    // Tamil
+  { code:'bn', label:'বাংলা' },    // Bengali
+];
+const AUDIO_LANG_KEY = 'audioLang';
+function getAudioLang(){
+  const v = Store.getString(AUDIO_LANG_KEY, '');
+  return AUDIO_LANGS.some(l=>l.code===v) ? v : AUDIO_LANGS[0].code;
+}
+function audioPathFor(activityId, lang){ return `audio/${activityId}_${lang}.mp3`; }
+function buildAudioHtml(act){
+  if(act.sopTranslations){
+    const cur = getAudioLang();
+    const buttons = AUDIO_LANGS.map(l=>{
+      const has = !!(act.sopTranslations[l.code] && act.sopTranslations[l.code].length);
+      // Languages with no translation text yet are shown disabled (no audio file will exist).
+      return `<button type="button" onclick="switchAudioLang('${act.id}','${l.code}',this)" aria-pressed="${l.code===cur}" ${has?'':'disabled'}>${l.label}</button>`;
+    }).join('');
+    const src = audioPathFor(act.id, cur);
+    // onerror → if the derived file isn't bundled yet, fall back to the placeholder text in-place.
+    return `<div class="audio-lang">
+      <span class="audio-lang-label">SOP narration — choose a language</span>
+      <div class="seg" role="group" aria-label="Audio language">${buttons}</div>
+      <audio id="sopAudio" controls src="${src}" onerror="audioMissing()"></audio>
+      <div class="media-slot" id="sopAudioMissing" style="display:none">${ICON.audio}<span>Audio for this language isn't generated yet — run generate-audio.js, then rebuild.</span></div>
+    </div>`;
+  }
+  if(act.audioFile){
+    return `<audio controls src="${esc(act.audioFile)}" style="width:100%;margin-top:16px;"></audio>`;
+  }
+  return `<div class="media-slot">${ICON.audio}<span>Audio narration slot — add sopTranslations (or audioFile) in activities.js once generated.</span></div>`;
+}
+async function switchAudioLang(activityId, lang, btn){
+  await Store.setString(AUDIO_LANG_KEY, lang);
+  // Update pressed state on the buttons.
+  const group = btn.parentElement;
+  [...group.children].forEach(b=>b.setAttribute('aria-pressed','false'));
+  btn.setAttribute('aria-pressed','true');
+  // Swap the audio source and reset the missing-fallback.
+  const audio = document.getElementById('sopAudio');
+  const missing = document.getElementById('sopAudioMissing');
+  if(missing) missing.style.display = 'none';
+  if(audio){ audio.style.display = ''; audio.src = audioPathFor(activityId, lang); audio.load(); }
+}
+function audioMissing(){
+  const audio = document.getElementById('sopAudio');
+  const missing = document.getElementById('sopAudioMissing');
+  if(audio) audio.style.display = 'none';
+  if(missing) missing.style.display = '';
+}
 function showActivity(catIndex, actIndex, opts){
   opts = opts || {};
   const cat = ACTIVITY_DATA[catIndex];
@@ -1139,7 +1207,7 @@ function showActivity(catIndex, actIndex, opts){
   themeFor(catIndex);
   const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
   const noteHtml = act.facilitatorNote ? `<div class="note"><strong>Facilitator note</strong>${esc(act.facilitatorNote)}</div>` : '';
-  const audioHtml = act.audioFile ? `<audio controls src="${esc(act.audioFile)}" style="width:100%;margin-top:16px;"></audio>` : `<div class="media-slot">${ICON.audio}<span>Audio narration slot — add a filename in activities.js (audioFile) once generated.</span></div>`;
+  const audioHtml = buildAudioHtml(act);
   const videoHtml = act.videoFile ? `<video controls src="${esc(act.videoFile)}" style="width:100%;margin-top:16px;border-radius:14px;"></video>` : `<div class="media-slot">${ICON.video}<span>Demo video slot — add a filename in activities.js (videoFile) when available.</span></div>`;
   const fields = act.dataFields.map(f=>buildField(f)).join('');
   const resultLabels = act.dataFields.filter(f=>f.type==='result').map(f=>f.label);

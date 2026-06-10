@@ -10,3 +10,5 @@ www/
 demo.mp4
 demo-sound.mp4
 *.mp4
+.env
+audio/
