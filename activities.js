@@ -418,7 +418,7 @@ const ACTIVITY_DATA = [
 
   /* ===== TO ADD A NEW CATEGORY =================================
      Copy one whole block above (from { category: ... } to its closing } ),
-     paste it here, put a comma before it, and change the words.
+     paste it here, put a comma before it, and change the words inside to make a new category with new activities.
      ============================================================ */
 
 ];

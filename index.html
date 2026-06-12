@@ -599,13 +599,56 @@ const Store = {
   }
 };
 
+/* ---------------------------------------------------------------------------
+   IDENTITY & SCHEMA — Batch 1 (un-backfillable before any production session).
+   Every stored object carries:
+     • schemaVersion — so a future reader knows what shape it holds (cheap B→A)
+     • id            — stable UUID; deletion is by-id, never by array index
+     • teacherId     — per-install operator id, minted ONCE at boot. Records
+                       written before this existed are tagged 'legacy' by the
+                       migration shim below.
+   Stamping lives INSIDE saveRecord (the seam-adjacent chokepoint), not at call
+   sites, so no future caller can write an unattributable record by mistake.
+   --------------------------------------------------------------------------- */
+const SCHEMA_VERSION = 1;
+const TEACHER_KEY = 'teacherId';
+function newId(){
+  if(window.crypto && window.crypto.randomUUID) return crypto.randomUUID();
+  // Fallback for older WebViews: RFC-4122-shaped v4 from getRandomValues.
+  const b = new Uint8Array(16);
+  (window.crypto || {}).getRandomValues ? crypto.getRandomValues(b) : b.forEach((_,i)=>b[i]=Math.floor(Math.random()*256));
+  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map(x=>x.toString(16).padStart(2,'0')).join('');
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+}
+// Synchronous read of the operator id (cache-served, like all reads).
+function getTeacherId(){ return Store.getString(TEACHER_KEY, ''); }
+// Mint the per-install operator id exactly once, at boot, behind the seam.
+// If the verified write fails the id still lives in the cache for this session
+// (records stay attributable today) — but we warn, because it won't survive a
+// restart and the next boot would mint a DIFFERENT id.
+async function ensureDeviceTeacherId(){
+  if(getTeacherId()) return true;
+  const ok = await Store.setString(TEACHER_KEY, 'op_' + newId());
+  if(!ok) setTimeout(()=>toast('Storage warning — device ID could not be saved. Restart the app before recording sessions.'), 600);
+  return ok;
+}
+
 const REC_PREFIX = 'rec_';
 function loadRecords(activityId){
   const v = Store.getJSON(REC_PREFIX+activityId, []);
   return Array.isArray(v) ? v : [];
 }
 // Returns true on confirmed save, false if the write could not be verified.
+// ENVELOPE GUARANTEE: every record is stamped here — id, schemaVersion,
+// teacherId, whenISO — so nothing unattributable can enter storage, no matter
+// who calls this. whenISO is the CANONICAL timestamp (ISO 8601, sortable,
+// locale-free); any human-readable form is derived at render time only.
 async function saveRecord(activityId, record){
+  record.id            = record.id            || newId();
+  record.schemaVersion = record.schemaVersion || SCHEMA_VERSION;
+  record.teacherId     = record.teacherId     || getTeacherId() || 'legacy';
+  record.whenISO       = record.whenISO       || new Date().toISOString();
   const all = loadRecords(activityId); all.unshift(record);
   return Store.setJSON(REC_PREFIX+activityId, all);
 }
@@ -649,14 +692,17 @@ function getActiveProfile(){ const id = getActiveProfileId(); return id ? profil
    confirmed at the UI layer; the CSV export is the only backup, so the UI
    points at it first.
    --------------------------------------------------------------------------- */
-// Remove a single session record by its index within one activity's list.
+// Remove a single session record by its stable UUID id. Index-based deletion
+// was retired (Batch 1): an index baked into rendered HTML races any re-render
+// and can delete the WRONG child's record. The id can't go stale that way —
+// a stale id simply matches nothing and the delete safely no-ops to false.
 // Returns true on confirmed write (or confirmed key removal when none remain).
-async function deleteRecord(activityId, index){
+async function deleteRecord(activityId, recordId){
   const all = loadRecords(activityId);
-  if(index < 0 || index >= all.length) return false;
-  all.splice(index, 1);
-  if(all.length === 0){ await Store._remove(REC_PREFIX+activityId); return true; }
-  return Store.setJSON(REC_PREFIX+activityId, all);
+  const kept = all.filter(r=>r.id !== recordId);
+  if(kept.length === all.length) return false;       // id not found — nothing deleted
+  if(kept.length === 0){ await Store._remove(REC_PREFIX+activityId); return true; }
+  return Store.setJSON(REC_PREFIX+activityId, kept);
 }
 // How many saved records reference a given child, across every activity.
 function recordCountForProfile(profileId){
@@ -699,6 +745,47 @@ async function clearAllData(){
 }
 
 /* ---------------------------------------------------------------------------
+   MIGRATION SHIM — runs at every boot, idempotent, writes only what changed.
+   Batch 1 is NOT done without this: delete-by-id breaks every pre-existing
+   (demo/pilot) record that has no id. For each legacy record/profile it:
+     • backfills a UUID `id`            (records only — profiles already have one)
+     • stamps `schemaVersion: 1`
+     • tags `teacherId: 'legacy'`       (pre-teacherId records are honestly
+                                         marked un-attributable, not faked)
+     • converts when → whenISO ONLY when the parse round-trips exactly
+       (new Date(Date.parse(when)).toLocaleString() === when). Locale strings
+       like "11/6/2026" are D/M in en-IN but parsed M/D by Date.parse — blind
+       conversion would silently swap day and month. Ambiguous legacy strings
+       keep `when` as display-only and get no whenISO; that is the safe loss.
+   On later boots every guard fails and zero writes happen.
+   --------------------------------------------------------------------------- */
+async function migrateLegacyData(){
+  for(const k of Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0)){
+    const recs = Store.getJSON(k, null);
+    if(!Array.isArray(recs)) continue;
+    let changed = false;
+    for(const r of recs){
+      if(!r.id){ r.id = newId(); changed = true; }
+      if(!r.schemaVersion){ r.schemaVersion = SCHEMA_VERSION; changed = true; }
+      if(!r.teacherId){ r.teacherId = 'legacy'; changed = true; }
+      if(!r.whenISO && r.when){
+        const t = Date.parse(r.when);
+        if(!isNaN(t) && new Date(t).toLocaleString() === r.when){
+          r.whenISO = new Date(t).toISOString(); changed = true;
+        }
+      }
+    }
+    if(changed) await Store.setJSON(k, recs);
+  }
+  const profiles = loadProfiles();
+  let pChanged = false;
+  for(const p of profiles){
+    if(!p.schemaVersion){ p.schemaVersion = SCHEMA_VERSION; pChanged = true; }
+  }
+  if(pChanged) await saveProfiles(profiles);
+}
+
+/* ---------------------------------------------------------------------------
    EXPORT — the data escape hatch. Until a native app adds real
    storage/cloud, this is how a teacher's session data leaves the device so it
    can't be silently lost. Builds one CSV across ALL activities.
@@ -724,7 +811,11 @@ function gatherAllRecords(){
       let p = r.profileId ? profileById(r.profileId) : null;
       if(!p && r.student) p = loadProfiles().find(x=>x.name===r.student) || null;
       rows.push({ category: meta.category, activity: meta.activity,
-        student: r.student || (p?p.name:''), when: r.when || '',
+        student: r.student || (p?p.name:''),
+        // Canonical ISO timestamp when present (sortable, locale-free);
+        // legacy display string only for old records that had no safe ISO.
+        when: r.whenISO || r.when || '',
+        teacherId: r.teacherId || '',
         age: p?ageFromDOB(p.dob):'', dob: p?(p.dob||''):'', height: p?p.height:'', weight: p?p.weight:'',
         hand: p?p.dominantHand:'', values: r.values || {} });
     });
@@ -739,10 +830,10 @@ function buildCSV(rows){
   // Value columns = union of all field labels across every record, stable order.
   const valueCols = [];
   rows.forEach(r=>Object.keys(r.values).forEach(label=>{ if(valueCols.indexOf(label)===-1) valueCols.push(label); }));
-  const header = ['Category','Activity','Student','DOB','Age','Height (cm)','Weight (kg)','Dominant hand','When', ...valueCols];
+  const header = ['Category','Activity','Student','DOB','Age','Height (cm)','Weight (kg)','Dominant hand','When','Teacher ID', ...valueCols];
   const lines = [header.map(csvCell).join(',')];
   rows.forEach(r=>{
-    const base = [r.category, r.activity, r.student, r.dob, r.age, r.height, r.weight, r.hand, r.when];
+    const base = [r.category, r.activity, r.student, r.dob, r.age, r.height, r.weight, r.hand, r.when, r.teacherId];
     const vals = valueCols.map(c=> r.values[c] != null ? r.values[c] : '');
     lines.push(base.concat(vals).map(csvCell).join(','));
   });
@@ -1113,6 +1204,7 @@ async function handleProfileSave(existingId){
   if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
   const profile = {
     id: existingId || newProfileId(),
+    schemaVersion: SCHEMA_VERSION,
     name,
     dob: (document.getElementById('p_dob').value || '').trim(),
     height: (document.getElementById('p_height').value || '').trim(),
@@ -1212,7 +1304,7 @@ function showActivity(catIndex, actIndex, opts){
   const fields = act.dataFields.map(f=>buildField(f)).join('');
   const resultLabels = act.dataFields.filter(f=>f.type==='result').map(f=>f.label);
   const records = loadRecords(act.id);
-  const recHtml = records.length ? records.map((r,i)=>renderRecord(r, resultLabels, act.id, i)).join('') : '<p class="empty">No results logged yet — run the activity, then record below.</p>';
+  const recHtml = records.length ? records.map(r=>renderRecord(r, resultLabels, act.id)).join('') : '<p class="empty">No results logged yet — run the activity, then record below.</p>';
   const sopOpen = opts.sopCollapsed ? '' : 'open';
   const activeChild = getActiveProfile();
   const childBar = activeChild
@@ -1268,7 +1360,9 @@ async function handleSave(activityId){
     else if(f.type === 'checkbox')values[f.label] = el.checked ? 'Yes' : 'No';
     else                          values[f.label] = el.value || '';
   });
-  const ok = await saveRecord(activityId, { student, profileId: child.id, when:new Date().toLocaleString(), values });
+  // Content only — id / schemaVersion / teacherId / whenISO are stamped
+  // inside saveRecord (the envelope chokepoint).
+  const ok = await saveRecord(activityId, { student, profileId: child.id, values });
   if(!ok){
     toast('Could not save — storage may be full. Export your data, then try again.');
     return;
@@ -1276,19 +1370,27 @@ async function handleSave(activityId){
   toast('Saved');
   showActivity(state.category, state.activity, { sopCollapsed:true, focusForm:true, dir:'none' });
 }
-function renderRecord(r, resultLabels, activityId, index){
+// Human-readable timestamp, derived AT RENDER from the canonical whenISO.
+// Legacy records that never got a safe whenISO fall back to their stored
+// display string. Never store the locale form for new records.
+function fmtWhen(r){
+  if(r.whenISO){ const d = new Date(r.whenISO); if(!isNaN(d.getTime())) return d.toLocaleString(); }
+  return r.when || '';
+}
+function renderRecord(r, resultLabels, activityId){
   resultLabels = resultLabels || [];
   const entries = Object.entries(r.values).filter(([k,v])=>v && v!=='' && v!=='—');
   entries.sort((a,b)=>{ const ar = resultLabels.includes(a[0]) ? 0 : 1; const br = resultLabels.includes(b[0]) ? 0 : 1; return ar - br; });
   const pills = entries.map(([k,v])=>{ const isResult = resultLabels.includes(k); return `<span class="${isResult ? 'val-result' : ''}">${esc(k)}: ${esc(v)}</span>`; }).join('');
-  const del = (activityId != null && index != null)
-    ? `<button type="button" class="rec-del" aria-label="Delete this result" onclick="confirmDeleteRecord('${esc(activityId)}',${index})">${ICON.trash}</button>`
+  // Delete is BY ID — the migration shim guarantees every record has one.
+  const del = (activityId != null && r.id)
+    ? `<button type="button" class="rec-del" aria-label="Delete this result" onclick="confirmDeleteRecord('${esc(activityId)}','${esc(r.id)}')">${ICON.trash}</button>`
     : '';
-  return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="who">${esc(r.student)}</span> <span class="when">· ${esc(r.when)}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}</div></div>`;
+  return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="who">${esc(r.student)}</span> <span class="when">· ${esc(fmtWhen(r))}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}</div></div>`;
 }
-async function confirmDeleteRecord(activityId, index){
+async function confirmDeleteRecord(activityId, recordId){
   if(!window.confirm('Delete this saved result?\n\nThis cannot be undone.')) return;
-  const ok = await deleteRecord(activityId, index);
+  const ok = await deleteRecord(activityId, recordId);
   if(!ok){ toast('Could not delete — please try again.'); return; }
   toast('Result deleted');
   // Re-render the current activity screen in place (no entrance slide).
@@ -1304,7 +1406,12 @@ async function confirmDeleteRecord(activityId, index){
 // we still paint Welcome (which reads nothing) so the app is never a blank
 // screen, and surface a toast.
 (async function boot(){
-  try { await Store.init(); }
+  try {
+    await Store.init();
+    await ensureDeviceTeacherId();   // mint per-install operator id, once
+    await migrateLegacyData();       // idempotent backfill: id / schemaVersion /
+                                     // teacherId:'legacy' / safe whenISO
+  }
   catch(e){ setTimeout(()=>toast('Storage failed to load — please restart the app.'), 400); }
   showWelcome('fwd');
 })();

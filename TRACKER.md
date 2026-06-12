@@ -1,136 +1,140 @@
 # PROJECT TRACKER — O&M Cane Training App
 
 A living checklist. Say "wrap up" at the end of a session to refresh this + MEMORY.md.
-Last updated: end of a short BUILD session. Demo-video plumbing PROVEN end-to-end on the
-Pixel 10 emulator: a real `.mp4` (throwaway internet download) was compressed with ffmpeg
-(191 MB → 2.4 MB, 640×360 H.264/AAC), wired into the `sound-which` activity's `videoFile`
-slot via a one-line `activities.js` edit, bundled through `www/`, and confirmed playing in
-the native `<video>` player. The slot itself needed NO code — it was already built; this
-session verified it works with a real file. `activities.js` edit committed + pushed (the
-clip itself is gitignored via `www/` — correct, it's a throwaway test artifact).
+Last updated: end of a BUILD session. Batch 1 + migration shim were WRITTEN and verified
+headlessly (35/35 jsdom tests against the real index.html). The updated index.html and
+test-batch1.js were delivered as downloads — NOT yet installed locally, NOT yet
+emulator-verified, NOT yet committed. Also this session: R&D purpose scope changed twice
+(teacher drill fidelity, then child analysis ALSO needed), surfacing a possible new
+un-backfillable item (stable cross-device childId).
 
-## DONE (v0 → UI redesign → mobile-prep → profiles → 3-page → entry mgmt → planning → native wrap BUILT & VERIFIED → GitHub → grouped list + icons → demo-video slot PROVEN)
-- [x] Decided: app is the TEACHER's tool; does NOT pair with the cane
-- [x] Web app first; Capacitor → built, running, storage-verified on emulator
-- [x] Activities live as editable DATA (activities.js), not hardcoded
-- [x] 7 categories + 13 activities from the Figma workshop board
-- [x] Data capture: count / result / checkbox / notes
-- [x] Child profiles (name, DOB, height, weight, dominant hand, optional photo); age derived
-- [x] Records link to a child via `profileId`
-- [x] 3-page restructure: Welcome → Hub → Activities list → run screen + Manage-data
-- [x] 3-tier deletion behind the Store seam
-- [x] Storage seam (`Store`) + write-verify; CSV export (UTF-8 BOM, RFC-4180, demographics)
-- [x] Design system locked + documented (DESIGN_NOTES.md)
-- [x] Mobile-prep: safe-area insets, touch correctness, bigger targets
-- [x] Consent blocker cleared (legal/compliance team owns consent); manager decision PDF delivered
-- [x] Two-video architecture settled; session video → Supabase (Option A admin); pooling opened
-- [x] Compliance research doc (PDF + .docx): DPDP risks; Rule 10 + Rule 11; India-region Supabase
-- [x] Decided: Android first, NO bundler (protects no-coder activities.js workflow)
-- [x] Store seam → cache-backed async hybrid (write-verify honest); all callers awaited
-- [x] CSV export made backend-aware (native Filesystem+Share / web anchor)
-- [x] capacitor.config.json + package.json (Cap 8 + 4 plugins); BUILD-ANDROID.md guide
-- [x] Android build finished + verified on emulator: Java fix, cold-restart PASSED,
-      CSV export → share sheet OPENS, build-log PDF produced
-- [x] GitHub: private repo live at `github.com/Adistor777/om-cane-training`
-- [x] Grouped activities list + 7 per-category monoline icons + cane-tag hierarchy fix
-- [x] **Demographics storage clarified: on-device key-value JSON via Store seam, NO database.
-      A real DB only enters IF pooling goes central — and then as an additive sync layer.**
-- [x] **DEMO-VIDEO SLOT PROVEN on-device with a real file (this session).**
+## ============ NEXT SESSION — INSTALL + VERIFY BATCH 1 (step by step) ============
+Aditya is new to coding: one command at a time, explicit Check after each, plain-language
+explanations. Files needed: the index.html + test-batch1.js delivered last session.
 
-## THIS SESSION (build)
-- [x] **Clarified the demographics storage scene** (no DB today; on-device Preferences/
-      localStorage JSON under `profiles`; Supabase/Postgres only if pooling goes central,
-      and even then additive — capture code is no-regret either way).
-- [x] **Installed ffmpeg** (`brew install ffmpeg`).
-- [x] **Compressed a test clip:** 191 MB → 2.4 MB, scaled 640×360, H.264/AAC, via
-      `ffmpeg -i demo.mp4 -vf "scale=640:-2" -c:v libx264 -crf 28 -c:a aac -b:a 96k -t 60 demo-sound.mp4`.
-- [x] **Wired it in:** one-line `activities.js` edit — `sound-which` `videoFile` →
-      `"demo-sound.mp4"`. Verified exactly one slot changed.
-- [x] **Ran the build loop with the stale-`www/` guard:** added the clip to the `cp`
-      (`cp index.html activities.js demo-sound.mp4 www/`), grep + `ls -lh` confirmed both
-      the edit AND the 2.4 MB file landed in `www/` BEFORE sync, then `npx cap sync android`
-      → `npx cap run android`.
-- [x] **On-device PASS:** player renders + plays in the SOP "How to run this" disclosure on
-      the Sound group's "Which Sound?" activity.
-- [x] **Committed + pushed** the `activities.js` edit (clip not committed — `www/` gitignored).
+- [ ] 1. Replace ~/Desktop/om-app/index.html with the new file
+        Check: `grep -c "teacherId" ~/Desktop/om-app/index.html` returns ≥ 10
+- [ ] 2. Copy test-batch1.js into ~/Desktop/om-app
+- [ ] 3. (Fast local proof) `npm install jsdom` then `node test-batch1.js`
+        Check: "35 passed, 0 failed"
+- [ ] 4. `npx cap run android` — app boots on emulator, no blank screen
+- [ ] 5. On emulator: save a session for a child
+        Check: record appears with a readable date/time
+- [ ] 6. Cold-restart the app (swipe away, relaunch)
+        Check: record still there, timestamp still readable
+- [ ] 7. Delete that record; restart again
+        Check: exactly that record gone, stays gone
+- [ ] 8. Verify stored shape (dump storage if needed): new record has id (UUID),
+        teacherId (op_...), whenISO, schemaVersion:1; pre-existing demo records
+        tagged teacherId:'legacy' with backfilled ids
+- [ ] 9. Export CSV
+        Check: "When" column is ISO format; "Teacher ID" column present
+- [ ] 10. Commit + push:
+        git add . && git commit -m "Batch 1: teacherId, record UUIDs, delete-by-id,
+        whenISO, schemaVersion + migration shim" && git push
+- [ ] 11. Flip the five rev-2 "in code?" rows to Yes (only after 4–9 all pass)
+- [ ] 12. Add test-batch1.js to the repo permanently (first automated tests — the
+        Store-seam test goal from this tracker is now partially met)
 
-## CARRY-FORWARD — DEMO VIDEO (slot done; real content pending)
-- [ ] Real demo clips must be **footage the team owns** (today's was a throwaway download)
-- [ ] Keep real clips **compressed to a few MB each** (ffmpeg recipe above)
-- [ ] Wiring real clips = drop file in root + `www/`, set `videoFile`, run the build loop.
-      No architecture change; the slot is DONE.
+## ============ BATCH 1 — CODE COMPLETE (pending verification above) ============
+- [x] teacherId minted at boot (`ensureDeviceTeacherId()` → op_ + crypto.randomUUID,
+      via Store seam, warning toast on failed verified write)
+- [x] Stable UUID `id` on every record; delete-by-ID replaces index delete (High-sev
+      race fixed; stale id = safe no-op; no-id records render no delete button)
+- [x] `whenISO` canonical timestamp; `fmtWhen()` derives display at render; new records
+      store NO locale string
+- [x] `schemaVersion` on records + profiles
+- [x] MIGRATION SHIM: idempotent, every boot, writes only changed buckets; backfills
+      id / schemaVersion:1 / teacherId:'legacy'; when→whenISO ONLY on exact
+      round-trip (day/month-swap guard — en-IN "11/6" parses as Nov 6 otherwise)
+- [x] Envelope stamping centralized INSIDE saveRecord (chokepoint guarantee)
+- [x] CSV: When = whenISO (legacy fallback); new Teacher ID column
+- [x] Headless suite: test-batch1.js, 7 suites / 35 assertions, all green
 
-## QUEUED FOR NEXT CHAT
-- [ ] Rest of design path (a): serif `.lede` typographic confidence + more generous
-      whitespace/rhythm (lower priority)
-- [ ] Test harness (strong unblocked engineering pick — see below)
+## ============ SCOPE CHANGE — CHILD ANALYSIS (new this session) ============
+R&D purpose is now BOTH: (1) teacher drill fidelity AND (2) child analysis.
+- [ ] **SEND R&D THE BLOCKING QUESTION** (before further build): "Will any child ever
+      be assessed on more than one device? Is child analysis longitudinal per-child,
+      cross-child statistical, or both?" Bundle with the still-pending written A-vs-B +
+      identified-video confirmation. One email, four confirmations.
+      - One child = one device → profileId suffices; log assumption in writing; no code
+      - Child on >1 device → **stable childId becomes un-backfillable, Batch-1-class,
+        before ANY production session.** Preferred: short program-issued child code
+        entered once into the profile (never name-matching resolution)
+      - True statistical corpus → Batch 4 RLS keyed on child + institution; Postgres
+        activates earlier
+- [ ] Consent scope note (parked, but record it): TWO purposes must be named under DPDP
+      (teacher fidelity + child analysis); teachers are now evaluation subjects and
+      should be told. Forward to whoever drafts consent.
+- [ ] Update plan-of-work rev 2 with the dual purpose + childId branch
 
-## WAITING ON INPUT (needed to proceed on features)
-- [ ] USER: detailed POOLING answer — central corpus vs per-teacher backup
-- [ ] DECIDE: offline-classroom upload behaviour — immediate vs queue-and-upload-later
-- [ ] CONFIRM: filename fields (child + activity + date + time) — or add teacher/school?
-- [ ] Real demo video CLIPS the team owns (slot is now proven; only content is missing)
-- [ ] Formal SOPs + final scoring rubric (content team)
-- [ ] Full / final activity list; final target-language list
+## ============ BATCH 2 — correctness (after Batch 1 verified) ============
+- [ ] Verify ALL window.confirm() calls route through confirmModal() (reviewer flagged
+      stragglers — confirmDeleteRecord/confirmDeleteChild/confirmClearAll still use
+      window.confirm in current source)
+- [ ] Harden boot failure: Store._failed, hard-block writes, blocking "storage
+      unavailable — restart" state (current boot can silently succeed into empty cache)
+- [ ] Rename photo comment "limits identifiability" → "limits storage size"
+
+## ============ BATCH 3 — before identified VIDEO flows ============
+- [ ] Operator device lock (PIN on launch + re-gate before danger zone / identified
+      export) — still-open P0
+- [ ] Local photo-at-rest decision (encrypt OR drop pre-upload) — decide TOGETHER with
+      queued-video at-rest rule (Batch 4)
+
+## ============ BATCH 4 — before the Uploader (cloud architecture, LOCKED) ============
+- [ ] Private Supabase bucket; short-TTL signed URLs minted server-side — never public
+- [ ] Postgres RLS keyed on teacherId / institution (REVISIT: + childId, pending R&D
+      answer above); video in Storage, joined by key
+- [ ] Cascade delete (row + object + thumbnails) implemented AND proven by a test
+- [ ] India region pinned; no cross-region replication
+- [ ] Queue-and-retry upload with Store-seam-style write-verify
+- [ ] Queued-video at-rest retention/eviction rule (with Batch 3 photo decision)
+
+## ============ PARALLEL TRACKS (external dependencies — start EARLY) ============
+- [ ] **CONSENT TEXT + DATA-SHARING AGREEMENT — the real critical path.** Now must name
+      BOTH purposes. Needs qualified DPDP 2023 + Rules 2025 review (slow, external).
+      Full R&D ask list (access roster, view-only vs download, retention, deletion
+      compliance, purpose phrasing, metadata needs, their IRB, who signs) compiled in
+      this session's chat.
+- [ ] R&D written confirmations (one email): A-vs-B, identified video, childId/device
+      question, analysis shape
+
+## ---- CARRY-FORWARD (still open) ----
+
+### VERIFY (on emulator/device)
+- [ ] Confirm last GitHub push landed; .env / audio/ NOT in repo
+- [ ] On-device re-test #9 (Data-dir export attaches to share sheet)
+- [ ] On-device re-test #6 (accent-color renders on API 37)
+
+### AUDIO (pipeline done, content pending)
+- [ ] Real sopTranslations for the other 12 activities (content team, native speakers)
+- [ ] Content-team instruction PDF ("how to add SOP translations")
+
+### WAITING ON INPUT
 - [ ] O&M LEAD: (1) "Unable" distinct from "Independent"? (2) "with cane" tag colour?
+- [ ] O&M LEAD: assessment model — prompt hierarchy, trial counts, environmental
+      conditions, longitudinal progress
+- [ ] CONTENT/O&M: full activity list; final target-language list; scoring rubric
 
-## TO BUILD — CAPACITOR WRAP (finishing)
-- [x] Build + run on emulator + storage test (verified; demo-video re-verified this session)
-- [ ] Run on a real Android phone (deferred — user has no Android phone; do at pilot time)
-- [ ] App icon + splash (`@capacitor/assets`) — cosmetic
-- [ ] Play Store signed AAB — only for public distribution, not pilot
-- [ ] iOS (`npx cap add ios`) — needs Xcode + Apple Developer acct $99/yr (user has an iPhone)
+### TESTS
+- [x] First automated suite exists (test-batch1.js — covers Store-adjacent
+      write/read-back via saveRecord + migration + delete-by-id)
+- [ ] CSV builder tests (escaping, BOM, demographics join, column union) — partially
+      covered by Suite 6; dedicated tests still worthwhile
 
-## TO BUILD — TESTS (deliberate add, when chosen — strong unblocked pick)
-- [ ] Smoke tests on the `Store` seam: write → read-back → verify
-- [ ] CSV builder tests (escaping, BOM, demographics join, column union)
-- [ ] (NOT UI tests — low value for now)
+### CAPACITOR WRAP (later)
+- [ ] Real Android phone test (no Android phone; emulator covers daily)
+- [ ] App icon + splash; Play Store signed AAB; iOS target (all deferred)
 
-## TO BUILD — DESIGN (path (a) — substantially done)
-- [x] Design pick made: (a) sharpen field-notebook
-- [x] 7 per-category monoline icons designed + wired + on-device verified
-- [x] Grouped activities list (replaces flat 7-hue stack)
-- [x] Cane tag hierarchy fixed (rust / neutral)
-- [ ] Serif `.lede` type confidence + whitespace (remaining, lower priority)
+### DESIGN (path (a) — substantially done)
+- [ ] Serif .lede type confidence + whitespace (low priority)
 
-## TO BUILD — FEATURES (after design polish, in order)
-- [x] 1. DEMO VIDEO — slot PROVEN on-device. Blocked only on real owned clips.
-- [ ] 2. CONSENT FIELD — per-child flag (obtained / by / date), BEFORE any video flows.
-        Records the legal team's consent; no-regret; buildable now without pooling decision.
-- [ ] 3. SESSION VIDEO capture + upload:
-        - [ ] capture control on run screen (reuse photo file-input, no downscale)
-        - [ ] NEW `Uploader` seam mirroring `Store` (do NOT bolt onto Store)
-        - [ ] India-region Supabase bucket + admin login (Option A)
-        - [ ] structured filename; save returned link into the session record
-        - [ ] offline decision + upload-failure path
-        - [ ] delete-everywhere (deleteRecord/deleteProfile also delete the cloud file)
-- [ ] 4. ADMIN ACCESS — Supabase dashboard (config only for v1)
+### STILL OWED BY USER (carried across sessions)
+- [ ] Practice edit of activities.js (add one activity)
 
-## TO BUILD — POOLING / BACKEND (only when greenlit + consent in place)
-- [ ] Turn on Supabase Postgres; sync records up against the Store seam
-- [ ] Per-child consent recorded/verifiable before pooling
-- [ ] Delete-everywhere across device + cloud (DPDP right-to-erasure)
-- [ ] Central-corpus vs per-teacher-backup decision (raises consent bar if central)
-- [ ] Possibly Option B: in-app admin dashboard
-
-## TO ADD — v1 (real content + usability)
-- [ ] Real activities & SOP text; Sarvam TTS audio per language (Bulbul v3) → audioFile slots
-- [ ] Real demo videos in videoFile slots (slot proven; need owned, compressed clips)
-- [ ] Per-student progress over time
-- [x] Exportable progress (CSV) — DONE + verified on native.
-- [x] Real per-category icons in the card blob — DONE
-- [x] Demo video plays in the videoFile slot — DONE (proven on-device this session)
-
-## HOUSEKEEPING (low priority)
-- [ ] Update the storage guardrail comment in index.html if needed (now cache-backed async)
-- [x] Habit reinforced: grep/ls `www/` after the cp, BEFORE sync, to catch stale www
-- [x] Habit reinforced: bundled media must be ADDED to the `cp` line, not just HTML/JS
-- [ ] Habit: run the 3-line git save loop at the end of any session that changed code
-
-## QUICK NEXT ACTION
-- [ ] Next chat: serif/type/whitespace polish (path a remainder), OR the test harness
-      (Store seam + CSV builder), OR await pooling + offline-upload decisions for session video
-- [ ] After any code change: `cp index.html activities.js [media] www/` → grep/ls-verify www →
-      `npx cap sync android` → `npx cap run android`; then git add/commit/push
-- [ ] STILL OWED by user: pooling + offline-upload decisions; the practice edit of
-      activities.js (add one activity)
+## QUICK NEXT ACTION (start of next session)
+- [ ] Run the INSTALL + VERIFY checklist at the top, step by step, one command at a
+      time. Have the delivered index.html + test-batch1.js ready.
+- [ ] Send the R&D email (childId/device question + written confirmations) — no code
+      depends on it today, but Batch 4 and possibly a new Batch-1-class item do.
