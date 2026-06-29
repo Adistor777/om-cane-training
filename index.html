@@ -636,7 +636,7 @@ const Store = {
    Stamping lives INSIDE saveRecord (the seam-adjacent chokepoint), not at call
    sites, so no future caller can write an unattributable record by mistake.
    --------------------------------------------------------------------------- */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2; // v2: pseudonymisation — researchId on every profile and record
 const TEACHER_KEY = 'teacherId';
 function newId(){
   if(window.crypto && window.crypto.randomUUID) return crypto.randomUUID();
@@ -646,6 +646,20 @@ function newId(){
   b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
   const h = [...b].map(x=>x.toString(16).padStart(2,'0')).join('');
   return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+}
+// RESEARCH ID — the pseudonymous spine of the data model. Every child gets one
+// stable, speakable, PII-FREE id at enrolment. Records, the CSV, and any future
+// consent record key off THIS, never the child's name. The name↔researchId map
+// lives only inside the profile (separable, the single point you encrypt or
+// withhold). Format OM-XXXX-XXXX: ambiguous glyphs (0/O, 1/I) dropped so it can
+// be read aloud or written down without error. This is also the join key the
+// future backend / cross-device identity will extend — do not rebase it on name.
+function newResearchId(){
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0 O 1 I
+  const b = new Uint8Array(8);
+  (window.crypto && crypto.getRandomValues) ? crypto.getRandomValues(b) : b.forEach((_,i)=>b[i]=Math.floor(Math.random()*256));
+  const s = [...b].map(x=>A[x % A.length]).join('');
+  return `OM-${s.slice(0,4)}-${s.slice(4,8)}`;
 }
 // Synchronous read of the operator id (cache-served, like all reads).
 function getTeacherId(){ return Store.getString(TEACHER_KEY, ''); }
@@ -688,12 +702,27 @@ const SESSION_SCHOOL_KEY  = 'sessionSchool';   // {id,name} of logged-in school
 const SESSION_TEACHER_KEY = 'sessionTeacher';  // {id,name} of logged-in teacher
 const LOGGED_IN_KEY = 'loggedIn';
 
+// >>> PILOT GATE <<< Teacher-facing self-provisioning. FALSE for the pilot:
+// schools/teachers are admin-provisioned (seeded now; Supabase later), so a
+// teacher's login is a clean two-tap pick — no way to create junk schools or
+// fake teachers. addSchool()/addTeacher() stay as ADMIN primitives. Flip TRUE
+// only for your own provisioning during a field visit, then flip back.
+const PILOT_ALLOW_SELF_PROVISION = false;
+
+// PILOT SEED — the 3 real pilot schools (IIT Delhi + NCAHT).
+// IDs are STABLE, human-readable strings (not newId()) so the same school
+// resolves to the same id on every device — a precondition for cross-device
+// attribution. Do NOT change an id once sessions exist under it; that orphans
+// records. Teacher names below are PLACEHOLDERS until the coordinator sends
+// real names — swap the name strings (keep the ids) when they arrive.
 function seedSchools(){
   return [
-    { id:newId(), name:'Devnar School for the Blind',          teachers:[ {id:newId(), name:'Asha Rao'}, {id:newId(), name:'Vikram Mehta'} ] },
-    { id:newId(), name:'National Association for the Blind',    teachers:[ {id:newId(), name:'Priya Nair'} ] },
-    { id:newId(), name:'Blind Relief Association School',       teachers:[ {id:newId(), name:'Imran Sheikh'}, {id:newId(), name:'Lakshmi Iyer'} ] },
-    { id:newId(), name:'Roman & Catherine Lobo School',         teachers:[] }
+    { id:'sch_saksham_noida', name:'Saksham School, Noida',
+      teachers:[ {id:'tch_saksham_1', name:'Teacher 1'} ] },
+    { id:'sch_rnks_jaipur',   name:'Rajasthan Netraheen Kalyan Sangam (RNKS), Jaipur',
+      teachers:[ {id:'tch_rnks_1', name:'Teacher 1'} ] },
+    { id:'sch_nab_kullu',     name:'National Association of Blind, Kullu',
+      teachers:[ {id:'tch_nab_1', name:'Teacher 1'} ] }
   ];
 }
 function loadSchools(){
@@ -907,6 +936,15 @@ async function clearAllData(){
    On later boots every guard fails and zero writes happen.
    --------------------------------------------------------------------------- */
 async function migrateLegacyData(){
+  // PROFILES FIRST: records inherit researchId from their linked profile, so
+  // every profile must have one before the record loop runs. Order is load-bearing.
+  const profiles = loadProfiles();
+  let pChanged = false;
+  for(const p of profiles){
+    if(!p.researchId){ p.researchId = newResearchId(); pChanged = true; }
+    if((p.schemaVersion||1) < SCHEMA_VERSION){ p.schemaVersion = SCHEMA_VERSION; pChanged = true; }
+  }
+  if(pChanged) await saveProfiles(profiles);
   for(const k of Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0)){
     const recs = Store.getJSON(k, null);
     if(!Array.isArray(recs)) continue;
@@ -919,6 +957,15 @@ async function migrateLegacyData(){
       // honestly carry '' (unknown) rather than a guessed value.
       if(r.schoolId === undefined){ r.schoolId = ''; changed = true; }
       if(r.teacherRosterId === undefined){ r.teacherRosterId = ''; changed = true; }
+      // v2 pseudonymisation: backfill researchId from the linked profile. A
+      // record with a profileId inherits that child's pseudonym; one without
+      // (true orphan) gets a fresh id so it is never name-keyed. Stamp v2 too.
+      if(!r.researchId){
+        const lp = r.profileId ? profileById(r.profileId) : null;
+        r.researchId = (lp && lp.researchId) ? lp.researchId : newResearchId();
+        changed = true;
+      }
+      if((r.schemaVersion||1) < SCHEMA_VERSION){ r.schemaVersion = SCHEMA_VERSION; changed = true; }
       if(!r.whenISO && r.when){
         const t = Date.parse(r.when);
         if(!isNaN(t) && new Date(t).toLocaleString() === r.when){
@@ -928,12 +975,6 @@ async function migrateLegacyData(){
     }
     if(changed) await Store.setJSON(k, recs);
   }
-  const profiles = loadProfiles();
-  let pChanged = false;
-  for(const p of profiles){
-    if(!p.schemaVersion){ p.schemaVersion = SCHEMA_VERSION; pChanged = true; }
-  }
-  if(pChanged) await saveProfiles(profiles);
 }
 
 /* ---------------------------------------------------------------------------
@@ -970,6 +1011,9 @@ function gatherAllRecords(){
       let p = r.profileId ? profileById(r.profileId) : null;
       if(!p && r.student) p = loadProfiles().find(x=>x.name===r.student) || null;
       rows.push({ category: meta.category, activity: meta.activity,
+        // Pseudonym is the primary identifier in every export. Resolve from the
+        // record, then the linked profile; never synthesise from the name.
+        researchId: r.researchId || (p?p.researchId:'') || '',
         student: r.student || (p?p.name:''),
         // Canonical ISO timestamp when present (sortable, locale-free);
         // legacy display string only for old records that had no safe ISO.
@@ -989,25 +1033,33 @@ function csvCell(v){
   const s = String(v == null ? '' : v);
   return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
 }
-function buildCSV(rows){
+function buildCSV(rows, includePII){
   // Value columns = union of all field labels across every record, stable order.
   const valueCols = [];
   rows.forEach(r=>Object.keys(r.values).forEach(label=>{ if(valueCols.indexOf(label)===-1) valueCols.push(label); }));
-  const header = ['Category','Activity','Student','DOB','Age','Height (cm)','Weight (kg)','Dominant hand','When','School','Teacher','Teacher ID', ...valueCols];
+  // DEFAULT EXPORT IS PSEUDONYMISED: Research ID leads; the two direct
+  // identifiers (name, DOB) are OMITTED unless includePII is explicitly set.
+  // Age/height/weight/hand are research demographics, not direct identifiers,
+  // so they stay. This is the F1/F8 fix: the file that leaves the device by
+  // default carries no name and no date of birth.
+  const idCols  = includePII ? ['Research ID','Student','DOB'] : ['Research ID'];
+  const header = [...idCols,'Category','Activity','Age','Height (cm)','Weight (kg)','Dominant hand','When','School','Teacher','Teacher ID', ...valueCols];
   const lines = [header.map(csvCell).join(',')];
   rows.forEach(r=>{
-    const base = [r.category, r.activity, r.student, r.dob, r.age, r.height, r.weight, r.hand, r.when, r.schoolName, r.teacherName, r.teacherId];
+    const idVals = includePII ? [r.researchId, r.student, r.dob] : [r.researchId];
+    const base = [...idVals, r.category, r.activity, r.age, r.height, r.weight, r.hand, r.when, r.schoolName, r.teacherName, r.teacherId];
     const vals = valueCols.map(c=> r.values[c] != null ? r.values[c] : '');
     lines.push(base.concat(vals).map(csvCell).join(','));
   });
   return '\ufeff' + lines.join('\r\n'); // BOM so Excel reads UTF-8 (Indian-language names) correctly
 }
-async function exportCSV(){
+async function exportCSV(includePII){
   const rows = gatherAllRecords();
   if(!rows.length){ toast('No saved results to export yet.'); return; }
-  const csv = buildCSV(rows);
+  const csv = buildCSV(rows, includePII);
   const stamp = new Date().toISOString().slice(0,10);
-  const filename = `om-records-${stamp}.csv`;
+  // Filename signals the contents: the default carries no names; the key sheet does.
+  const filename = includePII ? `om-keysheet-${stamp}.csv` : `om-records-${stamp}.csv`;
 
   // NATIVE PATH: the browser <a download> trick does not reliably save a file
   // inside a Capacitor WebView (no download manager). Write the file to the
@@ -1033,6 +1085,10 @@ async function exportCSV(){
         url: uriRes.uri,
         dialogTitle: 'Save or send your records CSV'
       });
+      // F8: the CSV is unencrypted PII-adjacent data in the OS cache. Once the
+      // share sheet has resolved the OS has copied what it needs, so delete our
+      // copy rather than leaving it for backup/file-access tooling to harvest.
+      try { await Filesystem.deleteFile({ path: filename, directory: 'CACHE' }); } catch(_){}
       toast(`Exported ${rows.length} ${rows.length===1?'record':'records'}.`);
     } catch(e){
       toast('Export failed — could not write the file. Try again.');
@@ -1140,7 +1196,7 @@ function showLogin(dir){
       </select>
     </div>
     <div id="lg_teacherArea">${loginSelSchoolId ? teacherPickerMarkup(loginSelSchoolId) : ''}</div>
-    <button type="button" class="linklike" onclick="showAddSchool()" style="margin-top:var(--s3)">+ Add a new school</button>
+    ${PILOT_ALLOW_SELF_PROVISION ? `<button type="button" class="linklike" onclick="showAddSchool()" style="margin-top:var(--s3)">+ Add a new school</button>` : ''}
   `, dir || 'fwd', false);
 }
 
@@ -1149,10 +1205,13 @@ function teacherPickerMarkup(schoolId){
   if(!s) return '';
   const rows = (s.teachers||[]).length
     ? s.teachers.map(t=>`<button type="button" class="rowbtn" onclick="handleLogin('${s.id}','${t.id}')">${avatarFor(t,'avatar')}<span class="who">${esc(t.name)}</span></button>`).join('')
-    : `<p class="muted" style="margin:var(--s2) 0">No teachers added for this school yet.</p>`;
+    : `<p class="muted" style="margin:var(--s2) 0">No teachers listed for this school yet. Please contact your coordinator.</p>`;
+  const addTeacherBtn = PILOT_ALLOW_SELF_PROVISION
+    ? `<button type="button" class="linklike" onclick="showAddTeacher('${s.id}')">+ Add a new teacher</button>`
+    : '';
   return `
     <div class="field"><label>Teacher</label><div class="rowlist">${rows}</div></div>
-    <button type="button" class="linklike" onclick="showAddTeacher('${s.id}')">+ Add a new teacher</button>
+    ${addTeacherBtn}
   `;
 }
 
@@ -1580,6 +1639,10 @@ async function handleProfileSave(existingId){
   if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
   const profile = {
     id: existingId || newProfileId(),
+    // Pseudonym minted ONCE at enrolment and preserved across edits. Records key
+    // off this, not the name below. Preserving on edit is load-bearing: re-minting
+    // would orphan every record already linked to the old researchId.
+    researchId: (existingId ? (profileById(existingId)||{}).researchId : '') || newResearchId(),
     schemaVersion: SCHEMA_VERSION,
     name,
     dob: (document.getElementById('p_dob').value || '').trim(),
@@ -1725,7 +1788,9 @@ async function handleSave(activityId){
   const act = cat.activities[state.activity];
   const child = getActiveProfile();
   if(!child){ toast('Choose or add a child first.'); return; }
-  const student = child.name;
+  // PSEUDONYM, not name, goes on the record. profileId is the local device link;
+  // researchId is the portable pseudonym that survives export and (future) sync.
+  const researchId = child.researchId;
   const btn = document.getElementById('saveBtn');
   if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
   const values = {};
@@ -1738,7 +1803,7 @@ async function handleSave(activityId){
   });
   // Content only — id / schemaVersion / teacherId / whenISO are stamped
   // inside saveRecord (the envelope chokepoint).
-  const ok = await saveRecord(activityId, { student, profileId: child.id, values });
+  const ok = await saveRecord(activityId, { researchId, profileId: child.id, values });
   if(!ok){
     toast('Could not save — storage may be full. Export your data, then try again.');
     return;
@@ -1753,6 +1818,16 @@ function fmtWhen(r){
   if(r.whenISO){ const d = new Date(r.whenISO); if(!isNaN(d.getTime())) return d.toLocaleString(); }
   return r.when || '';
 }
+// On-device DISPLAY name for a record. The record itself carries only the
+// pseudonym (researchId) + the local profileId link — never the name. Here, on
+// the teacher's own device, we resolve back to the real name so the list stays
+// human-readable. Off-device (CSV/sync) this resolution never happens, so the
+// name never leaves. Fallback order: profile name → researchId → legacy student.
+function recordDisplayName(r){
+  const p = r.profileId ? profileById(r.profileId) : null;
+  if(p && p.name) return p.name;
+  return r.researchId || r.student || '—';
+}
 function renderRecord(r, resultLabels, activityId){
   resultLabels = resultLabels || [];
   const entries = Object.entries(r.values).filter(([k,v])=>v && v!=='' && v!=='—');
@@ -1762,7 +1837,7 @@ function renderRecord(r, resultLabels, activityId){
   const del = (activityId != null && r.id)
     ? `<button type="button" class="rec-del" aria-label="Delete this result" onclick="confirmDeleteRecord('${esc(activityId)}','${esc(r.id)}')">${ICON.trash}</button>`
     : '';
-  return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="who">${esc(r.student)}</span> <span class="when">· ${esc(fmtWhen(r))}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}</div></div>`;
+  return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="who">${esc(recordDisplayName(r))}</span> <span class="when">· ${esc(fmtWhen(r))}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}</div></div>`;
 }
 async function confirmDeleteRecord(activityId, recordId){
   if(!window.confirm('Delete this saved result?\n\nThis cannot be undone.')) return;
