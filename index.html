@@ -104,6 +104,30 @@
   .home-dot svg{ width:21px; height:21px; }
   .brand{ font-size:var(--t-bodysm); margin:0; font-weight:600; line-height:1.2; color:var(--ink); letter-spacing:-.01em; }
   .crumb{ font-size:var(--t-caption); margin-top:1px; color:var(--cat-deep); font-weight:500; }
+  /* Header overflow menu — utilities (Export, Manage, About, Sign out) that
+     aren't the primary task. Pushed to the far right; the popover hangs below. */
+  .hmenu{ margin-left:auto; position:relative; flex:0 0 auto; }
+  .hmenu-btn{ width:42px; height:42px; border-radius:12px; background:transparent; border:1px solid var(--line);
+    color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:background .15s, border-color .15s, color .15s; }
+  .hmenu-btn svg{ width:21px; height:21px; }
+  @media (hover:hover){ .hmenu-btn:hover{ background:var(--cat-soft); color:var(--cat-deep); border-color:var(--cat-line); } }
+  .hmenu-btn:active{ background:var(--cat-soft); color:var(--cat-deep); }
+  .hmenu-btn:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .hmenu-pop{ position:absolute; right:0; top:calc(100% + 8px); min-width:212px; z-index:40;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r-md);
+    box-shadow:var(--shadow-lift); padding:6px; }
+  .hmenu-pop[hidden]{ display:none; }
+  .hmenu-item{ display:flex; align-items:center; gap:11px; width:100%; text-align:left; font:inherit;
+    font-size:var(--t-bodysm); font-weight:500; color:var(--ink); background:transparent; border:0; cursor:pointer;
+    padding:11px 12px; border-radius:var(--r-sm); min-height:44px; }
+  .hmenu-item svg{ width:19px; height:19px; flex:0 0 auto; color:var(--ink-soft); }
+  @media (hover:hover){ .hmenu-item:hover{ background:var(--cat-soft); } }
+  .hmenu-item:active{ background:var(--cat-soft); }
+  .hmenu-item:focus-visible{ outline:3px solid var(--cat); outline-offset:-2px; }
+  .hmenu-sep{ height:1px; background:var(--line-soft); margin:6px 4px; }
+  .hmenu-item.danger{ color:#8a3c12; }
+  .hmenu-item.danger svg{ color:#8a3c12; }
   .back{ width:42px; height:42px; flex:0 0 auto; background:transparent; border:1px solid var(--line);
     color:var(--ink-soft); cursor:pointer; border-radius:12px; display:flex; align-items:center; justify-content:center;
     transition:background .15s ease, transform .15s ease, color .15s ease, border-color .15s; }
@@ -243,16 +267,14 @@
   .field input[type=number]::placeholder, .field input[type=text]::placeholder, .field input[type=password]::placeholder, .field textarea::placeholder{ color:var(--ink-faint); }
   .field input[type=number]:focus, .field input[type=text]:focus, .field input[type=password]:focus, .field textarea:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
   .field textarea{ min-height:84px; resize:vertical; }
-  /* Password field with reveal toggle. The toggle is a quiet text button (no accent). */
-  .pw-wrap{ position:relative; }
-  .pw-wrap input{ padding-right:64px; }
-  .pw-toggle{ position:absolute; top:50%; right:8px; transform:translateY(-50%);
-    background:transparent; border:none; color:var(--ink-soft); font:inherit; font-size:var(--t-caption);
-    font-weight:600; cursor:pointer; padding:8px 10px; min-height:40px; border-radius:8px; }
-  .pw-toggle:hover{ color:var(--ink); }
-  .pw-toggle:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
-  /* Inline login error — neutral-red text, no panel/decoration (guardrails). */
-  .lg-error{ color:#a3402f; font-size:var(--t-bodysm); font-weight:600; margin:0 0 var(--s2); }
+  .field .select{ width:100%; padding:13px 40px 13px 15px; border:1px solid var(--line); border-radius:var(--r-sm);
+    font:inherit; background:#fff; color:var(--ink); cursor:pointer; min-height:48px;
+    -webkit-appearance:none; appearance:none; transition:border-color .15s, box-shadow .15s;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23736b5e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat:no-repeat; background-position:right 13px center; }
+  .field .select:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .login-err{ color:#8a3c12; background:#fbeee6; border:1px solid #f0d4c2; border-radius:var(--r-sm);
+    padding:11px 14px; margin:0 0 var(--s2); font-size:var(--t-bodysm); font-weight:500; }
   .seg{ display:flex; gap:var(--s1); flex-wrap:wrap; }
   .seg button{ flex:1; min-width:96px; padding:13px; border:1px solid var(--line); border-radius:var(--r-sm);
     background:#fff; cursor:pointer; font:inherit; font-size:var(--t-bodysm); font-weight:500; color:var(--ink-soft);
@@ -363,6 +385,39 @@
   .activechild .swap:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
   /* Child cards on screen 1 reuse .card; the avatar replaces the .blob. */
   .card .avatar-img{ width:34px; height:34px; border-radius:10px; flex:0 0 auto; object-fit:cover; }
+  /* Students list: a pick-to-teach button + a separate open-detail chevron, so
+     the two intents don't share one tap. Reuses .activechild's inner pieces. */
+  .student-row{ display:flex; align-items:stretch; gap:0; margin-bottom:var(--s2);
+    border:1px solid var(--line); border-radius:var(--r-sm); background:var(--card); overflow:hidden; }
+  .student-row.is-active{ border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .student-pick{ flex:1; min-width:0; display:flex; align-items:center; gap:12px; padding:12px 15px;
+    background:transparent; border:0; font:inherit; text-align:left; color:var(--ink); cursor:pointer; }
+  .student-pick .avatar{ width:38px; height:38px; border-radius:10px; flex:0 0 auto; object-fit:cover;
+    background:var(--cat-soft); color:var(--cat-deep); display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:var(--t-bodysm); }
+  .student-pick .who{ font-weight:600; color:var(--ink); font-size:var(--t-bodysm); flex:1; min-width:0; }
+  .student-pick .who small{ display:block; font-weight:500; color:var(--ink-faint); font-size:var(--t-micro); margin-top:1px; }
+  @media (hover:hover){ .student-pick:hover{ background:var(--cat-soft); } }
+  .student-pick:active{ background:var(--cat-soft); }
+  .student-pick:focus-visible{ outline:3px solid var(--cat); outline-offset:-3px; }
+  .student-open{ flex:0 0 auto; width:52px; border:0; border-left:1px solid var(--line);
+    background:transparent; color:var(--ink-faint); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .student-open svg{ width:20px; height:20px; }
+  @media (hover:hover){ .student-open:hover{ background:var(--line-soft); color:var(--ink); } }
+  .student-open:active{ background:var(--line-soft); }
+  .student-open:focus-visible{ outline:3px solid var(--cat); outline-offset:-3px; }
+  /* "Active" pseudo-badge — quiet, not a third accent: it borrows the category
+     soft tint already in play on this surface. */
+  .active-tag{ display:inline-block; font-size:var(--t-micro); font-weight:600; letter-spacing:.02em;
+    text-transform:uppercase; color:var(--cat-deep); background:var(--cat-soft);
+    padding:2px 7px; border-radius:6px; margin-right:8px; vertical-align:middle; }
+  .who .active-tag{ display:inline-block; margin-bottom:3px; }
+  .chip-swap{ flex:0 0 auto; background:transparent; border:1px solid var(--line); color:var(--ink-soft);
+    cursor:pointer; font:inherit; font-size:var(--t-caption); font-weight:600; padding:8px 12px; border-radius:var(--r-sm); min-height:44px;
+    transition:background .15s, border-color .15s, color .15s; }
+  @media (hover:hover){ .chip-swap:hover{ border-color:var(--ink-faint); color:var(--ink); } }
+  .chip-swap:active{ background:var(--line-soft); }
+  .chip-swap:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
   .card.child[aria-current="true"]{ border-color:var(--cat); box-shadow:var(--shadow-lift); }
   .card.child[aria-current="true"]::before{ background:var(--cat); }
   .card.child .check{ margin-left:auto; color:var(--cat-deep); width:20px; height:20px; flex:0 0 auto; }
@@ -424,6 +479,16 @@
   .card.activity.grouped{ padding:16px 18px; }
   .card.activity.grouped::before{ display:none; }
   .card.activity.grouped h2{ margin:0; }
+  /* CATEGORY GRID (the new screen 3a). Each tile is an action-row variant whose
+     icon chip carries that category's own hue — colour does ONE job (naming the
+     category), exactly as on the grouped header. The chip colour is set inline
+     per tile via --tile; the rest of the row stays neutral. */
+  .cat-grid{ display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); }
+  .cat-tile .action-ic{ background:var(--tile); color:#fff; }
+  @media (hover:hover){ .cat-tile:hover{ border-color:var(--tile); } }
+  .cat-tile:focus-visible{ outline-color:var(--tile); }
+  .cat-tile .count-pill{ flex:0 0 auto; font-size:var(--t-micro); font-weight:600; color:var(--ink-faint);
+    background:var(--surface-2,#f2efe9); border-radius:999px; padding:3px 10px; margin-left:auto; }
   .toast{ position:fixed; bottom:28px; left:50%; transform:translate(-50%,12px); background:var(--ink); color:#fff;
     padding:14px 24px; border-radius:var(--r-sm); opacity:0; pointer-events:none;
     transition:opacity .25s, transform .25s var(--ease); z-index:60; box-shadow:0 14px 34px rgba(0,0,0,.24); font-weight:500; font-size:var(--t-bodysm); }
@@ -452,6 +517,12 @@
     <p class="brand" id="brand">O&amp;M Cane Training</p>
     <div class="crumb" id="crumb">Choose an activity category</div>
   </div>
+  <div class="hmenu" id="hmenu" style="display:none;">
+    <button class="hmenu-btn" id="hmenuBtn" aria-label="More options" aria-haspopup="true" aria-expanded="false" onclick="toggleMenu(event)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+    </button>
+    <div class="hmenu-pop" id="hmenuPop" role="menu" hidden></div>
+  </div>
 </header>
 <main class="wrap"><div id="screen"></div></main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -467,6 +538,43 @@ const homeDot = document.getElementById('homeDot');
 function goHomeFromDot(){ if(isLoggedIn() && Store.getString(WELCOME_SEEN,'')==='1') showHome('back'); }
 homeDot.addEventListener('click', goHomeFromDot);
 homeDot.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); goHomeFromDot(); } });
+
+// ---- Header overflow menu (utilities) -------------------------------------
+const hmenuEl  = document.getElementById('hmenu');
+const hmenuBtn = document.getElementById('hmenuBtn');
+const hmenuPop = document.getElementById('hmenuPop');
+// Show the menu only on the signed-in landing; hide everywhere else so it never
+// competes on task screens. Called by each screen via setMenuVisible().
+function setMenuVisible(on){
+  hmenuEl.style.display = on ? '' : 'none';
+  if(!on) closeMenu();
+}
+function buildMenuItems(){
+  hmenuPop.innerHTML = `
+    <button class="hmenu-item" role="menuitem" onclick="menuGo(exportCSV)">${ICON.download}Export records</button>
+    <button class="hmenu-item" role="menuitem" onclick="menuGo(()=>showManageData('fwd'))">${ICON.shield}Manage data</button>
+    <button class="hmenu-item" role="menuitem" onclick="menuGo(()=>showAbout('fwd'))">${ICON.info}About this app</button>
+    <div class="hmenu-sep"></div>
+    <button class="hmenu-item danger" role="menuitem" onclick="menuGo(handleLogout)">${ICON.logout}Sign out</button>
+  `;
+}
+function toggleMenu(e){
+  if(e) e.stopPropagation();
+  hmenuPop.hidden ? openMenu() : closeMenu();
+}
+function openMenu(){
+  buildMenuItems();
+  hmenuPop.hidden = false;
+  hmenuBtn.setAttribute('aria-expanded','true');
+}
+function closeMenu(){
+  hmenuPop.hidden = true;
+  hmenuBtn.setAttribute('aria-expanded','false');
+}
+function menuGo(fn){ closeMenu(); fn(); }
+// Dismiss on outside click / Escape.
+document.addEventListener('click', e=>{ if(!hmenuPop.hidden && !hmenuEl.contains(e.target)) closeMenu(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !hmenuPop.hidden) closeMenu(); });
 const toastEl = document.getElementById('toast');
 let state = { category:null, activity:null };
 const ICON = {
@@ -486,6 +594,7 @@ const ICON = {
   user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>',
   shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"/></svg>',
+  logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/></svg>',
   // ---- per-category monoline icons (positional, see CATEGORY_ICONS) --------
   catEar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 3-2 4-3 5.5-.8 1.2-.5 2.5-1.5 3.5a2.5 2.5 0 0 1-4-2"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .3"/></svg>',
   catSoundDir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M8 9.5a4 4 0 0 0 0 5"/><path d="M16 9.5a4 4 0 0 1 0 5"/><path d="M5 7a8 8 0 0 0 0 10"/><path d="M19 7a8 8 0 0 1 0 10"/></svg>',
@@ -725,66 +834,29 @@ const PILOT_ALLOW_SELF_PROVISION = false;
 // attribution. Do NOT change an id once sessions exist under it; that orphans
 // records. Teacher names below are PLACEHOLDERS until the coordinator sends
 // real names — swap the name strings (keep the ids) when they arrive.
-// Each teacher carries a coordinator-issued LOGIN ID + PASSWORD. The password is
-// NOT stored in plaintext — pwHash() lightly obfuscates it so a glance at storage
-// or the APK seed doesn't leak it. This is a DEMO gate, not real auth: anyone with
-// the bundle can reverse it. At production verifyCredentials() below becomes a
-// Supabase auth.signInWithPassword() call and passwords leave the client entirely.
-// To issue a credential: set loginId + pw, then replace pw with pwHash('thePassword').
+//
+// loginId = the identifier the teacher TYPES to sign in (you assign these,
+// e.g. saksham01). It is NOT a secret — it just names the account. The PASSWORD
+// is deliberately absent here: a real password cannot live on-device (see
+// verifyCredentials). When Supabase lands, loginId maps to that teacher's
+// server account; the password is checked there, never in this file.
 function seedSchools(){
   return [
     { id:'sch_saksham_noida', name:'Saksham School, Noida',
-      teachers:[ {id:'tch_saksham_1', name:'Teacher 1', loginId:'saksham-01', pwHash:pwHash('saksham123')} ] },
+      teachers:[ {id:'tch_saksham_1', name:'Teacher 1', loginId:'saksham01'} ] },
     { id:'sch_rnks_jaipur',   name:'Rajasthan Netraheen Kalyan Sangam (RNKS), Jaipur',
-      teachers:[ {id:'tch_rnks_1', name:'Teacher 1', loginId:'rnks-01', pwHash:pwHash('rnks123')} ] },
+      teachers:[ {id:'tch_rnks_1', name:'Teacher 1', loginId:'rnks01'} ] },
     { id:'sch_nab_kullu',     name:'National Association of Blind, Kullu',
-      teachers:[ {id:'tch_nab_1', name:'Teacher 1', loginId:'nab-01', pwHash:pwHash('nab123')} ] }
+      teachers:[ {id:'tch_nab_1', name:'Teacher 1', loginId:'nab01'} ] }
   ];
-}
-// Lightweight, deterministic obfuscation (NOT cryptographic). Demo-only; the real
-// hash lives server-side at production. Stable so seed hashes match login attempts.
-function pwHash(pw){
-  let h = 5381; const s = String(pw);
-  for(let i=0;i<s.length;i++){ h = ((h<<5)+h) ^ s.charCodeAt(i); }
-  return 'h' + (h>>>0).toString(36);
-}
-// Find a teacher across all schools by their coordinator-issued login ID.
-function teacherByLoginId(schoolId, loginId){
-  const s = schoolById(schoolId); if(!s) return null;
-  const want = String(loginId||'').trim().toLowerCase();
-  return (s.teachers||[]).find(t => String(t.loginId||'').toLowerCase() === want) || null;
-}
-// >>> PRODUCTION SEAM: swap this body for Supabase auth. Returns the teacher on
-// success, null on any mismatch. Never reveals which of id/password was wrong. <<<
-function verifyCredentials(schoolId, loginId, password){
-  const t = teacherByLoginId(schoolId, loginId);
-  if(!t || !t.pwHash) return null;
-  return pwHash(password) === t.pwHash ? t : null;
-}
-// DEV HELPER — credential issuing for seedSchools(). When real teacher names/logins
-// arrive, run this in the browser/DevTools console to get a finished seed line you
-// paste into the right school's teachers[] array. Removes hand-composing pwHash().
-//   issueTeacher('tch_saksham_2', 'Priya Sharma', 'saksham-02', 'somePassword')
-// Prints, e.g.:
-//   {id:'tch_saksham_2', name:'Priya Sharma', loginId:'saksham-02', pwHash:'h1a2b3c'},
-function issueTeacher(id, name, loginId, password){
-  const line = `{id:'${id}', name:'${name}', loginId:'${loginId}', pwHash:'${pwHash(password)}'},`;
-  console.log(line);
-  return line;
 }
 function loadSchools(){
   const v = Store.getJSON(SCHOOLS_KEY, null);
   return Array.isArray(v) ? v : [];
 }
 async function ensureSchoolsSeeded(){
-  const existing = loadSchools();
-  // Fresh install — seed.
-  if(!existing.length){ await Store.setJSON(SCHOOLS_KEY, seedSchools()); return; }
-  // Existing install from before credentials existed: teachers have no loginId.
-  // Re-seed so the password login works on the demo device without a manual wipe.
-  // (ID-stable: the seed reuses the same school/teacher ids, so attribution holds.)
-  const needsCreds = existing.some(s => (s.teachers||[]).some(t => !t.loginId));
-  if(needsCreds){ await Store.setJSON(SCHOOLS_KEY, seedSchools()); }
+  if(loadSchools().length) return;
+  await Store.setJSON(SCHOOLS_KEY, seedSchools());
 }
 function schoolById(id){ return loadSchools().find(s=>s.id===id) || null; }
 // Resolve attribution ids on records back to readable names for export/display.
@@ -794,32 +866,18 @@ function teacherNameById(id){
   for(const s of loadSchools()){ const t = (s.teachers||[]).find(x=>x.id===id); if(t) return t.name; }
   return id; // unknown id — show the raw id rather than hiding attribution
 }
-// GUARD: self-provision is OFF for the pilot. These admin primitives create
-// schools/teachers WITHOUT credentials (no loginId/pwHash) — a teacher made this
-// way could never sign in under the password login. Rather than silently mint a
-// broken, un-loginable teacher, refuse to run while the flag is false. Credentials
-// enter the system in exactly ONE place during the pilot: seedSchools(). At
-// production this whole concern moves server-side (Supabase owns teacher creation).
 async function addSchool(name){
-  if(!PILOT_ALLOW_SELF_PROVISION){
-    console.warn('addSchool blocked: PILOT_ALLOW_SELF_PROVISION is false. Schools are seeded in seedSchools().');
-    return null;
-  }
   const list = loadSchools();
   const school = { id:newId(), name:name.trim(), teachers:[] };
   list.push(school);
   const ok = await Store.setJSON(SCHOOLS_KEY, list);
   return ok ? school : null;
 }
-async function addTeacher(schoolId, name){
-  if(!PILOT_ALLOW_SELF_PROVISION){
-    console.warn('addTeacher blocked: PILOT_ALLOW_SELF_PROVISION is false. A teacher needs loginId + pwHash (see seedSchools()) to sign in.');
-    return null;
-  }
+async function addTeacher(schoolId, name, loginId){
   const list = loadSchools();
   const s = list.find(x=>x.id===schoolId);
   if(!s) return null;
-  const teacher = { id:newId(), name:name.trim() };
+  const teacher = { id:newId(), name:name.trim(), loginId:(loginId||'').trim() };
   s.teachers = s.teachers || []; s.teachers.push(teacher);
   const ok = await Store.setJSON(SCHOOLS_KEY, list);
   return ok ? teacher : null;
@@ -829,6 +887,35 @@ async function addTeacher(schoolId, name){
 function getSessionSchool(){  return Store.getJSON(SESSION_SCHOOL_KEY,  null); }
 function getSessionTeacher(){ return Store.getJSON(SESSION_TEACHER_KEY, null); }
 function isLoggedIn(){ return Store.getString(LOGGED_IN_KEY, '') === '1'; }
+
+/* >>> PRODUCTION SEAM — the ONLY place a credential is checked. <<<
+   ────────────────────────────────────────────────────────────────────────────
+   WHY THIS IS A STUB, AND MUST STAY ONE UNTIL SUPABASE:
+   This file ships inside the APK on the teacher's phone. Any password stored
+   here to compare against — and any logic that does the comparing — is readable
+   and editable by anyone holding the app. A password check that runs on-device
+   provides NO access control; it only looks like it does. Real auth requires a
+   server that holds the hashed password and makes the decision somewhere the
+   user can't reach. That server is Supabase (gated, per project plan).
+
+   WHAT THIS DOES NOW (pilot, no backend):
+   It resolves the typed loginId to a teacher in the selected school and accepts
+   any non-empty password. So the SCREEN and FLOW are real and final — only the
+   verdict is stubbed. Returns the matched teacher, or null.
+
+   THE SWAP (when Supabase lands): replace the body with a call to
+   supabase.auth.signInWithPassword({ email/loginId, password }); on success,
+   resolve loginId → teacher and return it. Nothing else in the login UI changes
+   — this signature (school, loginId, password) → teacher|null is the contract. */
+async function verifyCredentials(school, loginId, password){
+  const id = (loginId || '').trim().toLowerCase();
+  const pw = (password || '');
+  if(!id || !pw) return null;                 // both fields required
+  const t = (school.teachers || []).find(x => (x.loginId || '').toLowerCase() === id);
+  if(!t) return null;                         // unknown login ID for this school
+  // STUB VERDICT: any non-empty password passes. Replace with server check.
+  return t;
+}
 
 // >>> PRODUCTION SEAM: this is where the real credential check lands. <<<
 // Local: no password — selecting a teacher and confirming IS the login.
@@ -1091,7 +1178,7 @@ function gatherAllRecords(){
         teacherName: teacherNameById(r.teacherRosterId) || '',
         schoolName:  schoolNameById(r.schoolId) || '',
         age: p?ageFromDOB(p.dob):'', dob: p?(p.dob||''):'', height: p?p.height:'', weight: p?p.weight:'',
-        hand: p?p.dominantHand:'', values: r.values || {} });
+        hand: p?p.dominantHand:'', filledBy: p?(p.filledBy||''):'', values: r.values || {} });
     });
   });
   return rows;
@@ -1110,11 +1197,11 @@ function buildCSV(rows, includePII){
   // so they stay. This is the F1/F8 fix: the file that leaves the device by
   // default carries no name and no date of birth.
   const idCols  = includePII ? ['Research ID','Student','DOB'] : ['Research ID'];
-  const header = [...idCols,'Category','Activity','Age','Height (cm)','Weight (kg)','Dominant hand','When','School','Teacher','Teacher ID', ...valueCols];
+  const header = [...idCols,'Category','Activity','Age','Height (cm)','Weight (kg)','Dominant hand','Filled by','When','School','Teacher','Teacher ID', ...valueCols];
   const lines = [header.map(csvCell).join(',')];
   rows.forEach(r=>{
     const idVals = includePII ? [r.researchId, r.student, r.dob] : [r.researchId];
-    const base = [...idVals, r.category, r.activity, r.age, r.height, r.weight, r.hand, r.when, r.schoolName, r.teacherName, r.teacherId];
+    const base = [...idVals, r.category, r.activity, r.age, r.height, r.weight, r.hand, r.filledBy, r.when, r.schoolName, r.teacherName, r.teacherId];
     const vals = valueCols.map(c=> r.values[c] != null ? r.values[c] : '');
     lines.push(base.concat(vals).map(csvCell).join(','));
   });
@@ -1215,6 +1302,8 @@ function downscaleImage(file, max){
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function paint(html, dir, stagger, opts){
   opts = opts || {};
+  // Default: utilities menu is hidden. The signed-in landing re-shows it.
+  if(typeof setMenuVisible === 'function') setMenuVisible(false);
   if(dir === 'none'){
     screen.removeAttribute('data-dir'); screen.classList.remove('stagger'); screen.style.animation = 'none'; screen.innerHTML = html;
   } else {
@@ -1254,70 +1343,75 @@ function showLogin(dir){
   const opts = schools.map(s=>`<option value="${s.id}" ${s.id===loginSelSchoolId?'selected':''}>${esc(s.name)}</option>`).join('');
   paint(`
     <div class="welcome-mark">${ICON.compass}</div>
-    <h1 class="lede">Sign in<small>Choose your school, then enter the ID and password your coordinator gave you.</small></h1>
+    <h1 class="lede">Sign in<small>Choose your school, then enter your login ID and password.</small></h1>
     <div class="field">
       <label for="lg_school">School</label>
-      <select id="lg_school" onchange="onSchoolPick(this.value)">
+      <select id="lg_school" class="select" onchange="onSchoolPick(this.value)">
         <option value="" ${loginSelSchoolId?'':'selected'} disabled>Select your school…</option>
         ${opts}
       </select>
     </div>
-    <div class="field">
-      <label for="lg_id">Teacher ID</label>
-      <input type="text" id="lg_id" placeholder="e.g. saksham-01" autocomplete="username"
-             autocapitalize="none" spellcheck="false"
-             onkeydown="if(event.key==='Enter'){document.getElementById('lg_pw').focus();}">
-    </div>
-    <div class="field">
-      <label for="lg_pw">Password</label>
-      <div class="pw-wrap">
-        <input type="password" id="lg_pw" placeholder="Password" autocomplete="current-password"
-               onkeydown="if(event.key==='Enter'){handleCredentialLogin();}">
-        <button type="button" class="pw-toggle" aria-label="Show password"
-                aria-pressed="false" onclick="togglePw(this)">${ICON.eye || 'Show'}</button>
-      </div>
-    </div>
-    <p id="lg_error" class="lg-error" role="alert" aria-live="assertive" hidden></p>
-    <button type="button" class="save" id="lg_submit" onclick="handleCredentialLogin()" style="margin-top:var(--s2)">Sign in</button>
+    <div id="lg_teacherArea">${loginSelSchoolId ? credentialFormMarkup(loginSelSchoolId) : ''}</div>
     ${PILOT_ALLOW_SELF_PROVISION ? `<button type="button" class="linklike" onclick="showAddSchool()" style="margin-top:var(--s3)">+ Add a new school</button>` : ''}
   `, dir || 'fwd', false);
 }
 
-function onSchoolPick(id){
-  loginSelSchoolId = id;
-  hideLoginError();
-  const idField = document.getElementById('lg_id');
-  if(idField) idField.focus();
+// Login ID + password form, revealed once a school is chosen. The fields are
+// real and final; verifyCredentials() supplies the (currently stubbed) verdict.
+function credentialFormMarkup(schoolId){
+  const s = schoolById(schoolId);
+  if(!s) return '';
+  if(!(s.teachers||[]).length){
+    return `<p class="muted" style="margin:var(--s2) 0">No accounts listed for this school yet. Please contact your coordinator.</p>`;
+  }
+  return `
+    <div class="field">
+      <label for="lg_id">Login ID</label>
+      <input type="text" id="lg_id" placeholder="e.g. saksham01" autocomplete="username"
+             autocapitalize="none" autocorrect="off" spellcheck="false"
+             onkeydown="if(event.key==='Enter'){document.getElementById('lg_pw').focus();}">
+    </div>
+    <div class="field">
+      <label for="lg_pw">Password</label>
+      <input type="password" id="lg_pw" placeholder="Your password" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter'){handleLogin('${s.id}');}">
+    </div>
+    <p id="lg_err" class="login-err" role="alert" style="display:none"></p>
+    <button type="button" class="save" onclick="handleLogin('${s.id}')">Sign in</button>
+  `;
 }
 
-function togglePw(btn){
-  const inp = document.getElementById('lg_pw'); if(!inp) return;
-  const show = inp.type === 'password';
-  inp.type = show ? 'text' : 'password';
-  btn.setAttribute('aria-pressed', show ? 'true' : 'false');
-  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+function onSchoolPick(id){
+  loginSelSchoolId = id;
+  document.getElementById('lg_teacherArea').innerHTML = credentialFormMarkup(id);
+}
+
+async function handleLogin(schoolId){
+  const s = schoolById(schoolId);
+  if(!s){ showLoginError('Could not find that school — please reselect.'); return; }
+  const idEl = document.getElementById('lg_id');
+  const pwEl = document.getElementById('lg_pw');
+  const loginId = idEl ? idEl.value : '';
+  const password = pwEl ? pwEl.value : '';
+  if(!loginId.trim()){ showLoginError('Enter your login ID.'); if(idEl) idEl.focus(); return; }
+  if(!password){ showLoginError('Enter your password.'); if(pwEl) pwEl.focus(); return; }
+  const btn = document.querySelector('#lg_teacherArea .save');
+  if(btn){ btn.disabled = true; }
+  const teacher = await verifyCredentials(s, loginId, password);
+  if(!teacher){
+    if(btn){ btn.disabled = false; }
+    showLoginError('Login ID or password is incorrect.');
+    if(pwEl){ pwEl.value = ''; pwEl.focus(); }
+    return;
+  }
+  await logIn(s, teacher);
+  showHub('fwd');
 }
 
 function showLoginError(msg){
-  const el = document.getElementById('lg_error'); if(!el) return;
-  el.textContent = msg; el.hidden = false;
-}
-function hideLoginError(){
-  const el = document.getElementById('lg_error'); if(el){ el.hidden = true; el.textContent=''; }
-}
-
-async function handleCredentialLogin(){
-  hideLoginError();
-  const schoolId = loginSelSchoolId;
-  const loginId  = (document.getElementById('lg_id').value || '').trim();
-  const password = (document.getElementById('lg_pw').value || '');
-  if(!schoolId){ showLoginError('Please choose your school.'); return; }
-  if(!loginId || !password){ showLoginError('Enter your teacher ID and password.'); return; }
-  const s = schoolById(schoolId);
-  const t = verifyCredentials(schoolId, loginId, password);
-  if(!s || !t){ showLoginError('That ID or password didn’t match. Check with your coordinator.'); return; }
-  await logIn(s, t);
-  showHub('fwd');
+  const el = document.getElementById('lg_err');
+  if(el){ el.textContent = msg; el.style.display = ''; }
+  else { toast(msg); }
 }
 
 function showAddTeacher(schoolId){
@@ -1327,14 +1421,18 @@ function showAddTeacher(schoolId){
     <h1 class="lede">Add a teacher<small>New teacher for ${esc(s.name)}.</small></h1>
     <div class="field"><label for="nt_name">Teacher's name</label>
       <input type="text" id="nt_name" placeholder="Full name" autocomplete="off"></div>
+    <div class="field"><label for="nt_login">Login ID</label>
+      <input type="text" id="nt_login" placeholder="e.g. saksham02" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off"></div>
     <button type="button" class="save" onclick="handleAddTeacher('${s.id}')">Add &amp; sign in</button>
     <button type="button" class="linklike" onclick="loginSelSchoolId='${s.id}';showLogin('back')" style="margin-top:var(--s2)">Cancel</button>
   `, 'fwd', false);
 }
 async function handleAddTeacher(schoolId){
   const name = (document.getElementById('nt_name').value||'').trim();
+  const loginId = (document.getElementById('nt_login').value||'').trim();
   if(!name){ toast('Please enter a name.'); return; }
-  const t = await addTeacher(schoolId, name);
+  if(!loginId){ toast('Please assign a login ID.'); return; }
+  const t = await addTeacher(schoolId, name, loginId);
   if(!t){ toast('Could not save — please try again.'); return; }
   const s = schoolById(schoolId);
   await logIn(s, t);
@@ -1374,28 +1472,42 @@ function showHome(dir){
   backBtn.style.display = 'none';
   homeDot.innerHTML = ICON.home;
   resetTheme();
+  const active = getActiveProfile();
+  // The two-thing landing: Activities and Students, nothing else. Utilities
+  // (Export, Manage data, About, Sign out) live in the header overflow menu.
+  // When a child is active a compact chip names them; Activities runs against
+  // that child. With no active child, Activities routes to Students first.
+  const chip = active
+    ? `<div class="activechild"><span class="active-tag">Active child</span>${avatarFor(active,'avatar')}<span class="who">${esc(active.name)}<small>${childSub(active) || '—'}</small></span><button type="button" class="chip-swap" onclick="showStudents('fwd')">Change</button></div>`
+    : '';
+  const teachDisabled = active ? '' : 'disabled';
+  const activitySub = active
+    ? `Run an activity with ${esc(active.name)} and record the result`
+    : 'Pick a student first to start a session';
+  const studentSub = active
+    ? 'Add another child, or open an existing one'
+    : 'Add a new child, or open an existing one';
   paint(`
-    <h1 class="lede">O&amp;M Cane Training<small>Choose where to go.</small></h1>
+    <h1 class="lede">Today<small>Pick a student, then run an activity.</small></h1>
+    ${chip}
     <div class="hub-actions">
-      <button class="action-row primary-action" onclick="showHub('fwd')">
+      <button class="action-row primary-action" ${teachDisabled} onclick="${active?"showActivityList('fwd')":"showStudents('fwd')"}">
         <span class="action-ic">${ICON.compass}</span>
-        <span class="action-text"><strong>Activities</strong><small>Set up a child and run an O&amp;M session</small></span>
+        <span class="action-text"><strong>Activities</strong><small>${activitySub}</small></span>
         <span class="action-go">${ICON.chevronRight}</span>
       </button>
-      <button class="action-row" onclick="showManageData('fwd')">
-        <span class="action-ic">${ICON.database}</span>
-        <span class="action-text"><strong>Stored data</strong><small>View children and their saved results</small></span>
-        <span class="action-go">${ICON.chevronRight}</span>
-      </button>
-      <button class="action-row" onclick="showAbout('fwd')">
-        <span class="action-ic">${ICON.info}</span>
-        <span class="action-text"><strong>Welcome &amp; about</strong><small>What this app is for</small></span>
+      <button class="action-row" onclick="showStudents('fwd')">
+        <span class="action-ic">${ICON.user}</span>
+        <span class="action-text"><strong>Students</strong><small>${studentSub}</small></span>
         <span class="action-go">${ICON.chevronRight}</span>
       </button>
     </div>
-    <button type="button" class="linklike" onclick="handleLogout()" style="margin-top:var(--s4)">Sign out</button>
   `, dir || 'fwd', false);
+  setMenuVisible(true); // landing is the only screen with the utilities menu
 }
+// Back-compat: older call sites and the welcome/login flow route to showHub.
+// The landing collapsed into showHome, so showHub now just forwards there.
+function showHub(dir, opts){ showHome(dir); }
 
 async function handleLogout(){
   if(!window.confirm('Sign out? You can sign back in from the school list.')) return;
@@ -1444,54 +1556,55 @@ function avatarFor(p, cls){
   if(cls==='avatar-img') return `<span class="blob">${esc(initial)}</span>`;
   return `<span class="${cls}">${esc(initial)}</span>`;
 }
-function showHub(dir, opts){
+
+/* ---------------------------------------------------------------------------
+   STUDENTS — the second of the hub's two destinations. One screen that does
+   both jobs the brief asks for: "add a student" (the demographic form, behind
+   a disclosure) and "see existing student data" (the saved-children list,
+   tap-through to each child's detail). Selecting a child here makes them the
+   active one and returns to the hub so a session can start immediately.
+   --------------------------------------------------------------------------- */
+function showStudents(dir, opts){
   opts = opts || {};
   state = { category:null, activity:null };
-  crumbEl.textContent = 'Set up & teach';
+  crumbEl.textContent = 'Students';
   backBtn.style.display = 'flex';
-  backBtn.onclick = ()=>showHome('back');
-  homeDot.innerHTML = ICON.home;
+  backBtn.onclick = ()=>showHub('back');
+  homeDot.innerHTML = ICON.user;
   resetTheme();
-  const active = getActiveProfile();
-  // The demographics form now lives behind a slide-down disclosure (same
-  // grid-rows animation as the SOP). Collapsed by default — even with no child
-  // yet — and opened by tapping the "Add child" / "Edit" trigger. When editing
-  // an existing child we open it on paint via opts.editForm.
-  const formOpen = !!opts.editForm;
-  const summaryLabel = active ? 'Edit child' : 'Add child';
-  const summaryIcon = active ? ICON.edit : ICON.plus;
-  // When a child exists and the form is closed, the compact chip shows above it.
-  const chip = active
-    ? `<div class="activechild">${avatarFor(active,'avatar')}<span class="who">${esc(active.name)}<small>${childSub(active) || 'Active child'}</small></span></div>`
-    : '';
-  const childBlock = `
-    ${chip}
-    <details class="disclosure" id="childForm" ${formOpen?'open':''}>
-      <summary onclick="setTimeout(wirePhotoState,0)">${summaryIcon}<span class="disclosure-label">${summaryLabel}</span><span class="chev">${ICON.chevron}</span></summary>
-      <div class="sop-body"><div class="sop-inner">${profileFormMarkup(active, true)}</div></div>
-    </details>`;
-  const teachDisabled = active ? '' : 'disabled';
+  const profiles = loadProfiles();
+  const activeId = getActiveProfileId();
+  // Open the add-child form on paint when asked (e.g. from an "Add" tap), OR
+  // automatically when there are no children yet — first run lands on the form.
+  const formOpen = !!opts.addForm || profiles.length === 0;
+
+  const rows = profiles.length
+    ? profiles.map(p=>{
+        const n = recordCountForProfile(p.id);
+        const sub = [childSub(p), `${n} ${n===1?'result':'results'}`].filter(Boolean).join(' · ');
+        const isActive = p.id === activeId;
+        const tag = isActive ? '<span class="active-tag">Active</span>' : '';
+        // Tapping a student selects them (makes active) and returns to the hub,
+        // ready to teach. The chevron-into-detail lives on a separate control so
+        // "select to teach" and "inspect saved data" don't fight for the tap.
+        return `<div class="student-row${isActive?' is-active':''}">
+          <button type="button" class="student-pick" onclick="selectChild('${p.id}')">
+            ${avatarFor(p,'avatar')}<span class="who">${tag}${esc(p.name)}<small>${esc(sub)}</small></span>
+          </button>
+          <button type="button" class="student-open" aria-label="See ${esc(p.name)}'s saved data" onclick="showChildDetail('${p.id}',{from:'students'})">${ICON.chevronRight}</button>
+        </div>`;
+      }).join('')
+    : '<p class="empty">No students added yet. Add the first one below.</p>';
+
   paint(`
-    <h1 class="lede">Today<small>Set up the child, then teach a session.</small></h1>
-    ${childBlock}
-    <div class="hub-actions">
-      <button class="action-row primary-action" ${teachDisabled} onclick="${active?"showActivityList('fwd')":''}">
-        <span class="action-ic">${ICON.compass}</span>
-        <span class="action-text"><strong>Teach O&amp;M skills</strong><small>${active? 'Run an activity and record the result' : 'Save a child first'}</small></span>
-        <span class="action-go">${ICON.chevronRight}</span>
-      </button>
-      <button class="action-row" onclick="exportCSV()">
-        <span class="action-ic">${ICON.download}</span>
-        <span class="action-text"><strong>Export records</strong><small>Download all sessions as a CSV</small></span>
-      </button>
-      <button class="action-row" onclick="showManageData('fwd')">
-        <span class="action-ic">${ICON.shield}</span>
-        <span class="action-text"><strong>Manage data</strong><small>Edit or remove children and saved records</small></span>
-        <span class="action-go">${ICON.chevronRight}</span>
-      </button>
-    </div>
-  `, dir || 'back', false);
-  wirePhotoState();
+    <h1 class="lede">Students<small>Add a child, or open an existing one to teach or review their data.</small></h1>
+    <details class="disclosure" id="childForm" ${formOpen?'open':''}>
+      <summary>${ICON.plus}<span class="disclosure-label">Add a new student</span><span class="chev">${ICON.chevron}</span></summary>
+      <div class="sop-body"><div class="sop-inner">${profileFormMarkup(null, true)}</div></div>
+    </details>
+    <h2 class="section-label" style="margin-top:var(--s4)">Existing students</h2>
+    ${rows}
+  `, dir || 'fwd', false);
 }
 function childSub(p){
   const age = ageFromDOB(p.dob);
@@ -1519,7 +1632,7 @@ function showManageData(dir){
         const sub = [childSub(p), `${n} ${n===1?'result':'results'}`].filter(Boolean).join(' · ');
         // The whole row is now a button into the child's detail view. Delete
         // moved into that detail screen, so this list is clean navigation.
-        return `<button type="button" class="activechild rowtap" onclick="showChildDetail('${p.id}')">${avatarFor(p,'avatar')}<span class="who">${esc(p.name)}<small>${esc(sub)}</small></span><span class="action-go">${ICON.chevronRight}</span></button>`;
+        return `<button type="button" class="activechild rowtap" onclick="showChildDetail('${p.id}',{from:'manage'})">${avatarFor(p,'avatar')}<span class="who">${esc(p.name)}<small>${esc(sub)}</small></span><span class="action-go">${ICON.chevronRight}</span></button>`;
       }).join('')
     : '<p class="empty">No children saved yet.</p>';
   paint(`
@@ -1544,14 +1657,18 @@ function showManageData(dir){
    Per-child Remove lives here (off the list, one level in, so it isn't a stray
    tap). Per-result delete reuses the by-id deletion path.
    --------------------------------------------------------------------------- */
-function showChildDetail(profileId){
+function showChildDetail(profileId, opts){
+  opts = opts || {};
   const p = profileById(profileId);
-  if(!p){ toast('That child could not be found.'); showManageData('back'); return; }
+  if(!p){ toast('That child could not be found.'); showStudents('back'); return; }
   state = { category:null, activity:null };
   crumbEl.textContent = p.name;
   backBtn.style.display = 'flex';
-  backBtn.onclick = ()=>showManageData('back');
-  homeDot.innerHTML = ICON.database;
+  // Reachable from Students and from Stored data — go back to whichever opened it.
+  const from = opts.from || childDetailFrom || 'students';
+  childDetailFrom = from;
+  backBtn.onclick = ()=> from === 'manage' ? showManageData('back') : showStudents('back');
+  homeDot.innerHTML = ICON.user;
   resetTheme();
   const groups = recordsForProfile(profileId);
   const total = groups.reduce((n,g)=>n+g.records.length, 0);
@@ -1563,16 +1680,34 @@ function showChildDetail(profileId){
         return `<h2 class="section-label">${esc(g.activity || g.activityId)}</h2>${recs}`;
       }).join('')
     : '<p class="empty">No results saved for this child yet.</p>';
+  const filledLine = p.filledBy ? `<p class="muted" style="margin:0 0 var(--s3)">Details filled by ${esc(p.filledBy)}.</p>` : '';
+  const isActive = p.id === getActiveProfileId();
+  const activateRow = isActive
+    ? '<p class="muted" style="margin:0 0 var(--s3)">This is the active student.</p>'
+    : `<button type="button" class="action-row" style="margin-bottom:var(--s3)" onclick="selectChild('${p.id}')">
+         <span class="action-ic">${ICON.compass}</span>
+         <span class="action-text"><strong>Teach this student</strong><small>Make ${esc(p.name)} active and pick an activity</small></span>
+         <span class="action-go">${ICON.chevronRight}</span>
+       </button>`;
   paint(`
     <div class="activechild" style="margin-bottom:var(--s3)">${avatarFor(p,'avatar')}<span class="who">${esc(p.name)}<small>${esc(childSub(p) || 'No demographics')}</small></span></div>
+    ${filledLine}
+    ${activateRow}
+    <details class="disclosure" id="childForm" ${opts.editForm?'open':''}>
+      <summary>${ICON.edit}<span class="disclosure-label">Edit details</span><span class="chev">${ICON.chevron}</span></summary>
+      <div class="sop-body"><div class="sop-inner">${profileFormMarkup(p, true)}</div></div>
+    </details>
+    <h2 class="section-label" style="margin-top:var(--s4)">Saved results</h2>
     <p class="muted" style="margin:0 0 var(--s3)">${total} ${total===1?'result':'results'} saved.</p>
     ${body}
     <div class="danger-zone">
       <p style="margin:0 0 var(--s3); font-size:var(--t-bodysm); color:var(--ink-soft);">Removing this child also deletes all of their saved results. Export a CSV first if you need a backup.</p>
       <button type="button" class="save danger-btn" onclick="confirmDeleteChild('${p.id}')">${ICON.trash} Remove ${esc(p.name)}</button>
     </div>
-  `, 'fwd', false);
+  `, dir_for_detail(opts), false);
 }
+let childDetailFrom = 'students';
+function dir_for_detail(opts){ return opts && opts.dir ? opts.dir : 'fwd'; }
 // A record row for the child-detail view: date + values, plus a by-id delete.
 // Sibling of renderRecord — that one is for the activity screen and leads with
 // the student name; here the child is already the page, so we lead with date.
@@ -1612,6 +1747,10 @@ async function confirmClearAll(){
   toast('All data cleared');
   showHome('back');
 }
+// SCREEN 3a — CATEGORY GRID. The activities page now opens on the categories
+// (Direction, Sound, …), not every activity at once. Each tile names a category
+// (its own hue on the icon chip) and shows how many activities it holds; tapping
+// drills into showCategory for just that type. Colour still does one job: naming.
 function showActivityList(dir){
   state = { category:null, activity:null };
   crumbEl.textContent = 'Activities';
@@ -1619,35 +1758,53 @@ function showActivityList(dir){
   backBtn.onclick = ()=>showHub('back');
   homeDot.innerHTML = ICON.list;
   resetTheme();
-  // GROUPED list: activities cluster under their category. The category hue +
-  // icon live ONCE per group, on the header — so colour does wayfinding
-  // (grouping) instead of stippling every card. Cards themselves are neutral
-  // (no colour spine), keeping the cane/no-cane tag + saved count. This is
-  // guardrail #1 working AS intended: one accent per group, not five per screen.
-  const groups = [];
+  const tiles = [];
   ACTIVITY_DATA.forEach((cat,ci)=>{
     if(!cat.activities || !cat.activities.length) return; // hide empty categories
     const col = catColor(ci);
-    const pal = CATEGORY_PALETTE[ci % CATEGORY_PALETTE.length];
-    const cards = cat.activities.map((act,ai)=>{
-      const n = loadRecords(act.id).length;
-      // Cane status is a per-card BINARY, so it gets two treatments, not seven.
-      // With-cane = the locked rust semantic marker. Without-cane = neutral pill
-      // (no category hue) — colour identity is the header's job, not the tag's.
-      const tag = act.withCane
-        ? '<span class="tag cane">With cane</span>'
-        : '<span class="tag neutral">Without cane</span>';
-      return `<button class="card activity grouped" onclick="showActivity(${ci},${ai})">
-        <h2>${esc(act.name)}</h2>
-        <div class="meta">${tag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</div>
-      </button>`;
-    }).join('');
-    groups.push(`<section class="cat-group">
-      <div class="cat-head"><span class="cat-ic" style="background:${col}">${catIcon(ci)}</span><span class="cat-name" style="color:${pal.deep}">${esc(cat.category)}</span></div>
-      <div class="cat-cards">${cards}</div>
-    </section>`);
+    const n = cat.activities.length;
+    const sub = cat.description ? esc(cat.description) : `${n} ${n===1?'activity':'activities'}`;
+    tiles.push(`<button class="action-row cat-tile" style="--tile:${col}" onclick="showCategory(${ci},'fwd')">
+      <span class="action-ic">${catIcon(ci)}</span>
+      <span class="action-text"><strong>${esc(cat.category)}</strong><small>${sub}</small></span>
+      <span class="count-pill">${n}</span>
+      <span class="action-go">${ICON.chevronRight}</span>
+    </button>`);
   });
-  paint(`<h1 class="lede">All activities<small>Pick an activity to read the steps and record a result.</small></h1>${groups.join('')}`, dir || 'fwd', true);
+  paint(`<h1 class="lede">Activities<small>Pick a category to see its activities.</small></h1><div class="cat-grid">${tiles.join('')}</div>`, dir || 'fwd', true);
+}
+// SCREEN 3b — ONE CATEGORY. Lists only the activities inside the chosen type,
+// themed to that category. Reuses the neutral grouped-card markup (cane tag +
+// saved count). Back returns to the category grid, not Home.
+function showCategory(ci, dir){
+  const cat = ACTIVITY_DATA[ci];
+  if(!cat){ showActivityList('back'); return; }
+  state = { category:ci, activity:null };
+  crumbEl.textContent = cat.category;
+  backBtn.style.display = 'flex';
+  backBtn.onclick = ()=>showActivityList('back');
+  homeDot.innerHTML = catIcon(ci);
+  themeFor(ci);
+  const pal = CATEGORY_PALETTE[ci % CATEGORY_PALETTE.length];
+  const col = catColor(ci);
+  const cards = cat.activities.map((act,ai)=>{
+    const n = loadRecords(act.id).length;
+    // Cane status is a per-card BINARY: with-cane = rust semantic marker,
+    // without-cane = neutral pill. Category identity already lives in the header.
+    const tag = act.withCane
+      ? '<span class="tag cane">With cane</span>'
+      : '<span class="tag neutral">Without cane</span>';
+    return `<button class="card activity grouped" onclick="showActivity(${ci},${ai})">
+      <h2>${esc(act.name)}</h2>
+      <div class="meta">${tag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</div>
+    </button>`;
+  }).join('');
+  const lede = cat.description ? esc(cat.description) : 'Pick an activity to read the steps and record a result.';
+  paint(`<section class="cat-group">
+    <div class="cat-head"><span class="cat-ic" style="background:${col}">${catIcon(ci)}</span><span class="cat-name" style="color:${pal.deep}">${esc(cat.category)}</span></div>
+    <h1 class="lede" style="margin-top:6px">${esc(cat.category)}<small>${lede}</small></h1>
+    <div class="cat-cards">${cards}</div>
+  </section>`, dir || 'fwd', true);
 }
 async function selectChild(id){
   await setActiveProfileId(id);
@@ -1665,6 +1822,33 @@ function profileFormMarkup(editing, bare){
   const photoInner = pendingPhoto ? `<img id="photoImg" class="photo-preview" src="${pendingPhoto}" alt="Current photo">`
                                   : `<span id="photoImg" class="photo-preview">${ICON.user}</span>`;
   const ageHint = editing && editing.dob && ageFromDOB(editing.dob) ? ` <span style="font-weight:500;color:var(--ink-faint)">(age ${ageFromDOB(editing.dob)})</span>` : '';
+  // "Filled by" = who took these details down. A roster picker of the current
+  // school's teachers, defaulting to the signed-in teacher. An "Other…" option
+  // reveals a free-text box for an aide/parent who isn't on the roster. We store
+  // the resolved NAME (not the id) so the value survives roster edits and joins
+  // cleanly into the CSV — same as before, just chosen instead of typed.
+  const sessSchool = getSessionSchool();
+  const roster = sessSchool ? ((schoolById(sessSchool.id) || {}).teachers || []) : [];
+  const currentFilledBy = editing && editing.filledBy != null && editing.filledBy !== ''
+    ? editing.filledBy
+    : (editing ? '' : ((getSessionTeacher() || {}).name || ''));
+  // Does the current value match a roster name? If yes, preselect it; if it's a
+  // non-empty value with no roster match, it's an "Other" custom name.
+  const onRoster = roster.some(t => t.name === currentFilledBy);
+  const isOther = !!currentFilledBy && !onRoster;
+  const rosterOptions = roster.map(t =>
+    `<option value="${esc(t.name)}" ${t.name===currentFilledBy?'selected':''}>${esc(t.name)}</option>`
+  ).join('');
+  const filledByMarkup = `
+        <div class="field"><label for="p_filledby_sel">Filled by <span style="font-weight:500;color:var(--ink-faint)">(who recorded these details)</span></label>
+          <select id="p_filledby_sel" class="select" onchange="onFilledByChange(this)">
+            ${roster.length ? '' : '<option value="" selected>— no roster teachers —</option>'}
+            ${rosterOptions}
+            <option value="__other__" ${isOther?'selected':''}>Other (type a name)…</option>
+          </select>
+          <input type="text" id="p_filledby_other" value="${esc(isOther?currentFilledBy:'')}" placeholder="Name of the person taking the details"
+                 autocomplete="off" style="margin-top:8px;${isOther?'':'display:none'}">
+        </div>`;
   // The form body. When `bare`, it has no panel wrapper or title — the
   // disclosure on the Hub supplies the container and the "Add/Edit child"
   // label, so we don't double the framing (guardrail #2: one shadow tier).
@@ -1679,6 +1863,7 @@ function profileFormMarkup(editing, bare){
             ${['Left','Right','Unknown'].map(h=>`<button type="button" onclick="pickSeg('p_hand','${h}',this)" aria-pressed="${hand===h}">${h}</button>`).join('')}
           </div>
         </div>
+        ${filledByMarkup}
         <div class="field"><label>Photo <span style="font-weight:500;color:var(--ink-faint)">(optional, stored low-resolution)</span></label>
           <div class="photo-field">
             ${photoInner}
@@ -1699,6 +1884,22 @@ function profileFormMarkup(editing, bare){
     </div>`;
 }
 function wirePhotoState(){ /* placeholder for any post-paint wiring; photo input is inline */ }
+// Reveal/hide the free-text box when the roster picker switches to/from "Other".
+function onFilledByChange(sel){
+  const other = document.getElementById('p_filledby_other');
+  if(!other) return;
+  if(sel.value === '__other__'){ other.style.display = ''; other.focus(); }
+  else { other.style.display = 'none'; }
+}
+// Resolve the chosen "Filled by" name from the picker (or the Other text box).
+function readFilledBy(){
+  const sel = document.getElementById('p_filledby_sel');
+  if(!sel) return '';
+  if(sel.value === '__other__'){
+    return ((document.getElementById('p_filledby_other')||{}).value || '').trim();
+  }
+  return sel.value || '';
+}
 function handlePhotoPick(input){
   const file = input.files && input.files[0];
   if(!file) return;
@@ -1741,6 +1942,7 @@ async function handleProfileSave(existingId){
     height: (document.getElementById('p_height').value || '').trim(),
     weight: (document.getElementById('p_weight').value || '').trim(),
     dominantHand: document.getElementById('p_hand').dataset.value || '',
+    filledBy: readFilledBy(),
     photo: pendingPhoto || '',
     capturedOn: existingId ? (profileById(existingId)||{}).capturedOn || new Date().toISOString() : new Date().toISOString()
   };
@@ -1754,7 +1956,9 @@ async function handleProfileSave(existingId){
   await setStudent(profile.name);
   pendingPhoto = null;
   toast(existingId ? 'Child updated' : 'Child saved');
-  showHub('none'); // back to the hub; form collapses to the active-child chip
+  // After an edit, return to that child's detail; after an add, to the list.
+  if(existingId) showChildDetail(profile.id, { dir:'none' });
+  else showStudents('none');
 }
 /* ---------------------------------------------------------------------------
    SOP AUDIO — multi-language narration.
@@ -1825,7 +2029,7 @@ function showActivity(catIndex, actIndex, opts){
   state = { category:catIndex, activity:actIndex };
   crumbEl.textContent = cat.category;
   backBtn.style.display = 'flex';
-  backBtn.onclick = ()=>showActivityList('back');
+  backBtn.onclick = ()=>showCategory(catIndex,'back');
   homeDot.innerHTML = catIcon(catIndex);
   themeFor(catIndex);
   const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
