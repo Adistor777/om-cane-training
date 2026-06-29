@@ -238,11 +238,21 @@
   fieldset{ border:none; margin:0; padding:0; }
   .field{ margin-bottom:var(--s3); }
   .field > label{ display:block; font-weight:600; margin-bottom:10px; font-size:var(--t-bodysm); color:var(--ink); letter-spacing:-.005em; }
-  .field input[type=number], .field input[type=text], .field textarea{ width:100%; padding:13px 15px; border:1px solid var(--line); border-radius:var(--r-sm);
+  .field input[type=number], .field input[type=text], .field input[type=password], .field textarea{ width:100%; padding:13px 15px; border:1px solid var(--line); border-radius:var(--r-sm);
     font:inherit; background:#fff; color:var(--ink); transition:border-color .15s, box-shadow .15s; }
-  .field input[type=number]::placeholder, .field input[type=text]::placeholder, .field textarea::placeholder{ color:var(--ink-faint); }
-  .field input[type=number]:focus, .field input[type=text]:focus, .field textarea:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .field input[type=number]::placeholder, .field input[type=text]::placeholder, .field input[type=password]::placeholder, .field textarea::placeholder{ color:var(--ink-faint); }
+  .field input[type=number]:focus, .field input[type=text]:focus, .field input[type=password]:focus, .field textarea:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
   .field textarea{ min-height:84px; resize:vertical; }
+  /* Password field with reveal toggle. The toggle is a quiet text button (no accent). */
+  .pw-wrap{ position:relative; }
+  .pw-wrap input{ padding-right:64px; }
+  .pw-toggle{ position:absolute; top:50%; right:8px; transform:translateY(-50%);
+    background:transparent; border:none; color:var(--ink-soft); font:inherit; font-size:var(--t-caption);
+    font-weight:600; cursor:pointer; padding:8px 10px; min-height:40px; border-radius:8px; }
+  .pw-toggle:hover{ color:var(--ink); }
+  .pw-toggle:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+  /* Inline login error — neutral-red text, no panel/decoration (guardrails). */
+  .lg-error{ color:#a3402f; font-size:var(--t-bodysm); font-weight:600; margin:0 0 var(--s2); }
   .seg{ display:flex; gap:var(--s1); flex-wrap:wrap; }
   .seg button{ flex:1; min-width:96px; padding:13px; border:1px solid var(--line); border-radius:var(--r-sm);
     background:#fff; cursor:pointer; font:inherit; font-size:var(--t-bodysm); font-weight:500; color:var(--ink-soft);
@@ -715,23 +725,66 @@ const PILOT_ALLOW_SELF_PROVISION = false;
 // attribution. Do NOT change an id once sessions exist under it; that orphans
 // records. Teacher names below are PLACEHOLDERS until the coordinator sends
 // real names — swap the name strings (keep the ids) when they arrive.
+// Each teacher carries a coordinator-issued LOGIN ID + PASSWORD. The password is
+// NOT stored in plaintext — pwHash() lightly obfuscates it so a glance at storage
+// or the APK seed doesn't leak it. This is a DEMO gate, not real auth: anyone with
+// the bundle can reverse it. At production verifyCredentials() below becomes a
+// Supabase auth.signInWithPassword() call and passwords leave the client entirely.
+// To issue a credential: set loginId + pw, then replace pw with pwHash('thePassword').
 function seedSchools(){
   return [
     { id:'sch_saksham_noida', name:'Saksham School, Noida',
-      teachers:[ {id:'tch_saksham_1', name:'Teacher 1'} ] },
+      teachers:[ {id:'tch_saksham_1', name:'Teacher 1', loginId:'saksham-01', pwHash:pwHash('saksham123')} ] },
     { id:'sch_rnks_jaipur',   name:'Rajasthan Netraheen Kalyan Sangam (RNKS), Jaipur',
-      teachers:[ {id:'tch_rnks_1', name:'Teacher 1'} ] },
+      teachers:[ {id:'tch_rnks_1', name:'Teacher 1', loginId:'rnks-01', pwHash:pwHash('rnks123')} ] },
     { id:'sch_nab_kullu',     name:'National Association of Blind, Kullu',
-      teachers:[ {id:'tch_nab_1', name:'Teacher 1'} ] }
+      teachers:[ {id:'tch_nab_1', name:'Teacher 1', loginId:'nab-01', pwHash:pwHash('nab123')} ] }
   ];
+}
+// Lightweight, deterministic obfuscation (NOT cryptographic). Demo-only; the real
+// hash lives server-side at production. Stable so seed hashes match login attempts.
+function pwHash(pw){
+  let h = 5381; const s = String(pw);
+  for(let i=0;i<s.length;i++){ h = ((h<<5)+h) ^ s.charCodeAt(i); }
+  return 'h' + (h>>>0).toString(36);
+}
+// Find a teacher across all schools by their coordinator-issued login ID.
+function teacherByLoginId(schoolId, loginId){
+  const s = schoolById(schoolId); if(!s) return null;
+  const want = String(loginId||'').trim().toLowerCase();
+  return (s.teachers||[]).find(t => String(t.loginId||'').toLowerCase() === want) || null;
+}
+// >>> PRODUCTION SEAM: swap this body for Supabase auth. Returns the teacher on
+// success, null on any mismatch. Never reveals which of id/password was wrong. <<<
+function verifyCredentials(schoolId, loginId, password){
+  const t = teacherByLoginId(schoolId, loginId);
+  if(!t || !t.pwHash) return null;
+  return pwHash(password) === t.pwHash ? t : null;
+}
+// DEV HELPER — credential issuing for seedSchools(). When real teacher names/logins
+// arrive, run this in the browser/DevTools console to get a finished seed line you
+// paste into the right school's teachers[] array. Removes hand-composing pwHash().
+//   issueTeacher('tch_saksham_2', 'Priya Sharma', 'saksham-02', 'somePassword')
+// Prints, e.g.:
+//   {id:'tch_saksham_2', name:'Priya Sharma', loginId:'saksham-02', pwHash:'h1a2b3c'},
+function issueTeacher(id, name, loginId, password){
+  const line = `{id:'${id}', name:'${name}', loginId:'${loginId}', pwHash:'${pwHash(password)}'},`;
+  console.log(line);
+  return line;
 }
 function loadSchools(){
   const v = Store.getJSON(SCHOOLS_KEY, null);
   return Array.isArray(v) ? v : [];
 }
 async function ensureSchoolsSeeded(){
-  if(loadSchools().length) return;
-  await Store.setJSON(SCHOOLS_KEY, seedSchools());
+  const existing = loadSchools();
+  // Fresh install — seed.
+  if(!existing.length){ await Store.setJSON(SCHOOLS_KEY, seedSchools()); return; }
+  // Existing install from before credentials existed: teachers have no loginId.
+  // Re-seed so the password login works on the demo device without a manual wipe.
+  // (ID-stable: the seed reuses the same school/teacher ids, so attribution holds.)
+  const needsCreds = existing.some(s => (s.teachers||[]).some(t => !t.loginId));
+  if(needsCreds){ await Store.setJSON(SCHOOLS_KEY, seedSchools()); }
 }
 function schoolById(id){ return loadSchools().find(s=>s.id===id) || null; }
 // Resolve attribution ids on records back to readable names for export/display.
@@ -741,7 +794,17 @@ function teacherNameById(id){
   for(const s of loadSchools()){ const t = (s.teachers||[]).find(x=>x.id===id); if(t) return t.name; }
   return id; // unknown id — show the raw id rather than hiding attribution
 }
+// GUARD: self-provision is OFF for the pilot. These admin primitives create
+// schools/teachers WITHOUT credentials (no loginId/pwHash) — a teacher made this
+// way could never sign in under the password login. Rather than silently mint a
+// broken, un-loginable teacher, refuse to run while the flag is false. Credentials
+// enter the system in exactly ONE place during the pilot: seedSchools(). At
+// production this whole concern moves server-side (Supabase owns teacher creation).
 async function addSchool(name){
+  if(!PILOT_ALLOW_SELF_PROVISION){
+    console.warn('addSchool blocked: PILOT_ALLOW_SELF_PROVISION is false. Schools are seeded in seedSchools().');
+    return null;
+  }
   const list = loadSchools();
   const school = { id:newId(), name:name.trim(), teachers:[] };
   list.push(school);
@@ -749,6 +812,10 @@ async function addSchool(name){
   return ok ? school : null;
 }
 async function addTeacher(schoolId, name){
+  if(!PILOT_ALLOW_SELF_PROVISION){
+    console.warn('addTeacher blocked: PILOT_ALLOW_SELF_PROVISION is false. A teacher needs loginId + pwHash (see seedSchools()) to sign in.');
+    return null;
+  }
   const list = loadSchools();
   const s = list.find(x=>x.id===schoolId);
   if(!s) return null;
@@ -1187,7 +1254,7 @@ function showLogin(dir){
   const opts = schools.map(s=>`<option value="${s.id}" ${s.id===loginSelSchoolId?'selected':''}>${esc(s.name)}</option>`).join('');
   paint(`
     <div class="welcome-mark">${ICON.compass}</div>
-    <h1 class="lede">Sign in<small>Choose your school, then your name, to begin.</small></h1>
+    <h1 class="lede">Sign in<small>Choose your school, then enter the ID and password your coordinator gave you.</small></h1>
     <div class="field">
       <label for="lg_school">School</label>
       <select id="lg_school" onchange="onSchoolPick(this.value)">
@@ -1195,35 +1262,60 @@ function showLogin(dir){
         ${opts}
       </select>
     </div>
-    <div id="lg_teacherArea">${loginSelSchoolId ? teacherPickerMarkup(loginSelSchoolId) : ''}</div>
+    <div class="field">
+      <label for="lg_id">Teacher ID</label>
+      <input type="text" id="lg_id" placeholder="e.g. saksham-01" autocomplete="username"
+             autocapitalize="none" spellcheck="false"
+             onkeydown="if(event.key==='Enter'){document.getElementById('lg_pw').focus();}">
+    </div>
+    <div class="field">
+      <label for="lg_pw">Password</label>
+      <div class="pw-wrap">
+        <input type="password" id="lg_pw" placeholder="Password" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter'){handleCredentialLogin();}">
+        <button type="button" class="pw-toggle" aria-label="Show password"
+                aria-pressed="false" onclick="togglePw(this)">${ICON.eye || 'Show'}</button>
+      </div>
+    </div>
+    <p id="lg_error" class="lg-error" role="alert" aria-live="assertive" hidden></p>
+    <button type="button" class="save" id="lg_submit" onclick="handleCredentialLogin()" style="margin-top:var(--s2)">Sign in</button>
     ${PILOT_ALLOW_SELF_PROVISION ? `<button type="button" class="linklike" onclick="showAddSchool()" style="margin-top:var(--s3)">+ Add a new school</button>` : ''}
   `, dir || 'fwd', false);
 }
 
-function teacherPickerMarkup(schoolId){
-  const s = schoolById(schoolId);
-  if(!s) return '';
-  const rows = (s.teachers||[]).length
-    ? s.teachers.map(t=>`<button type="button" class="rowbtn" onclick="handleLogin('${s.id}','${t.id}')">${avatarFor(t,'avatar')}<span class="who">${esc(t.name)}</span></button>`).join('')
-    : `<p class="muted" style="margin:var(--s2) 0">No teachers listed for this school yet. Please contact your coordinator.</p>`;
-  const addTeacherBtn = PILOT_ALLOW_SELF_PROVISION
-    ? `<button type="button" class="linklike" onclick="showAddTeacher('${s.id}')">+ Add a new teacher</button>`
-    : '';
-  return `
-    <div class="field"><label>Teacher</label><div class="rowlist">${rows}</div></div>
-    ${addTeacherBtn}
-  `;
-}
-
 function onSchoolPick(id){
   loginSelSchoolId = id;
-  document.getElementById('lg_teacherArea').innerHTML = teacherPickerMarkup(id);
+  hideLoginError();
+  const idField = document.getElementById('lg_id');
+  if(idField) idField.focus();
 }
 
-async function handleLogin(schoolId, teacherId){
+function togglePw(btn){
+  const inp = document.getElementById('lg_pw'); if(!inp) return;
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+}
+
+function showLoginError(msg){
+  const el = document.getElementById('lg_error'); if(!el) return;
+  el.textContent = msg; el.hidden = false;
+}
+function hideLoginError(){
+  const el = document.getElementById('lg_error'); if(el){ el.hidden = true; el.textContent=''; }
+}
+
+async function handleCredentialLogin(){
+  hideLoginError();
+  const schoolId = loginSelSchoolId;
+  const loginId  = (document.getElementById('lg_id').value || '').trim();
+  const password = (document.getElementById('lg_pw').value || '');
+  if(!schoolId){ showLoginError('Please choose your school.'); return; }
+  if(!loginId || !password){ showLoginError('Enter your teacher ID and password.'); return; }
   const s = schoolById(schoolId);
-  const t = s && (s.teachers||[]).find(x=>x.id===teacherId);
-  if(!s || !t){ toast('Could not sign in — please try again.'); return; }
+  const t = verifyCredentials(schoolId, loginId, password);
+  if(!s || !t){ showLoginError('That ID or password didn’t match. Check with your coordinator.'); return; }
   await logIn(s, t);
   showHub('fwd');
 }
