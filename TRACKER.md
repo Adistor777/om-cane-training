@@ -1,59 +1,71 @@
 # TRACKER — O&M Cane Training App
 # Regenerated at wrap-up. Companion to MEMORY.md.
 
-## ✅ DONE THIS SESSION (emulator-verified + committed + pushed)
-- APP SHELL (login → home → stored-data) VERIFIED on emulator and committed.
-  Commit `8761845` on branch `shell-login-home`, pushed to origin.
-  PR link: https://github.com/Adistor777/om-cane-training/pull/new/shell-login-home
-- Emulator verification pass — ALL GATES GREEN:
-  - [x] cp index.html www/index.html (110KB, fresh) + grep-verified (14 matches)
-  - [x] cap sync + run — app launched to login
-  - [x] login (school → teacher → sign in) → Home (3 tiles)
-  - [x] individual-result delete: confirmed, deleted, PERSISTED across hard reset
-  - [x] whole-child delete (Adi): deleted, PERSISTED across hard reset
-  - [x] add child ("Add child" label flipped correctly w/ no active child),
-        ran activity, saved result, PERSISTED across hard reset
-  - [x] CSV export: native share sheet appeared (Quick Share / Mail / Drive) =
-        write+share path verified. Column wiring code-verified (School, Teacher,
-        Teacher ID in header line 996, populated line 999). Did NOT open file on
-        device (declined emulator Google sign-in — reasonable hygiene call).
+## ✅ DONE THIS SESSION (code-complete + verified by static checks)
+- **Login self-provisioning GATED.** New constant `PILOT_ALLOW_SELF_PROVISION = false`
+  (index.html ~line 696). Both teacher-facing creation paths now render only when
+  the flag is true:
+  - "+ Add a new school" button (login screen) — gated.
+  - "+ Add a new teacher" button (teacher picker) — gated.
+  - `addSchool()`/`addTeacher()`/`showAddSchool()`/`showAddTeacher()` all LEFT INTACT
+    as admin primitives. Flip the flag → they return. Nothing deleted.
+  - Empty-roster copy softened to "...Please contact your coordinator."
+- **3 real pilot schools SEEDED** (replaced placeholder seed). seedSchools() now:
+  - `sch_saksham_noida`  → Saksham School, Noida
+  - `sch_rnks_jaipur`    → Rajasthan Netraheen Kalyan Sangam (RNKS), Jaipur
+  - `sch_nab_kullu`      → National Association of Blind, Kullu
+  - Each carries ONE placeholder teacher ("Teacher 1") so no school is a dead-end
+    under self-provision=false.
+  - IDs are STABLE human-readable strings (NOT newId()), so a school resolves to the
+    same id on every device — the right pattern for cross-device attribution.
+- **Static verification passed:** flag/seed grep-confirmed; full <script> body parses
+  clean via `new Function()`; line count integrity checked (1818 lines).
 
-## 🟠 BUG / GAP FOUND THIS SESSION (log, fix later — NOT a blocker)
+## ⏳ NOT YET DONE (carry into next session — required to call this verified)
+- [ ] **Emulator verification of this session's edits.** Static checks only so far.
+      MUST: clear old emulator data first (ensureSchoolsSeeded() skips if any schools
+      exist → old Devnar seed still cached → new schools WON'T appear otherwise).
+      Uninstall app / clear storage → cp → cap sync → run → confirm:
+        - dropdown shows exactly the 3 real schools (no Devnar)
+        - each school shows "Teacher 1", NO "+ Add" links anywhere
+        - tap teacher → Home
+        - flip flag true → reload → add links reappear (proves gate both ways)
+- [ ] **Commit + push** on a dedicated branch (suggested: `login-hardening-seed`).
+      NOT yet committed.
+- [ ] **www/ re-cp** after edits (cp index.html www/index.html before cap sync).
+
+## 🟠 BUG / GAP (backlog — NOT a blocker)
 - **Cannot add a SECOND child while one is active.** Child form binds to
-  getActiveProfile(); label only flips to "Add child" when NO child is active
-  (index.html ~line 1310). A teacher with one child set up has no UI path to add
-  another without first removing/deactivating the first. Real teachers assess
-  MANY children → needs an explicit "switch/add child" affordance. BACKLOG.
+  getActiveProfile(); "Add child" label only flips when NO child active
+  (index.html ~line 1310). Teacher with one child has no path to add another without
+  removing the first. Real teachers assess MANY children → needs explicit
+  "switch/add child" affordance. BACKLOG.
 
 ## 🟡 DECISIONS RESOLVED THIS SESSION
-- **BYOD CONFIRMED**: teachers install from Play Store on their OWN phones; no
-  device provided. → Local Jaipur/Delhi isolation worry DISSOLVED (each phone only
-  holds its own data). Real isolation = server-side Supabase RLS, later.
-- **Children DO move across devices** (Aditya confirmed). → cross-device stable
-  child id is now a hard PRE-PRODUCTION BLOCKER, not a someday item. Un-backfillable.
-- **Roster model (manager, Mansi)**: schools SELF-REGISTER → appoint 2–3 teachers
-  each; teacher logs in, school in dropdown, no manual school typing. Self-register
-  = the future Supabase AUTH SWAP, NOT built locally now (would be built twice;
-  local self-register only writes to one phone's sandbox = meaningless).
-- **3 real pilot schools provided** (saved): Saksham School Noida; RNKS Jaipur;
-  National Association of Blind Kullu. Seeding into dropdown DEFERRED by Aditya.
+- **Play Store track: NO release set up yet → ship to INTERNAL TESTING.**
+  This is the real gate against random users during a closed pilot — invite-only by
+  Gmail, app invisible to everyone else, no code required. Distribution-as-gate now;
+  authentication-as-gate (Supabase Auth) replaces it at production. Do NOT ship to
+  open/production track until Auth + RLS exist.
+- **"No random users" is a DISTRIBUTION problem, not an auth-code problem** during the
+  pilot. Hiding add-buttons cleans up in-app chaos; the closed track stops outsiders.
+- **Self-provisioning belongs to ADMIN, not the teacher POV.** A teacher's correct
+  mental model is "I work here, let me in" — two taps, no create-anything path.
 
 ## 🟡 INPUTS PENDING (others)
-- [ ] Real TEACHER NAMES for the 3 schools (placeholders for now).
+- [ ] Real TEACHER NAMES for the 3 schools. Swap the `name` strings ONLY; KEEP the ids
+      (changing an id after sessions exist orphans those records).
 - [ ] R&D EMAIL (four confirmations): Option A vs B; identified-video requirement;
-      cross-device child assessment (now CONFIRMED yes → blocker); child analysis
+      cross-device child id (CONFIRMED yes → blocker); child analysis
       longitudinal-per-child vs cross-child-statistical vs both.
-- [ ] LEGAL: does deployment qualify for DPDP Fourth Schedule exemption
-      (educational-institution / research purpose)? Scales the whole consent burden.
-      NB: Schedule classes/purposes unpublished — assume NO exemption till confirmed.
+- [ ] LEGAL: DPDP Fourth Schedule exemption (educational-institution / research)?
+      Scales the whole consent burden. Assume NO exemption till confirmed.
 - [ ] About screen content — confirm with design at next review.
 
 ## 🔴 IMMEDIATE NEXT (next session)
-- [ ] Seed the 3 real schools into seedSchools() (replace placeholders). NOTE:
-      ensureSchoolsSeeded() skips if schools already exist → must clear old seed on
-      the emulator first for new ones to appear.
+- [ ] Emulator-verify + commit this session's login-hardening + seed (above).
 - [ ] Send R&D + legal emails (longest latency — start the clock early).
-- [ ] Decide infra-file-split timing (clean baseline now exists post-commit).
+- [ ] Decide infra-file-split timing (clean baseline exists post-commit 8761845).
 
 ## 🟢 PRODUCTION WORK (tracked, with OWNERS — not automatic)
 - [ ] Real credential check: stub → Supabase Auth .................... you, later
@@ -69,10 +81,12 @@
 Root index.html = source of truth. www/index.html = build copy the app loads.
 www/ is gitignored. cp → grep-verify → cap sync → cap run after EVERY edit.
 Branch switches do NOT update www/ — re-cp after every checkout.
+Definitive post-sync check:
+  grep -c "schemaVersion" android/app/src/main/assets/public/index.html
 
 ## 🔜 STILL QUEUED
 - [ ] infra-file-split (single-file → styles.css / store.js / app.js). NOT done.
-      Clean verified baseline now exists (commit 8761845) — safest moment to split.
+      Clean verified baseline exists (commit 8761845) — safest moment to split.
 - [ ] Shell alias `omsync` for the cp+sync+run loop.
 - [ ] Batch 2 (correctness), Batch 3 (pre-identified-video), Batch 4 (pre-Uploader).
 - [ ] Offline-classroom upload behaviour (immediate vs queue-and-upload-later).
