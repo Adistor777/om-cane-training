@@ -406,6 +406,54 @@
   @media (hover:hover){ .student-open:hover{ background:var(--line-soft); color:var(--ink); } }
   .student-open:active{ background:var(--line-soft); }
   .student-open:focus-visible{ outline:3px solid var(--cat); outline-offset:-3px; }
+  /* ---------------------------------------------------------------------------
+     CHILD PICKER — "who are we working with?" Netflix-profile grid that sits
+     between an activity tap and the run screen. Avatars are big and tappable
+     (the whole point is a fast face-pick), category-themed selection ring on
+     the active child, and a dashed "add" tile. The ? in the lede row opens the
+     activity's step sequence as a quick reference (reuses details.sop).
+     --------------------------------------------------------------------------- */
+  .picker-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr));
+    gap:var(--s3) var(--s2); margin-top:var(--s2); }
+  .pick-tile{ display:flex; flex-direction:column; align-items:center; gap:9px; padding:6px 4px 8px;
+    background:transparent; border:0; cursor:pointer; border-radius:var(--r-md);
+    font:inherit; color:var(--ink); }
+  .pick-tile .face{ width:84px; height:84px; border-radius:18px; object-fit:cover; flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+    background:var(--cat-soft); color:var(--cat-deep); font-weight:600; font-size:32px;
+    border:2px solid transparent; transition:border-color .15s, box-shadow .15s, transform .15s var(--ease); }
+  .pick-tile img.face{ background:var(--line-soft); }
+  .pick-tile .pick-name{ font-size:var(--t-caption); font-weight:600; line-height:1.25; text-align:center;
+    max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pick-tile.is-active .face{ border-color:var(--cat); box-shadow:0 0 0 4px var(--cat-soft); }
+  .pick-tile.is-active .pick-name{ color:var(--cat-deep); }
+  @media (hover:hover){ .pick-tile:hover .face{ border-color:var(--cat-line); transform:translateY(-2px); } }
+  .pick-tile:active .face{ transform:translateY(0); border-color:var(--cat); }
+  .pick-tile:focus-visible{ outline:none; }
+  .pick-tile:focus-visible .face{ outline:3px solid var(--cat); outline-offset:3px; }
+  /* Add-a-student tile — dashed, neutral, clearly distinct from a real child. */
+  .pick-add .face{ background:transparent; border:2px dashed var(--line); color:var(--ink-faint); }
+  .pick-add .face svg{ width:30px; height:30px; }
+  @media (hover:hover){ .pick-add:hover .face{ border-color:var(--ink-faint); color:var(--ink-soft); transform:none; } }
+  /* The ? help button, parked at the end of the lede row. */
+  .lede-row{ display:flex; align-items:flex-start; gap:var(--s2); }
+  .lede-row .lede{ flex:1; min-width:0; }
+  .help-btn{ flex:0 0 auto; width:42px; height:42px; margin-top:6px; border-radius:50%;
+    background:var(--cat-soft); color:var(--cat-deep); border:1px solid var(--cat-line);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-family:"Inter",sans-serif; font-weight:700; font-size:var(--t-title); line-height:1; }
+  @media (hover:hover){ .help-btn:hover{ background:var(--card); border-color:var(--cat); } }
+  .help-btn:active{ background:var(--card); }
+  .help-btn:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  /* Headless SOP: no visible summary bar — the ? button is the only control.
+     The summary is kept in the DOM (details needs it) but collapsed to nothing.
+     When CLOSED the whole box disappears (no border/padding/background); the
+     border + padding only paint once it's open via the ?. */
+  details.sop-headless > summary.sop-hidden-summary{ display:none; }
+  details.sop-headless{ margin-top:0; margin-bottom:0; }
+  details.sop-headless:not([open]){ border-color:transparent; padding:0; }
+  details.sop-headless[open]{ margin-top:var(--s2); margin-bottom:var(--s3); }
+  details.sop-headless .sop-inner .section-label{ margin-top:0; }
   /* "Active" pseudo-badge — quiet, not a third accent: it borrows the category
      soft tint already in play on this surface. */
   .active-tag{ display:inline-block; font-size:var(--t-micro); font-weight:600; letter-spacing:.02em;
@@ -1566,6 +1614,7 @@ function avatarFor(p, cls){
    --------------------------------------------------------------------------- */
 function showStudents(dir, opts){
   opts = opts || {};
+  pendingPickerReturn = null; // not in a picker flow when on the Students list
   state = { category:null, activity:null };
   crumbEl.textContent = 'Students';
   backBtn.style.display = 'flex';
@@ -1794,7 +1843,7 @@ function showCategory(ci, dir){
     const tag = act.withCane
       ? '<span class="tag cane">With cane</span>'
       : '<span class="tag neutral">Without cane</span>';
-    return `<button class="card activity grouped" onclick="showActivity(${ci},${ai})">
+    return `<button class="card activity grouped" onclick="showChildPicker(${ci},${ai},'fwd')">
       <h2>${esc(act.name)}</h2>
       <div class="meta">${tag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</div>
     </button>`;
@@ -1956,8 +2005,14 @@ async function handleProfileSave(existingId){
   await setStudent(profile.name);
   pendingPhoto = null;
   toast(existingId ? 'Child updated' : 'Child saved');
-  // After an edit, return to that child's detail; after an add, to the list.
-  if(existingId) showChildDetail(profile.id, { dir:'none' });
+  // After an edit, return to that child's detail; after an add, to the list —
+  // unless the add originated from the activity child-picker, in which case go
+  // back there with the new child already active and ready to run.
+  if(existingId){ showChildDetail(profile.id, { dir:'none' }); }
+  else if(pendingPickerReturn){
+    const ctx = pendingPickerReturn; pendingPickerReturn = null;
+    showChildPicker(ctx.catIndex, ctx.actIndex, 'none', { skipLedeFocus:true });
+  }
   else showStudents('none');
 }
 /* ---------------------------------------------------------------------------
@@ -2021,6 +2076,107 @@ function audioMissing(){
   const missing = document.getElementById('sopAudioMissing');
   if(audio) audio.style.display = 'none';
   if(missing) missing.style.display = '';
+}
+/* ---------------------------------------------------------------------------
+   CHILD PICKER (screen between an activity tap and the run screen).
+   "Who are we working with?" — a Netflix-style face grid. Tapping a child sets
+   them active and continues into the activity. A dashed tile adds a new child
+   inline (reusing profileFormMarkup); on save we return here with the new child
+   active. The ? in the lede row reveals the activity's step sequence.
+   --------------------------------------------------------------------------- */
+let pendingPickerReturn = null; // {catIndex, actIndex} — set while adding a child from the picker
+function showChildPicker(catIndex, actIndex, dir, opts){
+  opts = opts || {};
+  const cat = ACTIVITY_DATA[catIndex];
+  if(!cat){ showActivityList('back'); return; }
+  const act = cat.activities[actIndex];
+  if(!act){ showCategory(catIndex,'back'); return; }
+  state = { category:catIndex, activity:actIndex };
+  crumbEl.textContent = act.name;
+  backBtn.style.display = 'flex';
+  backBtn.onclick = ()=>showCategory(catIndex,'back');
+  homeDot.innerHTML = catIcon(catIndex);
+  themeFor(catIndex);
+
+  const profiles = loadProfiles();
+  const activeId = getActiveProfileId();
+  // No children yet → drop straight into the add form, same as the Students screen.
+  const formOpen = !!opts.addForm || profiles.length === 0;
+
+  const tiles = profiles.map(p=>{
+    const isActive = p.id === activeId;
+    const face = p.photo
+      ? `<img class="face" src="${p.photo}" alt="">`
+      : `<span class="face">${esc((p.name||'?').trim().charAt(0).toUpperCase())}</span>`;
+    return `<button type="button" class="pick-tile${isActive?' is-active':''}" onclick="pickChildAndRun('${p.id}',${catIndex},${actIndex})">
+      ${face}<span class="pick-name">${esc(p.name)}</span>
+    </button>`;
+  }).join('');
+
+  // The add tile lives in the same grid, at the end — one consistent target size.
+  const addTile = `<button type="button" class="pick-tile pick-add" onclick="openPickerAddForm(${catIndex},${actIndex})">
+    <span class="face">${ICON.plus}</span><span class="pick-name">Add student</span>
+  </button>`;
+
+  // ? help — the activity's step sequence, fully hidden until the ? is used.
+  // We keep a <details> for the open/close animation, but its summary is
+  // suppressed (.sop-hidden-summary) so the ONLY control is the ? button.
+  const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
+  const sopBlock = `<details class="sop sop-headless" id="pickerSop">
+      <summary class="sop-hidden-summary" tabindex="-1" aria-hidden="true"></summary>
+      <div class="sop-body"><div class="sop-inner"><h2 class="section-label">Sequence of procedure</h2><ol class="sop-list">${sopSteps}</ol></div></div>
+    </details>`;
+
+  // The add form, hidden until requested (or auto-open on first run).
+  const addForm = `<details class="disclosure" id="pickerAddForm" ${formOpen?'open':''}>
+      <summary>${ICON.plus}<span class="disclosure-label">Add a new student</span><span class="chev">${ICON.chevron}</span></summary>
+      <div class="sop-body"><div class="sop-inner">${profileFormMarkup(null, true)}</div></div>
+    </details>`;
+
+  // Context so handleProfileSave knows to come back to THIS picker, not the list.
+  pendingPickerReturn = { catIndex, actIndex };
+
+  paint(`
+    <div class="lede-row">
+      <h1 class="lede">${esc(act.name)}<small>Who are you working with?</small></h1>
+      <button type="button" class="help-btn" aria-label="Sequence of procedure for ${esc(act.name)}"
+        aria-expanded="false" onclick="togglePickerSop(this)">?</button>
+    </div>
+    ${sopBlock}
+    <div class="picker-grid">${profiles.length ? tiles : ''}${addTile}</div>
+    ${profiles.length ? addForm : ''}
+  `, dir || 'fwd', true, { skipLedeFocus: !!opts.skipLedeFocus });
+
+  // When there are no children at all, the add form is the only path — open it
+  // and the SOP stays available behind the ?.
+  if(formOpen && profiles.length === 0){
+    const d = document.getElementById('pickerAddForm'); if(d) d.open = true;
+  }
+}
+// The ? toggles the step-sequence disclosure and keeps aria-expanded honest.
+function togglePickerSop(btn){
+  const d = document.getElementById('pickerSop');
+  if(!d) return;
+  d.open = !d.open;
+  btn.setAttribute('aria-expanded', d.open ? 'true' : 'false');
+  if(d.open){ d.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+}
+// Reveal/scroll the inline add form (the dashed tile target).
+function openPickerAddForm(catIndex, actIndex){
+  const d = document.getElementById('pickerAddForm');
+  if(d){ d.open = true; d.scrollIntoView({behavior:'smooth', block:'start'});
+    const name = document.getElementById('p_name'); if(name) name.focus({preventScroll:true});
+    return; }
+  // No form in the DOM (zero-children path renders only the tile) → re-paint with it open.
+  showChildPicker(catIndex, actIndex, 'none', { addForm:true, skipLedeFocus:true });
+}
+// Select a child, then continue into the activity run screen.
+async function pickChildAndRun(profileId, catIndex, actIndex){
+  await setActiveProfileId(profileId);
+  const p = profileById(profileId);
+  if(p) await setStudent(p.name);
+  pendingPickerReturn = null;
+  showActivity(catIndex, actIndex, { dir:'fwd' });
 }
 function showActivity(catIndex, actIndex, opts){
   opts = opts || {};
