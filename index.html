@@ -73,6 +73,10 @@
     --r-lg:20px; --r-md:14px; --r-sm:11px;
     --shadow-lift:0 1px 2px rgba(60,45,15,.05), 0 18px 40px -16px rgba(70,55,25,.22);
     --shadow-rest:0 1px 2px rgba(60,45,15,.04);
+    /* The one selection ring for "this item is active" (active child, etc.).
+       Used by both the picker tile and the manage-data row so the highlight is
+       identical everywhere. */
+    --ring-active:0 0 0 3px var(--cat-soft);
     --ease:cubic-bezier(.22,.61,.36,1);
   }
   *{box-sizing:border-box;}
@@ -306,6 +310,10 @@
   .record .vals span{ display:inline-block; background:var(--line-soft); color:var(--ink-soft);
     padding:3px 11px; border-radius:999px; font-size:var(--t-caption); font-weight:500; }
   .record .vals span.val-result{ background:var(--cat-soft); color:var(--cat-deep); font-weight:600; }
+  /* Video-attached marker on a record. Quiet, neutral — it flags presence of an
+     evidence clip without competing with the result pill. */
+  .record .vals span.val-video{ display:inline-flex; align-items:center; gap:5px; background:var(--line-soft); color:var(--ink-soft); font-weight:500; }
+  .record .vals span.val-video svg{ width:13px; height:13px; }
   /* Per-record delete: a quiet icon button, neutral until interacted with, then
      the existing semantic rust (#8a3c12 — same as the "with cane" tag, NOT a new
      accent). Border-only, no new shadow tier. */
@@ -389,7 +397,7 @@
      the two intents don't share one tap. Reuses .activechild's inner pieces. */
   .student-row{ display:flex; align-items:stretch; gap:0; margin-bottom:var(--s2);
     border:1px solid var(--line); border-radius:var(--r-sm); background:var(--card); overflow:hidden; }
-  .student-row.is-active{ border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .student-row.is-active{ border-color:var(--cat); box-shadow:var(--ring-active); }
   .student-pick{ flex:1; min-width:0; display:flex; align-items:center; gap:12px; padding:12px 15px;
     background:transparent; border:0; font:inherit; text-align:left; color:var(--ink); cursor:pointer; }
   .student-pick .avatar{ width:38px; height:38px; border-radius:10px; flex:0 0 auto; object-fit:cover;
@@ -425,16 +433,12 @@
   .pick-tile img.face{ background:var(--line-soft); }
   .pick-tile .pick-name{ font-size:var(--t-caption); font-weight:600; line-height:1.25; text-align:center;
     max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .pick-tile.is-active .face{ border-color:var(--cat); box-shadow:0 0 0 4px var(--cat-soft); }
+  .pick-tile.is-active .face{ border-color:var(--cat); box-shadow:var(--ring-active); }
   .pick-tile.is-active .pick-name{ color:var(--cat-deep); }
   @media (hover:hover){ .pick-tile:hover .face{ border-color:var(--cat-line); transform:translateY(-2px); } }
   .pick-tile:active .face{ transform:translateY(0); border-color:var(--cat); }
   .pick-tile:focus-visible{ outline:none; }
-  .pick-tile:focus-visible .face{ outline:3px solid var(--cat); outline-offset:3px; }
-  /* Add-a-student tile — dashed, neutral, clearly distinct from a real child. */
-  .pick-add .face{ background:transparent; border:2px dashed var(--line); color:var(--ink-faint); }
-  .pick-add .face svg{ width:30px; height:30px; }
-  @media (hover:hover){ .pick-add:hover .face{ border-color:var(--ink-faint); color:var(--ink-soft); transform:none; } }
+  .pick-tile:focus-visible .face{ outline:3px solid var(--cat); outline-offset:2px; }
   /* The ? help button, parked at the end of the lede row. */
   .lede-row{ display:flex; align-items:flex-start; gap:var(--s2); }
   .lede-row .lede{ flex:1; min-width:0; }
@@ -460,12 +464,6 @@
     text-transform:uppercase; color:var(--cat-deep); background:var(--cat-soft);
     padding:2px 7px; border-radius:6px; margin-right:8px; vertical-align:middle; }
   .who .active-tag{ display:inline-block; margin-bottom:3px; }
-  .chip-swap{ flex:0 0 auto; background:transparent; border:1px solid var(--line); color:var(--ink-soft);
-    cursor:pointer; font:inherit; font-size:var(--t-caption); font-weight:600; padding:8px 12px; border-radius:var(--r-sm); min-height:44px;
-    transition:background .15s, border-color .15s, color .15s; }
-  @media (hover:hover){ .chip-swap:hover{ border-color:var(--ink-faint); color:var(--ink); } }
-  .chip-swap:active{ background:var(--line-soft); }
-  .chip-swap:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
   .card.child[aria-current="true"]{ border-color:var(--cat); box-shadow:var(--shadow-lift); }
   .card.child[aria-current="true"]::before{ background:var(--cat); }
   .card.child .check{ margin-left:auto; color:var(--cat-deep); width:20px; height:20px; flex:0 0 auto; }
@@ -482,6 +480,19 @@
   .photo-actions{ display:flex; flex-direction:column; gap:8px; }
   .section-label{ font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-bodysm); color:var(--ink-soft);
     margin:var(--s4) 0 var(--s2); letter-spacing:-.005em; }
+  /* Demo block inside the ? reference sheet — first child has no top margin so it
+     sits flush under the headless sheet's padding. */
+  .ref-block{ margin-bottom:var(--s3); }
+  .ref-block:first-child .section-label{ margin-top:0; }
+  /* Teacher video-evidence control on the record form. Neutral, not a primary
+     surface — the Save button stays the only emphasised action. */
+  .field-hint{ font-weight:400; color:var(--ink-faint); font-size:var(--t-caption); }
+  .video-field .video-slot{ margin-top:8px; display:flex; align-items:center; justify-content:space-between;
+    gap:var(--s2); flex-wrap:wrap; border:1px solid var(--line); border-radius:var(--r-md);
+    padding:10px 12px; background:var(--card); }
+  .video-field .video-name{ flex:1; min-width:0; color:var(--ink-soft); font-size:var(--t-bodysm);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .video-field .video-actions{ display:flex; gap:8px; flex:0 0 auto; }
   /* Welcome (page 1) — calm, centered, one primary action. */
   .welcome{ min-height:60vh; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:var(--s2); }
   .welcome-mark{ width:60px; height:60px; border-radius:16px; background:var(--cat-soft); color:var(--cat-deep);
@@ -1226,7 +1237,7 @@ function gatherAllRecords(){
         teacherName: teacherNameById(r.teacherRosterId) || '',
         schoolName:  schoolNameById(r.schoolId) || '',
         age: p?ageFromDOB(p.dob):'', dob: p?(p.dob||''):'', height: p?p.height:'', weight: p?p.weight:'',
-        hand: p?p.dominantHand:'', filledBy: p?(p.filledBy||''):'', values: r.values || {} });
+        hand: p?p.dominantHand:'', filledBy: p?(p.filledBy||''):'', video: r.video || '', values: r.values || {} });
     });
   });
   return rows;
@@ -1245,11 +1256,11 @@ function buildCSV(rows, includePII){
   // so they stay. This is the F1/F8 fix: the file that leaves the device by
   // default carries no name and no date of birth.
   const idCols  = includePII ? ['Research ID','Student','DOB'] : ['Research ID'];
-  const header = [...idCols,'Category','Activity','Age','Height (cm)','Weight (kg)','Dominant hand','Filled by','When','School','Teacher','Teacher ID', ...valueCols];
+  const header = [...idCols,'Category','Activity','Age','Height (cm)','Weight (kg)','Dominant hand','Filled by','When','School','Teacher','Teacher ID','Video file', ...valueCols];
   const lines = [header.map(csvCell).join(',')];
   rows.forEach(r=>{
     const idVals = includePII ? [r.researchId, r.student, r.dob] : [r.researchId];
-    const base = [...idVals, r.category, r.activity, r.age, r.height, r.weight, r.hand, r.filledBy, r.when, r.schoolName, r.teacherName, r.teacherId];
+    const base = [...idVals, r.category, r.activity, r.age, r.height, r.weight, r.hand, r.filledBy, r.when, r.schoolName, r.teacherName, r.teacherId, r.video];
     const vals = valueCols.map(c=> r.values[c] != null ? r.values[c] : '');
     lines.push(base.concat(vals).map(csvCell).join(','));
   });
@@ -1520,33 +1531,22 @@ function showHome(dir){
   backBtn.style.display = 'none';
   homeDot.innerHTML = ICON.home;
   resetTheme();
-  const active = getActiveProfile();
   // The two-thing landing: Activities and Students, nothing else. Utilities
   // (Export, Manage data, About, Sign out) live in the header overflow menu.
-  // When a child is active a compact chip names them; Activities runs against
-  // that child. With no active child, Activities routes to Students first.
-  const chip = active
-    ? `<div class="activechild"><span class="active-tag">Active child</span>${avatarFor(active,'avatar')}<span class="who">${esc(active.name)}<small>${childSub(active) || '—'}</small></span><button type="button" class="chip-swap" onclick="showStudents('fwd')">Change</button></div>`
-    : '';
-  const teachDisabled = active ? '' : 'disabled';
-  const activitySub = active
-    ? `Run an activity with ${esc(active.name)} and record the result`
-    : 'Pick a student first to start a session';
-  const studentSub = active
-    ? 'Add another child, or open an existing one'
-    : 'Add a new child, or open an existing one';
+  // Child selection happens LATER in the flow (at the child picker, after an
+  // activity is chosen), so the hub deliberately carries no active-child chip
+  // and Activities always routes through the activity list.
   paint(`
     <h1 class="lede">Today<small>Pick a student, then run an activity.</small></h1>
-    ${chip}
     <div class="hub-actions">
-      <button class="action-row primary-action" ${teachDisabled} onclick="${active?"showActivityList('fwd')":"showStudents('fwd')"}">
+      <button class="action-row primary-action" onclick="showActivityList('fwd')">
         <span class="action-ic">${ICON.compass}</span>
-        <span class="action-text"><strong>Activities</strong><small>${activitySub}</small></span>
+        <span class="action-text"><strong>Activities</strong><small>Choose an activity, then the student to run it with</small></span>
         <span class="action-go">${ICON.chevronRight}</span>
       </button>
       <button class="action-row" onclick="showStudents('fwd')">
         <span class="action-ic">${ICON.user}</span>
-        <span class="action-text"><strong>Students</strong><small>${studentSub}</small></span>
+        <span class="action-text"><strong>Students</strong><small>Add a new child, or open an existing one</small></span>
         <span class="action-go">${ICON.chevronRight}</span>
       </button>
     </div>
@@ -2099,35 +2099,25 @@ function showChildPicker(catIndex, actIndex, dir, opts){
   themeFor(catIndex);
 
   const profiles = loadProfiles();
-  const activeId = getActiveProfileId();
   // No children yet → drop straight into the add form, same as the Students screen.
   const formOpen = !!opts.addForm || profiles.length === 0;
 
   const tiles = profiles.map(p=>{
-    const isActive = p.id === activeId;
     const face = p.photo
       ? `<img class="face" src="${p.photo}" alt="">`
       : `<span class="face">${esc((p.name||'?').trim().charAt(0).toUpperCase())}</span>`;
-    return `<button type="button" class="pick-tile${isActive?' is-active':''}" onclick="pickChildAndRun('${p.id}',${catIndex},${actIndex})">
+    return `<button type="button" class="pick-tile" onclick="pickChildAndRun('${p.id}',${catIndex},${actIndex})">
       ${face}<span class="pick-name">${esc(p.name)}</span>
     </button>`;
   }).join('');
 
-  // The add tile lives in the same grid, at the end — one consistent target size.
-  const addTile = `<button type="button" class="pick-tile pick-add" onclick="openPickerAddForm(${catIndex},${actIndex})">
-    <span class="face">${ICON.plus}</span><span class="pick-name">Add student</span>
-  </button>`;
+  // ? help — the SAME reference sheet as the record screen (demo, steps, note,
+  // narration), fully hidden until the ? is used.
+  const sopBlock = buildRefSheet(act, 'pickerRefSheet');
 
-  // ? help — the activity's step sequence, fully hidden until the ? is used.
-  // We keep a <details> for the open/close animation, but its summary is
-  // suppressed (.sop-hidden-summary) so the ONLY control is the ? button.
-  const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
-  const sopBlock = `<details class="sop sop-headless" id="pickerSop">
-      <summary class="sop-hidden-summary" tabindex="-1" aria-hidden="true"></summary>
-      <div class="sop-body"><div class="sop-inner"><h2 class="section-label">Sequence of procedure</h2><ol class="sop-list">${sopSteps}</ol></div></div>
-    </details>`;
-
-  // The add form, hidden until requested (or auto-open on first run).
+  // Single add path: the "Add a new student" disclosure below the grid. (There
+  // was previously also a dashed add-tile in the grid; removed so there's one
+  // unambiguous way to add a child.) Auto-opens when there are no children yet.
   const addForm = `<details class="disclosure" id="pickerAddForm" ${formOpen?'open':''}>
       <summary>${ICON.plus}<span class="disclosure-label">Add a new student</span><span class="chev">${ICON.chevron}</span></summary>
       <div class="sop-body"><div class="sop-inner">${profileFormMarkup(null, true)}</div></div>
@@ -2139,12 +2129,12 @@ function showChildPicker(catIndex, actIndex, dir, opts){
   paint(`
     <div class="lede-row">
       <h1 class="lede">${esc(act.name)}<small>Who are you working with?</small></h1>
-      <button type="button" class="help-btn" aria-label="Sequence of procedure for ${esc(act.name)}"
-        aria-expanded="false" onclick="togglePickerSop(this)">?</button>
+      <button type="button" class="help-btn" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
+        aria-expanded="false" onclick="toggleRefSheet(this,'pickerRefSheet')">?</button>
     </div>
     ${sopBlock}
-    <div class="picker-grid">${profiles.length ? tiles : ''}${addTile}</div>
-    ${profiles.length ? addForm : ''}
+    ${profiles.length ? `<div class="picker-grid">${tiles}</div>` : ''}
+    ${addForm}
   `, dir || 'fwd', true, { skipLedeFocus: !!opts.skipLedeFocus });
 
   // When there are no children at all, the add form is the only path — open it
@@ -2153,23 +2143,6 @@ function showChildPicker(catIndex, actIndex, dir, opts){
     const d = document.getElementById('pickerAddForm'); if(d) d.open = true;
   }
 }
-// The ? toggles the step-sequence disclosure and keeps aria-expanded honest.
-function togglePickerSop(btn){
-  const d = document.getElementById('pickerSop');
-  if(!d) return;
-  d.open = !d.open;
-  btn.setAttribute('aria-expanded', d.open ? 'true' : 'false');
-  if(d.open){ d.scrollIntoView({behavior:'smooth', block:'nearest'}); }
-}
-// Reveal/scroll the inline add form (the dashed tile target).
-function openPickerAddForm(catIndex, actIndex){
-  const d = document.getElementById('pickerAddForm');
-  if(d){ d.open = true; d.scrollIntoView({behavior:'smooth', block:'start'});
-    const name = document.getElementById('p_name'); if(name) name.focus({preventScroll:true});
-    return; }
-  // No form in the DOM (zero-children path renders only the tile) → re-paint with it open.
-  showChildPicker(catIndex, actIndex, 'none', { addForm:true, skipLedeFocus:true });
-}
 // Select a child, then continue into the activity run screen.
 async function pickChildAndRun(profileId, catIndex, actIndex){
   await setActiveProfileId(profileId);
@@ -2177,6 +2150,38 @@ async function pickChildAndRun(profileId, catIndex, actIndex){
   if(p) await setStudent(p.name);
   pendingPickerReturn = null;
   showActivity(catIndex, actIndex, { dir:'fwd' });
+}
+/* ---------------------------------------------------------------------------
+   REFERENCE SHEET — the content behind the ? on BOTH the child picker and the
+   record screen. One builder, one toggle, so the two ? buttons are identical:
+   demo video → step sequence → facilitator note → Sarvam narration switcher.
+   `domId` differentiates the two instances (they never coexist on one screen).
+   --------------------------------------------------------------------------- */
+function buildRefSheet(act, domId){
+  const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
+  const noteHtml = act.facilitatorNote ? `<div class="note"><strong>Facilitator note</strong>${esc(act.facilitatorNote)}</div>` : '';
+  const audioHtml = buildAudioHtml(act);
+  const demoVideoHtml = act.videoFile
+    ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(act.videoFile)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
+    : `<div class="ref-block"><span class="section-label">Demonstration</span><div class="media-slot">${ICON.video}<span>Demo video slot — add a filename in activities.js (videoFile) when available.</span></div></div>`;
+  return `<details class="sop sop-headless" id="${domId}">
+      <summary class="sop-hidden-summary" tabindex="-1" aria-hidden="true"></summary>
+      <div class="sop-body"><div class="sop-inner">
+        ${demoVideoHtml}
+        <h2 class="section-label">Sequence of procedure</h2><ol class="sop-list">${sopSteps}</ol>
+        ${noteHtml}
+        ${audioHtml}
+      </div></div>
+    </details>`;
+}
+// One toggle for any reference sheet, identified by its dom id. Keeps the ?'s
+// aria-expanded honest and scrolls the opened sheet into view.
+function toggleRefSheet(btn, domId){
+  const d = document.getElementById(domId);
+  if(!d) return;
+  d.open = !d.open;
+  btn.setAttribute('aria-expanded', d.open ? 'true' : 'false');
+  if(d.open){ d.scrollIntoView({behavior:'smooth', block:'nearest'}); }
 }
 function showActivity(catIndex, actIndex, opts){
   opts = opts || {};
@@ -2188,30 +2193,31 @@ function showActivity(catIndex, actIndex, opts){
   backBtn.onclick = ()=>showCategory(catIndex,'back');
   homeDot.innerHTML = catIcon(catIndex);
   themeFor(catIndex);
-  const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
-  const noteHtml = act.facilitatorNote ? `<div class="note"><strong>Facilitator note</strong>${esc(act.facilitatorNote)}</div>` : '';
   const audioHtml = buildAudioHtml(act);
-  const videoHtml = act.videoFile ? `<video controls src="${esc(act.videoFile)}" style="width:100%;margin-top:16px;border-radius:14px;"></video>` : `<div class="media-slot">${ICON.video}<span>Demo video slot — add a filename in activities.js (videoFile) when available.</span></div>`;
   const fields = act.dataFields.map(f=>buildField(f)).join('');
   const resultLabels = act.dataFields.filter(f=>f.type==='result').map(f=>f.label);
   const records = loadRecords(act.id);
   const recHtml = records.length ? records.map(r=>renderRecord(r, resultLabels, act.id)).join('') : '<p class="empty">No results logged yet — run the activity, then record below.</p>';
-  const sopOpen = opts.sopCollapsed ? '' : 'open';
   const activeChild = getActiveProfile();
   const childBar = activeChild
     ? `<div class="activechild">${avatarFor(activeChild,'avatar')}<span class="who">${esc(activeChild.name)}<small>${childSub(activeChild) || 'Active child'}</small></span><button type="button" class="swap" onclick="showHub('back')">Change</button></div>`
     : `<div class="activechild"><span class="avatar">${ICON.user}</span><span class="who">No child selected<small>Pick or add a child before recording</small></span><button type="button" class="swap" onclick="showHub('back')">Choose</button></div>`;
+  // Reset any video staged from a previous record on this screen.
+  pendingVideo = null;
+  // The ? sheet: shared with the child picker — demo, steps, note, narration.
+  const refSheet = buildRefSheet(act, 'actRefSheet');
   paint(`
-    <h1 class="lede">${esc(act.name)}<small>${esc(cat.category)}</small></h1>
+    <div class="lede-row">
+      <h1 class="lede">${esc(act.name)}<small>${esc(cat.category)}</small></h1>
+      <button type="button" class="help-btn" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
+        aria-expanded="false" onclick="toggleRefSheet(this,'actRefSheet')">?</button>
+    </div>
+    ${refSheet}
     ${childBar}
     <div class="panel primary" id="formPanel">
       <h2 class="panel-title">${ICON.edit} Record a result</h2>
-      <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${fields}<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button></fieldset></form>
+      <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${fields}${videoUploadMarkup()}<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button></fieldset></form>
     </div>
-    <details class="sop" id="sopPanel" ${sopOpen}>
-      <summary>${ICON.compass} How to run this <span class="chev">${ICON.chevron}</span></summary>
-      <div class="sop-body"><div class="sop-inner"><ol class="sop-list">${sopSteps}</ol>${noteHtml}${audioHtml}${videoHtml}</div></div>
-    </details>
     <div class="panel quiet"><h2 class="panel-title">${ICON.list} Past results</h2><div id="recordList">${recHtml}</div></div>
   `, opts.dir || 'fwd', false, { skipLedeFocus: !!opts.focusForm });
   if(opts.focusForm){
@@ -2219,6 +2225,81 @@ function showActivity(catIndex, actIndex, opts){
     if(panel){ panel.scrollIntoView({behavior:'smooth', block:'start'}); }
     const firstInput = screen.querySelector('#dataForm input, #dataForm textarea, .seg button');
     if(firstInput){ firstInput.focus({preventScroll:true}); }
+  }
+}
+/* ---------------------------------------------------------------------------
+   TEACHER VIDEO CAPTURE — evidence footage attached to a saved result.
+   Distinct from the DEMO video (reference, behind the ?). This is the clip the
+   teacher films of the CHILD performing the activity, to submit to researchers.
+
+   Storage decision: video is large, so we do NOT base64 it into the Store the
+   way profile photos are stored. We copy the picked file into the app's Data
+   directory keyed off the child's researchId (pseudonym, never the name), and
+   record only { filename, when } on the saved record. The bytes live on disk;
+   the record points at them. This is the same seam a future Supabase swap uses
+   (upload file → store storage path), so no rework later.
+   --------------------------------------------------------------------------- */
+let pendingVideo = null; // { tempName, displayName, mime } staged before save
+function videoUploadMarkup(){
+  const has = !!pendingVideo;
+  const label = has ? esc(pendingVideo.displayName) : 'No video attached';
+  return `<div class="field video-field">
+      <label>Video evidence <span class="field-hint">— optional; filmed by you, sent to researchers</span></label>
+      <div class="video-slot" id="videoSlot">
+        <span class="video-name" id="videoName">${label}</span>
+        <div class="video-actions">
+          <button type="button" class="tool-btn" onclick="document.getElementById('r_video').click()">${ICON.video} ${has?'Replace':'Add video'}</button>
+          <button type="button" class="tool-btn" id="videoClear" onclick="clearPendingVideo()" ${has?'':'style="display:none"'}>Remove</button>
+        </div>
+      </div>
+      <input type="file" id="r_video" accept="video/*" capture="environment" style="display:none" onchange="handleVideoPick(this)">
+    </div>`;
+}
+function handleVideoPick(input){
+  const file = input.files && input.files[0];
+  if(!file){ return; }
+  // Stage metadata only; the actual file copy happens at save time so an
+  // abandoned form leaves nothing on disk.
+  pendingVideo = { file, displayName: file.name || 'clip.mp4', mime: file.type || 'video/mp4' };
+  const nameEl = document.getElementById('videoName');
+  if(nameEl) nameEl.textContent = pendingVideo.displayName;
+  const clr = document.getElementById('videoClear'); if(clr) clr.style.display = '';
+  // Flip the add button label to Replace without a full repaint.
+  const addBtn = clr ? clr.previousElementSibling : null;
+  if(addBtn) addBtn.innerHTML = `${ICON.video} Replace`;
+}
+function clearPendingVideo(){
+  pendingVideo = null;
+  const nameEl = document.getElementById('videoName');
+  if(nameEl) nameEl.textContent = 'No video attached';
+  const clr = document.getElementById('videoClear'); if(clr) clr.style.display = 'none';
+  const file = document.getElementById('r_video'); if(file) file.value = '';
+  const addBtn = clr ? clr.previousElementSibling : null;
+  if(addBtn) addBtn.innerHTML = `${ICON.video} Add video`;
+}
+// Copy the staged video into app Data storage, keyed off the child's pseudonym.
+// Returns { filename } to stamp on the record, or null on web / no file / error.
+async function commitPendingVideo(researchId){
+  if(!pendingVideo) return null;
+  const cap = window.Capacitor;
+  if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()){
+    // Web preview has no persistent file store — keep the metadata so the record
+    // still reflects that a clip was taken, but no bytes are copied.
+    return { filename: `${researchId}_${Date.now()}_${pendingVideo.displayName}`, stored:false };
+  }
+  try {
+    const Filesystem = cap.Plugins.Filesystem;
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+    const ext = (pendingVideo.displayName.split('.').pop() || 'mp4').toLowerCase();
+    const filename = `videos/${researchId}_${stamp}.${ext}`;
+    // Read the picked file as base64, then write into the app Data directory.
+    const dataUrl = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(pendingVideo.file); });
+    const base64 = String(dataUrl).split(',')[1];
+    await Filesystem.writeFile({ path: filename, data: base64, directory: 'DATA', recursive: true });
+    return { filename, stored:true };
+  } catch(e){
+    console.warn('Video store failed', e);
+    return null;
   }
 }
 function buildField(f){
@@ -2255,12 +2336,16 @@ async function handleSave(activityId){
   });
   // Content only — id / schemaVersion / teacherId / whenISO are stamped
   // inside saveRecord (the envelope chokepoint).
-  const ok = await saveRecord(activityId, { researchId, profileId: child.id, values });
+  const videoMeta = await commitPendingVideo(researchId);
+  const rec = { researchId, profileId: child.id, values };
+  if(videoMeta){ rec.video = videoMeta.filename; }
+  const ok = await saveRecord(activityId, rec);
   if(!ok){
     toast('Could not save — storage may be full. Export your data, then try again.');
     return;
   }
-  toast('Saved');
+  pendingVideo = null;
+  toast(videoMeta && videoMeta.stored === false ? 'Saved (video kept on web preview only)' : 'Saved');
   showActivity(state.category, state.activity, { sopCollapsed:true, focusForm:true, dir:'none' });
 }
 // Human-readable timestamp, derived AT RENDER from the canonical whenISO.
@@ -2289,7 +2374,8 @@ function renderRecord(r, resultLabels, activityId){
   const del = (activityId != null && r.id)
     ? `<button type="button" class="rec-del" aria-label="Delete this result" onclick="confirmDeleteRecord('${esc(activityId)}','${esc(r.id)}')">${ICON.trash}</button>`
     : '';
-  return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="who">${esc(recordDisplayName(r))}</span> <span class="when">· ${esc(fmtWhen(r))}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}</div></div>`;
+  const videoPill = r.video ? `<span class="val-video">${ICON.video} Video</span>` : '';
+  return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="who">${esc(recordDisplayName(r))}</span> <span class="when">· ${esc(fmtWhen(r))}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}${videoPill}</div></div>`;
 }
 async function confirmDeleteRecord(activityId, recordId){
   if(!window.confirm('Delete this saved result?\n\nThis cannot be undone.')) return;
