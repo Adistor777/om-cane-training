@@ -1,113 +1,223 @@
-# MEMORY — O&M Cane Training App
-# Continuity file. Download + re-upload to Project knowledge after each "wrap up".
-# Reflects: LOGIN HARDENING + REAL-SCHOOL SEED done (static-verified; emulator + commit PENDING).
+# MEMORY.md — O&M Cane Training
 
-## LATEST SESSION — LOGIN HARDENING + REAL PILOT-SCHOOL SEED
+_Last updated: 2026-06-30_
 
-This session productionised the pilot login from the teacher's POV and seeded the
-3 real schools. Code-complete and STATIC-VERIFIED (flag/seed grep + full <script>
-`new Function()` parse + line-count). NOT yet emulator-verified, NOT yet committed —
-those are the first two carry-forward tasks.
+## What this is
+Offline-first Android app (`org.omcane.trainer`) for teachers running structured
+orientation & mobility assessments with visually impaired children. Plain
+HTML/CSS/JS, **no bundler** (deliberate — `activities.js` is content-team owned
+and must stay editable without a build step). Wrapped via Capacitor 8.
+Lives in `~/Desktop/om-app` on an M5 MacBook Air.
 
-### What changed in index.html
-- **`PILOT_ALLOW_SELF_PROVISION = false`** (new constant ~line 696). Gates BOTH
-  teacher-facing creation paths behind one flag:
-  - "+ Add a new school" (login screen) → renders only if flag true.
-  - "+ Add a new teacher" (teacher picker) → renders only if flag true.
-  - `addSchool()/addTeacher()/showAddSchool()/showAddTeacher()` LEFT INTACT as admin
-    primitives — nothing deleted; flip flag to restore them for field provisioning.
-  - Empty-roster copy → "...Please contact your coordinator."
-- **seedSchools() replaced** with the 3 real pilot schools, STABLE string ids:
-  - `sch_saksham_noida` → Saksham School, Noida
-  - `sch_rnks_jaipur`   → Rajasthan Netraheen Kalyan Sangam (RNKS), Jaipur
-  - `sch_nab_kullu`     → National Association of Blind, Kullu
-  - One placeholder teacher each ("Teacher 1", ids `tch_*_1`) so no school is a
-    dead-end while self-provision is off.
-  - Stable ids (NOT newId()) chosen deliberately: a school resolves to the SAME id on
-    every device — the correct pattern for cross-device attribution, and a preview of
-    the server-assigned-id fix still owed for children.
+Closed research pilot: IIT Delhi + NCAHT, 3 schools, ~6 teachers.
+Manager: Mansi (IIT Delhi). Collaborators: Flipkart UI/UX designer (peer
+review), content team (SOP text + translations), legal team (compliance),
+external developer friend (code audits).
 
-### Why this shape (the teacher-POV reasoning)
-A teacher's correct mental model is "I work here, let me in" — pick school, pick name,
-two taps. Self-service "add a school / add yourself" reads as an error to a teacher,
-invites junk/duplicate data (one fat-fingered "Sakshm" pollutes every roster + CSV),
-and breaks the trust signal of an app that was "set up for me." So self-provisioning
-is an ADMIN concern, not a login concern. Hiding it is correct UX, not just cleanup.
+Success = a verifiable, privacy-sound app ready for closed pilot sessions, with
+clean seams for a future Supabase backend swap.
 
-### Decision: "no random users" = DISTRIBUTION, not auth-code
-Aditya's real concern was strangers + chaos in the app. Key clarification:
-- Hiding add-buttons fixes in-app chaos but does NOT stop strangers — pick-a-name is
-  the whole "login"; anyone could be anyone. There is NO client-side fix for that
-  (client lives on a stranger's phone).
-- The real gate during a closed pilot is the **Play Store track**. Aditya has NOT set
-  up a Play Console release yet → ship to **INTERNAL TESTING**: invite-only by Gmail,
-  app invisible to all others, instant, zero code. That is a hard gate.
-- Authentication-as-gate (Supabase Auth + RLS) is the PRODUCTION replacement, gated on
-  the R&D/legal emails. Do NOT pull it forward; do NOT ship to open/production track
-  until it exists.
-- Sequence: closed track (now) → hide self-provision (done) → Auth+RLS (later, gated).
+## Pilot schools (seeded with stable string IDs)
+1. Saksham School, Noida
+2. Rajasthan Netraheen Kalyan Sangam (RNKS), Jaipur
+3. National Association of Blind, Kullu
 
-### Carry-forward (do first next session)
-1. Emulator-verify this session's edits. CRITICAL: clear old emulator data first —
-   ensureSchoolsSeeded() skips if any schools exist, so the cached Devnar seed will
-   mask the new schools. Uninstall/clear storage → cp index.html www/index.html →
-   cap sync → run. Confirm: 3 real schools only; "Teacher 1"; no "+ Add" links;
-   tap → Home; flip flag true → add links return.
-2. Commit + push on a dedicated branch (suggested `login-hardening-seed`).
-3. Swap placeholder teacher names when the coordinator sends real ones — KEEP the ids.
+Real teacher names still pending from Mansi — placeholder teachers for now.
 
-## STILL TRUE FROM BEFORE (carry-forward)
+## Current state (committed on `feat/soundboard`, pushed, NOT yet merged to main)
+- **Sound Library media player (this session) — built, verified, emulator-tested,
+  committed + pushed on `feat/soundboard` (`0ae5844`).** Renders on activities
+  with `soundboard: true` (the 5 sound-playing activities: `sound-which`,
+  `sound-source`, `snddir-cane-count`, `slt-nocane`, `slt-withcane`), between the
+  child bar and the record form.
+  - Transport like Apple Music: play/pause, prev/next, shuffle, repeat
+    off→all→one. Repeat-one loops a single sound (localization drills); shuffle
+    randomizes the next sound so the child can't predict it during identification
+    tests. Tap/arrow-key seek bar with elapsed/total time; animated equaliser on
+    the playing pad. Player is always visible (quiet idle state before a sound is
+    picked).
+  - **Category tabs** (Animals / Household / Traffic & Outdoors / Instruments)
+    show one group's pads at a time, so panel height stays fixed no matter how
+    many sounds get added (this was a deliberate fix — the full grid made the
+    panel too tall and pushed the record form down).
+  - `buildSoundboard(act)` + `SB` controller (one `<audio>`, the library is the
+    queue) live in `index.html`. `SB.reset()` on navigation so audio never bleeds
+    across screens. Offline: plays bundled mp3s from `./sounds` inside the
+    Capacitor WebView, no server.
+  - **Content-team owned, no-coder editable**: the sound list (`SOUND_LIBRARY`,
+    `{file,label,group}`) AND which activities show it (`soundboard: true`) both
+    live in `activities.js`. Add a sound = drop an mp3 in `sounds/` + one line.
+    20 sounds, 4 groups.
+  - Design: warm-paper, monoline icons (no emoji), category accent. **Flag for the
+    Flipkart designer** — the player is a deliberately richer-accent surface
+    (accent on play button + progress fill + lit toggles + current pad), beyond
+    the "accent in two spots" guardrail. Flagged, not yet reviewed.
+  - Committed via a reconstructed record-only `index.html` so the record-screen
+    work and the soundboard are two isolated commits, never mixed.
+- **Record-screen redesign + teacher video evidence (prior session) — now
+  COMMITTED on `feat/soundboard` (`167afc0`).** No longer uncommitted.
+  - Unified `?` reference sheet across record + child-picker screens via shared
+    `buildRefSheet(act, domId)` + `toggleRefSheet(btn, domId)`. Both open the
+    same full sheet: demo video → SOP step sequence → facilitator note → Sarvam
+    narration switcher. Headless `<details class="sop-headless">` — invisible when
+    closed.
+  - Record screen leaned out: removed the always-open "How to run this" SOP panel
+    at the bottom; everything now folds behind the `?`.
+  - **Teacher video-evidence capture** on the record form (`videoUploadMarkup`,
+    `handleVideoPick`, `clearPendingVideo`, `commitPendingVideo`). Architecture:
+    pick stages metadata only (`pendingVideo`); on Save, `commitPendingVideo`
+    writes the file to app DATA dir at `videos/{researchId}_{timestamp}.{ext}`
+    (pseudonym, never the name); the record stores only `rec.video = filename`
+    (a pointer, NOT base64 into Store). Same seam a future Supabase swap uses.
+    On web preview, returns `stored:false` — no bytes copied, record still notes a
+    clip was taken.
+  - CSV export gained a `Video file` column (safe in default no-PII export —
+    filename is pseudonymous).
+  - Hub: active-child chip removed (selection happens later at the picker).
+  - Picker: duplicate "Add student" tile removed; disclosure form is the single
+    add path.
+  - Visual audit: `--ring-active` token at 3px; focus-ring offsets unified (2px
+    standalone controls / inset full-width rows / 3px large cards). Dead code
+    removed: `openPickerAddForm`, `togglePickerSop`, `toggleActRefSheet`,
+    `.pick-add`, `.chip-swap`.
+- **Child picker between activity tap and run screen** (committed to main):
+  `showChildPicker` Netflix-style face grid; tap a child → active + run.
+- **Activities navigation = two-level drill-in**: category grid
+  (`showActivityList`) → single-category list (`showCategory`) → activity.
+- **Pseudonymisation refactor** (F1/F8/F9) live: `researchId` (`OM-XXXX-XXXX`)
+  minted + preserved; records store `researchId` + `profileId`, not child name;
+  CSV pseudonymised by default (PII behind `includePII`); cache file deleted
+  post-share; migration shim rewrites profiles before records; `SCHEMA_VERSION = 2`.
+  (`video` field is additive/backward-compatible — no migration needed; schema
+  stays at 2.)
+- **`PILOT_ALLOW_SELF_PROVISION = false`** — hides teacher-facing school/teacher
+  creation; underlying functions kept as admin primitives.
+- **Login**: school dropdown → login ID → password → `verifyCredentials()` stub
+  (accepts any non-empty password — correct pilot stub; real check is Supabase
+  swap only). Login IDs: `saksham01`, `rnks01`, `nab01`.
 
-### Bug (backlogged, not a blocker)
-Child form binds to getActiveProfile(); NO UI path to add a SECOND child while one is
-active (label flips only when none active, ~line 1310). Teachers assess many children
-→ needs "switch/add child" affordance.
+## Production roadmap — agreed to solve one by one (ordered by rework risk)
+Aditya's call at end of last session: tackle each production issue in turn, plus
+a few more features to add. The build is a CORRECT PILOT BUILD — none of this is
+wrong for a closed pilot; these are the production gaps.
 
-### KEY ID MAP
-A session record carries five identities:
-  id              — which record
-  teacherId (op_) — which DEVICE wrote it (per-install)
-  teacherRosterId — which logged-in TEACHER (session)
-  schoolId        — which SCHOOL (session)  ← now a STABLE seeded id
-  profileId (c…)  — which CHILD ← device-local; cross-device fix REQUIRED pre-prod
+1. **Cross-device child ID** — HIGHEST rework risk; gets more expensive every day
+   real records accumulate under the local scheme. `profileId` is device-local;
+   `researchId` is minted on-device, so the same child on two tablets = two IDs
+   that never join. Fix = server-assigned ID on enrolment (ODK Central "Entities"
+   pattern). **Gated on R&D email** (multi-device-per-child confirmation). Draft
+   the R&D email FIRST — unblocks this without writing throwaway code.
+2. **Video consent gate** — `videoUploadMarkup` renders the Add-video control
+   unconditionally; `commitPendingVideo` writes regardless of consent. Under DPDP
+   Rules 10/11 child video needs a recorded consent basis. Fix = per-child
+   `videoConsent` flag (obtained / by whom / date) at enrolment; hide/disable the
+   control and refuse `commitPendingVideo` when absent. **Legal-team owns the
+   consent-field spec** — get one line from them, then implement to spec in one
+   pass. Also tied to R&D email's identified-video-requirement question (if video
+   isn't a confirmed requirement, may not ship in pilot build at all).
+3. **Supabase auth swap** — `verifyCredentials()` is a stub, not authentication;
+   anyone with the app + a login ID is in. Production = `supabase.auth
+   .signInWithPassword()` (seam already designed; only the function body changes).
+4. **Uploader + cloud storage** — video currently never leaves the device (no
+   uploader). Production needs: Uploader seam (mirror Store, do NOT bolt onto it),
+   Supabase storage bucket, offline queue + retry, delete-everywhere (deleting a
+   record/child also deletes the cloud file), returned URL saved on the record.
+5. **Row-Level Security / multi-tenant isolation** — the moment Supabase lands,
+   need `school_id` on every table + RLS policies + JWT school claim at login, or
+   one school reads another's children.
+6. **Video memory fix** — `commitPendingVideo` does `readAsDataURL` of the whole
+   clip into memory then base64-writes; a multi-minute 1080p clip can OOM the
+   WebView and crash Save. Holds for short pilot clips; production = stream to
+   disk via native filesystem instead of base64 round-trip.
+7. **Play Store production release** — closed pilot = internal testing track
+   (invite-only by Gmail). Production = real Play Console release → Google Data
+   Safety form + privacy policy URL + Families/Designed-for-Families review
+   (children's data). Review gate, not just an upload.
 
-### Batch 1 — DONE, verified, committed `c2ffdb0`, pushed
-Identity/schema/delete-by-id/ISO-time/migration shim/centralised saveRecord/35 tests.
+Plus: **a few more features to add** — Aditya to name them next chat.
 
-### Shell — verified + committed `8761845` (branch shell-login-home)
-LOGIN (school dropdown → teacher → sign in, no password; logIn() = prod auth seam),
-record attribution (schoolId + teacherRosterId at saveRecord; CSV School+Teacher
-resolved id→name at export), HOME (3 tiles), STORED DATA → showChildDetail (grouped
-results, by-id per-result + per-child delete). Schools model = production table shape
-(schools + teachers joined by school_id) → prod is a backend swap, not a rewrite.
+## Other on the horizon
+- **Consent/withdraw/erasure envelope (F9)** — broader than just video; needs
+  legal input on photo/biometric consent scope under DPDP Rules 10/11.
+- **File split** (`index.html` → `styles.css` + `store.js` + `app.js`) — its own
+  branch, before feature work.
+- **Audio pipeline** — blocked on real translated SOP text from content team
+  (Hindi, Tamil, Bengali via Sarvam Bulbul v3).
+- **Architecture one-pager** — offered, not yet produced.
 
-### DPDP / compliance (unchanged)
-DPDP Rules 2025 notified 13 Nov 2025; children's-data obligations enforceable
-13 May 2027. Child = under 18. Kids also Rule 11 (disability + lawful guardian).
-Verifiable parental consent is architectural; consent audit trail must be
-central/immutable (Supabase), not a local flag. Behavioural profiling of children
-prohibited → frame R&D as technique/fidelity research. Possible Fourth Schedule
-(education/research) exemption — classes unpublished → assume none till legal confirms;
-Section 8 binds regardless.
+## Open design notes
+- Child picker: selecting a child sets the *global* active child (persists after
+  leaving the activity). Run-scoped selection would be a separate seam — flagged,
+  not built.
+- Category grid: keep the count pill on tiles, or is the description subtitle
+  enough? Pending Flipkart designer review.
 
-### Supabase RLS pattern (for when cloud sync activates)
-school_id on every table; tenant claim in JWT at login; per-table policies match
-column→claim. Gotchas: RLS-off = open to all authed users; service-role key BYPASSES
-RLS (never client-side); each joined table enforces its own RLS.
+## Key principles
+- **Un-backfillable decisions first**: child ID scheme, consent envelope, schema
+  version. Pseudonymisation was sequenced before any upload code for this reason.
+- **`www/` is the recurring gotcha**: root `index.html` is source of truth;
+  `www/index.html` is the gitignored build copy the app loads. Every code session
+  ends with `cp index.html www/index.html && npx cap sync android`, then grep the
+  built assets to confirm. Branch switches don't touch `www/`.
+- **Stale APK**: if the emulator shows old behavior after a clean sync, it's a
+  stale install, not stale assets — `./gradlew clean installDebug` (full reinstall,
+  not Apply Changes / hot reload). Diagnosed exactly this on 2026-06-30: root +
+  `www/` + built assets all had the code; the install was old.
+- **Real password auth cannot live on-device** — APK ships check + comparison
+  value together. `verifyCredentials()` stub is the correct pilot approach.
+- **Color does one job per surface**: category hue on group/tile header only.
+- **TTS does not translate**: Sarvam speaks text as given.
+- **`ensureSchoolsSeeded()` skips if schools already exist** — clear old seed on
+  emulator before new names appear.
 
-### THE www/ RULE
-Root index.html = source of truth. www/index.html = BUILD COPY the app loads.
-www/ is GITIGNORED. After ANY edit: cp → grep-verify → cap sync → cap run.
-Branch switches do NOT update www/ — re-cp after every checkout.
-Post-sync check: grep -c "schemaVersion" android/app/src/main/assets/public/index.html
+## Working approach
+- **Extreme build mode is default**: expert engineer/UX designer, working code,
+  pragmatic calls stated, skip research framing unless asked.
+- One command at a time with an explicit success check before proceeding.
+- Decision-first, then code. One clear recommendation over a menu.
+- Static verification before emulator: JS parse via `new Function()`; integrity greps.
+- Dedicated branches: checkout → work → emulator-verify → push → merge → delete.
+- Feature commits stay focused — keep MEMORY.md / TRACKER.md out of feature
+  commits; regenerate them at wrap-up, commit separately.
+- Complete files over diff instructions.
+- PDF for stakeholder handoffs; visuals over code for design audiences.
 
-### File-split NOT done yet
-single-file → styles.css / store.js / app.js. Clean verified baseline exists
-(8761845) — safest moment for a pure refactor.
+## Stack & environment
+- Plain HTML/CSS/JS, no bundler; Capacitor 8 (Preferences 8.0.1, Filesystem
+  8.1.2, Share 8.0.1, SplashScreen 8.0.1).
+- Repo: `Adistor777/om-cane-training` (private).
+- M5 MacBook Air, PyCharm, Pixel 10 Pro XL emulator (API 37 arm64); `JAVA_HOME`
+  → Android Studio's bundled JDK 21.
+- Audio: Sarvam Bulbul v3 REST; `.env` (gitignored), `.env.example` committed.
+- Compliance: India DPDP Act 2023 + Rules 2025; penalties up to ₹200 crore for
+  children's data; consent burden on app as data fiduciary.
 
-## STACK
-Plain HTML/CSS/JS, no bundler. Capacitor 8, Android Studio (Pixel 10 Pro XL emulator,
-API 37 arm64). Supabase (India region; DB side NOT yet activated). Sarvam AI Bulbul v3
-for audio. Private GitHub repo Adistor777/om-cane-training. App id org.omcane.trainer.
-Key files: index.html, activities.js (content-team owned), MEMORY.md, TRACKER.md,
-DESIGN_NOTES.md, test-batch1.js, generate-audio.js.
+## Key files
+- `index.html` — source of truth (incl. `buildSoundboard` + `SB` player controller)
+- `activities.js` — content-team owned; holds `ACTIVITY_DATA`, the `soundboard:true`
+  flags, and `SOUND_LIBRARY` (soundboard sound list). Do not modify without content team.
+- `sounds/` — bundled soundboard mp3s (gitignored, like `audio/`); synced to `www/`
+- `MEMORY.md`, `TRACKER.md`, `DESIGN_NOTES.md`, `REVIEW_PACKET.md`
+
+## Useful commands
+JS syntax check:
+```
+node -e "const fs=require('fs'); const html=fs.readFileSync('index.html','utf8'); const m=html.match(/<script[^>]*>([\s\S]*?)<\/script>/g)||[]; let body=m.map(s=>s.replace(/<\/?script[^>]*>/g,'')).join('\n'); try{ new Function(body); console.log('JS parse: OK'); }catch(e){ console.log('JS parse ERROR:', e.message); }"
+```
+Post-sync verify (record-screen work):
+```
+grep -c "buildRefSheet" ~/Desktop/om-app/android/app/src/main/assets/public/index.html
+```
+Post-sync verify (soundboard reached the build + sounds bundled):
+```
+grep -c "buildSoundboard" ~/Desktop/om-app/android/app/src/main/assets/public/index.html
+ls ~/Desktop/om-app/android/app/src/main/assets/public/sounds | wc -l   # expect 20
+```
+Clean reinstall (stale APK fix):
+```
+cd ~/Desktop/om-app/android && ./gradlew clean installDebug
+```
+DevTools storage dump (chrome://inspect):
+```
+Store._keys().filter(k=>k.startsWith('rec_')).forEach(k=>console.log(k, JSON.stringify(Store.getJSON(k,[]),null,2)))
+```

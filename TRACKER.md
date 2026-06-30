@@ -1,104 +1,85 @@
-# TRACKER — O&M Cane Training App
-# Regenerated at wrap-up. Companion to MEMORY.md.
+# TRACKER.md — O&M Cane Training
 
-## ✅ DONE THIS SESSION (code-complete + verified by static checks)
-- **Login self-provisioning GATED.** New constant `PILOT_ALLOW_SELF_PROVISION = false`
-  (index.html ~line 696). Both teacher-facing creation paths now render only when
-  the flag is true:
-  - "+ Add a new school" button (login screen) — gated.
-  - "+ Add a new teacher" button (teacher picker) — gated.
-  - `addSchool()`/`addTeacher()`/`showAddSchool()`/`showAddTeacher()` all LEFT INTACT
-    as admin primitives. Flip the flag → they return. Nothing deleted.
-  - Empty-roster copy softened to "...Please contact your coordinator."
-- **3 real pilot schools SEEDED** (replaced placeholder seed). seedSchools() now:
-  - `sch_saksham_noida`  → Saksham School, Noida
-  - `sch_rnks_jaipur`    → Rajasthan Netraheen Kalyan Sangam (RNKS), Jaipur
-  - `sch_nab_kullu`      → National Association of Blind, Kullu
-  - Each carries ONE placeholder teacher ("Teacher 1") so no school is a dead-end
-    under self-provision=false.
-  - IDs are STABLE human-readable strings (NOT newId()), so a school resolves to the
-    same id on every device — the right pattern for cross-device attribution.
-- **Static verification passed:** flag/seed grep-confirmed; full <script> body parses
-  clean via `new Function()`; line count integrity checked (1818 lines).
+_Last updated: 2026-06-30_
 
-## ⏳ NOT YET DONE (carry into next session — required to call this verified)
-- [ ] **Emulator verification of this session's edits.** Static checks only so far.
-      MUST: clear old emulator data first (ensureSchoolsSeeded() skips if any schools
-      exist → old Devnar seed still cached → new schools WON'T appear otherwise).
-      Uninstall app / clear storage → cp → cap sync → run → confirm:
-        - dropdown shows exactly the 3 real schools (no Devnar)
-        - each school shows "Teacher 1", NO "+ Add" links anywhere
-        - tap teacher → Home
-        - flip flag true → reload → add links reappear (proves gate both ways)
-- [ ] **Commit + push** on a dedicated branch (suggested: `login-hardening-seed`).
-      NOT yet committed.
-- [ ] **www/ re-cp** after edits (cp index.html www/index.html before cap sync).
+## Done this session (Sound Library)
+- [x] Built an in-app **Sound Library media player** on the Sound-category
+      activities (any activity with `soundboard: true`): play/pause, prev/next,
+      shuffle, repeat off/all/one, tap/arrow-key seek bar, category tabs,
+      animated equaliser. Warm-paper design system, monoline icons, single
+      accent, full a11y + reduced-motion.
+- [x] `SOUND_LIBRARY` (20 sounds, 4 groups) + `soundboard: true` flags added to
+      `activities.js` — no-coder editable, same authoring pattern as activities.
+- [x] 20 mp3s bundled in `sounds/` (root + `www/`), gitignored exactly like
+      `audio/` (media stays out of git, synced into the build).
+- [x] Static-verified (JS parse + integrity greps + isolated `buildSoundboard`
+      test); `cp index.html www/index.html && npx cap sync android`;
+      emulator-verified on Pixel 10 Pro XL.
+- [x] Committed as TWO clean, isolated commits on branch `feat/soundboard`,
+      pushed to origin:
+      - `167afc0` feat(record): record-screen redesign + video evidence (prior work)
+      - `0ae5844` feat(sound): Sound Library media player
+      Split was done by reconstructing a record-only `index.html` so each commit
+      is isolated — record-screen and soundboard never mixed in one commit.
 
-## 🟠 BUG / GAP (backlog — NOT a blocker)
-- **Cannot add a SECOND child while one is active.** Child form binds to
-  getActiveProfile(); "Add child" label only flips when NO child active
-  (index.html ~line 1310). Teacher with one child has no path to add another without
-  removing the first. Real teachers assess MANY children → needs explicit
-  "switch/add child" affordance. BACKLOG.
+## Next session — FIRST tasks
+- [ ] **Merge `feat/soundboard` → `main`** (PR or local) and delete the branch.
+      PR: https://github.com/Adistor777/om-cane-training/pull/new/feat/soundboard
+- [ ] **Commit `MEMORY.md` / `TRACKER.md`** separately (still modified).
+- [ ] **Repo reorg** on its own branch `chore/repo-structure` (scope agreed):
+      move docs → `docs/`, scripts → `scripts/`, prototype → `prototypes/`; fix
+      `generate-audio.js` two `__dirname` paths; repair `GITHUB-SETUP.md` links;
+      write new `README.md`, `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`. Pure
+      `git mv` (history preserved). Defer the `index.html` → `styles.css`/`app.js`
+      split (its own later branch). NB: git writes must run on the Mac, not in
+      the assistant sandbox.
 
-## 🟡 DECISIONS RESOLVED THIS SESSION
-- **Play Store track: NO release set up yet → ship to INTERNAL TESTING.**
-  This is the real gate against random users during a closed pilot — invite-only by
-  Gmail, app invisible to everyone else, no code required. Distribution-as-gate now;
-  authentication-as-gate (Supabase Auth) replaces it at production. Do NOT ship to
-  open/production track until Auth + RLS exist.
-- **"No random users" is a DISTRIBUTION problem, not an auth-code problem** during the
-  pilot. Hiding add-buttons cleans up in-app chaos; the closed track stops outsiders.
-- **Self-provisioning belongs to ADMIN, not the teacher POV.** A teacher's correct
-  mental model is "I work here, let me in" — two taps, no create-anything path.
+## Production roadmap — solving one by one (ordered by rework risk)
+- [ ] **1. R&D email first** — draft + send. 4 confirmations: architecture A/B,
+      identified-video requirement, multi-device-per-child, analysis approach
+      (longitudinal / cross-child / both). Unblocks the child-ID work below
+      without writing throwaway code. **Most rework-prone item; do first.**
+- [ ] **2. Cross-device child ID** — server-assigned ID on enrolment (Entities
+      pattern). Gated on R&D email. Un-backfillable; costs grow with every record.
+- [ ] **3. Video consent gate** — per-child `videoConsent` flag (obtained / by /
+      date) at enrolment; hide/disable Add-video and refuse `commitPendingVideo`
+      when absent. **Get consent-field spec from legal first**, then one-pass impl.
+- [ ] **4. Supabase auth swap** — `verifyCredentials()` → `signInWithPassword()`.
+- [ ] **5. Uploader + cloud storage** — Uploader seam (mirror Store), bucket,
+      offline queue + retry, delete-everywhere, save returned URL on record.
+- [ ] **6. Row-Level Security** — `school_id` on every table + RLS + JWT claim.
+- [ ] **7. Video memory fix** — stream to disk via native FS instead of base64
+      round-trip (prevents OOM on long clips).
+- [ ] **8. Play Store production release** — Data Safety form, privacy policy URL,
+      Families/Designed-for-Families review.
 
-## 🟡 INPUTS PENDING (others)
-- [ ] Real TEACHER NAMES for the 3 schools. Swap the `name` strings ONLY; KEEP the ids
-      (changing an id after sessions exist orphans those records).
-- [ ] R&D EMAIL (four confirmations): Option A vs B; identified-video requirement;
-      cross-device child id (CONFIRMED yes → blocker); child analysis
-      longitudinal-per-child vs cross-child-statistical vs both.
-- [ ] LEGAL: DPDP Fourth Schedule exemption (educational-institution / research)?
-      Scales the whole consent burden. Assume NO exemption till confirmed.
-- [ ] About screen content — confirm with design at next review.
+## More features to add
+- [x] Sound Library / soundboard for sound activities — DONE this session.
+- [ ] Aditya to name further features at start of a future chat.
 
-## 🔴 IMMEDIATE NEXT (next session)
-- [ ] Emulator-verify + commit this session's login-hardening + seed (above).
-- [ ] Send R&D + legal emails (longest latency — start the clock early).
-- [ ] Decide infra-file-split timing (clean baseline exists post-commit 8761845).
+## Active / near-term
+- [ ] Designer (Flipkart) review: Sound Library accent usage — it is a deliberately
+      richer-accent surface (player), beyond the "accent in two spots" guardrail.
+- [ ] Designer review: category-tile count pill vs description; child-picker grid.
+- [ ] Substitute real teacher names into seed once Mansi provides them.
+- [ ] Consent/withdraw/erasure envelope (F9, broader than video) — legal input.
 
-## 🟢 PRODUCTION WORK (tracked, with OWNERS — not automatic)
-- [ ] Real credential check: stub → Supabase Auth .................... you, later
-- [ ] School self-register flow (= the auth swap) .................... you, later
-- [ ] Local pilot data → Supabase migration ......................... you, later
-- [ ] Admin/self-register boundary for school+teacher creation ....... you/manager
-- [ ] Stable cross-device child id (server-assigned) ....... gated on R&D email
-- [ ] Supabase RLS multi-tenant isolation (school_id JWT claim) ...... you, later
-- [ ] Cloud-storage consent / DPDP sign-off .................... legal/compliance
-- [ ] "Add second child while one active" affordance ................. you, soon
+## Blockers / gated
+- [ ] Cross-device child ID — gated on R&D email.
+- [ ] Audio pipeline (SOP narration) — blocked on real translated SOP text from
+      content team. (Independent of the Sound Library, which is shipped.)
+- [ ] Play Store closed testing track — not set up yet.
 
-## ⚠️ THE www/ RULE (do not forget)
-Root index.html = source of truth. www/index.html = build copy the app loads.
-www/ is gitignored. cp → grep-verify → cap sync → cap run after EVERY edit.
-Branch switches do NOT update www/ — re-cp after every checkout.
-Definitive post-sync check:
-  grep -c "schemaVersion" android/app/src/main/assets/public/index.html
+## Backlog
+- [ ] File split: `index.html` → `styles.css` + `store.js` + `app.js` (own branch).
+- [ ] Architecture one-pager for stakeholders (now part of repo-reorg as
+      `docs/ARCHITECTURE.md`).
 
-## 🔜 STILL QUEUED
-- [ ] infra-file-split (single-file → styles.css / store.js / app.js). NOT done.
-      Clean verified baseline exists (commit 8761845) — safest moment to split.
-- [ ] Shell alias `omsync` for the cp+sync+run loop.
-- [ ] Batch 2 (correctness), Batch 3 (pre-identified-video), Batch 4 (pre-Uploader).
-- [ ] Offline-classroom upload behaviour (immediate vs queue-and-upload-later).
-- [ ] Real-phone test (emulator only so far).
-- [ ] Real SOP translations for remaining activities (blocked on content team).
-
-## KEY PRINCIPLES (unchanged)
-- "Decided" ≠ "in code" ≠ "verified on device". Track all three states.
-- Build order driven by trigger points: un-backfillable items before any
-  production session; correctness before identified video; video before Uploader.
-- Store seam is the single chokepoint. Delete-by-id, never by-index.
-- ISO 8601 for storage; locale strings only at render time.
-- No-bundler constraint is load-bearing (content team's no-coder activities.js edit).
-- One job per surface.
-- Branch discipline: task work on dedicated branches, never on main.
+## Standing reminders
+- Every code session ends: `cp index.html www/index.html && npx cap sync android`,
+  grep built assets to confirm, then `./gradlew clean installDebug` if a stale
+  APK is suspected (not hot reload).
+- Media (`audio/`, `sounds/`, `*.mp4`) is gitignored — bundled locally + synced
+  to `www/`, never committed. Keep `sounds/` and `index.html` together.
+- Feature commits stay focused — MEMORY.md / TRACKER.md regenerated at wrap-up,
+  committed separately.
