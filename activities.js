@@ -94,6 +94,7 @@ const ACTIVITY_DATA = [
         id: "sound-which",
         name: "Which Sound? (Identification)",
         withCane: false,
+        soundboard: true,
         sop: [
           "Play a sound from the speaker.",
           "Ask the child: \"Which sound is this?\"",
@@ -112,6 +113,7 @@ const ACTIVITY_DATA = [
         id: "sound-source",
         name: "Source of Sound? (Localization)",
         withCane: false,
+        soundboard: true,
         sop: [
           "Play a sound from a fixed position.",
           "Ask the child to point to the source.",
@@ -155,6 +157,7 @@ const ACTIVITY_DATA = [
         id: "snddir-cane-count",
         name: "Touch Sound with Cane & Count Steps",
         withCane: true,
+        soundboard: true,
         sop: [
           "Place a sound source out of arm's reach.",
           "Child uses the cane to travel toward it.",
@@ -183,6 +186,7 @@ const ACTIVITY_DATA = [
         id: "slt-nocane",
         name: "Straight Line Travel — Without Cane",
         withCane: false,
+        soundboard: true,
         sop: [
           "Place a sound source straight ahead.",
           "Child walks toward it in a straight line.",
@@ -201,6 +205,7 @@ const ACTIVITY_DATA = [
         id: "slt-withcane",
         name: "Straight Line Travel — With Cane (Push Toy)",
         withCane: true,
+        soundboard: true,
         sop: [
           "Child travels the same path using the cane with a push toy.",
           "Maintain a straight line toward the sound source.",
@@ -421,4 +426,54 @@ const ACTIVITY_DATA = [
      paste it here, put a comma before it, and change the words inside to make a new category with new activities.
      ============================================================ */
 
+];
+
+
+/* =============================================================================
+   SOUND_LIBRARY  —  the sounds shown on the Sound Library board.
+   =============================================================================
+
+   These are the sounds a teacher can play from the device speaker during any
+   activity that has  soundboard: true  (see the activities above).
+
+   TO ADD A SOUND (no coding):
+     1. Put the audio file (an .mp3) into the  sounds/  folder next to this file.
+     2. Copy a line below, change the three values:
+          file   the filename, written as  "sounds/yourfile.mp3"
+          label  the name the teacher sees on the button
+          group  which heading it sits under (e.g. "Animals"). Reuse an existing
+                 group name to add to it, or type a new one to start a new group.
+     3. Keep the quotes "  " and the comma , at the end of the line.
+     4. Save, then rebuild/refresh. Done.
+
+   The groups appear in the order they first show up in this list.
+   ============================================================================= */
+const SOUND_LIBRARY = [
+  /* ----- Animals ----- */
+  { file: "sounds/dog.mp3",            label: "Dog",          group: "Animals" },
+  { file: "sounds/cat.mp3",            label: "Cat",          group: "Animals" },
+  { file: "sounds/cow.mp3",            label: "Cow",          group: "Animals" },
+  { file: "sounds/chicken.mp3",        label: "Chicken",      group: "Animals" },
+  { file: "sounds/cuckoo.mp3",         label: "Cuckoo",       group: "Animals" },
+
+  /* ----- Household ----- */
+  { file: "sounds/doorbell.mp3",       label: "Doorbell",     group: "Household" },
+  { file: "sounds/door.mp3",           label: "Door",         group: "Household" },
+  { file: "sounds/clock.mp3",          label: "Clock",        group: "Household" },
+  { file: "sounds/keys.mp3",           label: "Keys",         group: "Household" },
+  { file: "sounds/flush.mp3",          label: "Toilet flush", group: "Household" },
+  { file: "sounds/glass-breaking.mp3", label: "Glass break",  group: "Household" },
+  { file: "sounds/chewing.mp3",        label: "Chewing",      group: "Household" },
+  { file: "sounds/burp.mp3",           label: "Burp",         group: "Household" },
+
+  /* ----- Traffic & Outdoors ----- */
+  { file: "sounds/horn.mp3",           label: "Horn",         group: "Traffic & Outdoors" },
+  { file: "sounds/police-siren.mp3",   label: "Police siren", group: "Traffic & Outdoors" },
+  { file: "sounds/bike-driving.mp3",   label: "Bike",         group: "Traffic & Outdoors" },
+  { file: "sounds/bicycle-bell.mp3",   label: "Bicycle bell", group: "Traffic & Outdoors" },
+  { file: "sounds/rain.mp3",           label: "Rain",         group: "Traffic & Outdoors" },
+  { file: "sounds/fireworks.mp3",      label: "Fireworks",    group: "Traffic & Outdoors" },
+
+  /* ----- Instruments ----- */
+  { file: "sounds/tabla.mp3",          label: "Tabla",        group: "Instruments" },
 ];

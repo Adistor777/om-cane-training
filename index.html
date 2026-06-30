@@ -263,6 +263,92 @@
   .audio-lang{ margin-top:var(--s2); }
   .audio-lang .audio-lang-label{ display:block; font-size:var(--t-micro); color:var(--ink-faint); font-weight:500; margin-bottom:8px; }
   .audio-lang audio{ width:100%; margin-top:12px; }
+  /* SOUND LIBRARY (soundboard) — sound-category activities only.
+     A restrained media player on the warm-paper system: a flat .panel (the form
+     panel stays the one elevated hero, guardrail #2), monoline icons (no emoji).
+     The category accent carries "what is playing" — the active pad, the round
+     play button, the progress fill, and lit transport toggles. Reviewed as a
+     deliberate player surface (richer than the 2-spot rule), per the soundboard
+     note left for the designer. One sound plays at a time. */
+  .sb-hint{ margin:-6px 0 var(--s3); font-size:var(--t-bodysm); color:var(--ink-faint); }
+  /* category tabs — only the selected group's pads show, so height is fixed */
+  .sb-tabs{ display:flex; gap:8px; overflow-x:auto; margin-bottom:var(--s3); padding-bottom:2px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .sb-tabs::-webkit-scrollbar{ display:none; }
+  .sb-tab{ flex:0 0 auto; font:inherit; font-size:var(--t-bodysm); font-weight:600; color:var(--ink-soft);
+    background:transparent; border:1px solid var(--line); border-radius:999px; padding:9px 15px; min-height:40px;
+    cursor:pointer; white-space:nowrap; transition:background .15s, color .15s, border-color .15s; }
+  @media (hover:hover){ .sb-tab:hover{ border-color:var(--cat-line); color:var(--ink); } }
+  .sb-tab[aria-selected="true"]{ background:var(--cat); color:#fff; border-color:var(--cat); }
+  .sb-tab:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .sb-gridwrap[hidden]{ display:none; }
+  .sb-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .sb-pad{ display:flex; align-items:center; gap:11px; text-align:left; font:inherit;
+    font-weight:600; font-size:var(--t-bodysm); color:var(--ink); background:#fff;
+    border:1px solid var(--line); border-radius:var(--r-sm); padding:11px 13px; min-height:56px;
+    cursor:pointer; transition:border-color .15s, background .15s, color .15s, box-shadow .15s, transform .08s; }
+  .sb-pad .sb-glyph{ width:32px; height:32px; flex:0 0 auto; border-radius:9px; display:flex;
+    align-items:center; justify-content:center; background:var(--paper); border:1px solid var(--line-soft);
+    color:var(--ink-faint); transition:background .15s, color .15s, border-color .15s; }
+  .sb-pad .sb-glyph svg{ width:15px; height:15px; }
+  .sb-pad .sb-label{ flex:1; min-width:0; }
+  @media (hover:hover){ .sb-pad:hover{ border-color:var(--cat-line); box-shadow:var(--shadow-rest); } }
+  .sb-pad:active{ transform:scale(.98); }
+  .sb-pad:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .sb-pad[aria-pressed="true"]{ background:var(--cat); color:#fff; border-color:var(--cat); }
+  .sb-pad[aria-pressed="true"] .sb-glyph{ background:rgba(255,255,255,.2); border-color:transparent; color:#fff; }
+  /* equaliser replaces the glyph icon while the current pad is playing */
+  .sb-eq{ display:none; align-items:flex-end; gap:2px; height:15px; }
+  .sb-pad[aria-pressed="true"] .sb-glyph .sb-ico{ display:none; }
+  .sb-pad[aria-pressed="true"] .sb-glyph .sb-eq{ display:flex; }
+  .sb-eq i{ width:3px; background:#fff; border-radius:2px; height:5px; animation:sb-eq .9s ease-in-out infinite; }
+  .sb-eq i:nth-child(2){ animation-delay:.15s; } .sb-eq i:nth-child(3){ animation-delay:.3s; }
+  @keyframes sb-eq{ 0%,100%{ height:5px; } 50%{ height:15px; } }
+  /* freeze the equaliser when the current sound is paused */
+  #soundboardPanel:not([data-playing="true"]) .sb-eq i{ animation-play-state:paused; }
+
+  /* ---- player (transport) — hidden until a sound is chosen ---- */
+  .sb-player{ margin-top:var(--s3); padding-top:var(--s3); border-top:1px solid var(--line-soft); }
+  .sb-player[hidden]{ display:none; }
+  /* idle state: shown before any sound is picked — controls visible but quiet */
+  .sb-player.is-idle .name{ color:var(--ink-faint); }
+  .sb-player.is-idle .sb-progress{ opacity:.5; }
+  .sb-track{ display:flex; align-items:baseline; gap:9px; margin-bottom:11px; min-width:0; }
+  .sb-track .name{ font-weight:600; font-size:var(--t-title); color:var(--ink); letter-spacing:-.01em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sb-track .grp{ font-size:var(--t-caption); color:var(--ink-faint); flex:0 0 auto; }
+  .sb-seek{ display:flex; align-items:center; gap:10px; margin-bottom:15px; }
+  .sb-seek .t{ font-size:var(--t-micro); color:var(--ink-faint); font-variant-numeric:tabular-nums; min-width:32px; }
+  .sb-seek .t.total{ text-align:right; }
+  .sb-progress{ position:relative; flex:1; height:6px; border-radius:99px; background:var(--line);
+    cursor:pointer; touch-action:none; }
+  .sb-progress .fill{ position:absolute; top:0; left:0; bottom:0; width:0%; background:var(--cat); border-radius:99px; }
+  .sb-progress .knob{ position:absolute; top:50%; left:0%; width:14px; height:14px; margin-left:-7px;
+    transform:translateY(-50%); border-radius:50%; background:var(--cat); box-shadow:0 1px 3px rgba(60,45,15,.3); }
+  .sb-progress:focus-visible{ outline:3px solid var(--cat); outline-offset:5px; border-radius:99px; }
+  .sb-transport{ display:flex; align-items:center; justify-content:center; gap:6px; }
+  .sb-tbtn{ display:inline-flex; align-items:center; justify-content:center; background:transparent;
+    border:none; color:var(--ink-soft); cursor:pointer; border-radius:50%; position:relative;
+    transition:background .15s, color .15s, filter .15s, transform .08s; }
+  .sb-tbtn svg{ width:22px; height:22px; }
+  .sb-tbtn.side{ width:52px; height:52px; color:var(--ink); }
+  .sb-tbtn.toggle{ width:46px; height:46px; }
+  .sb-tbtn.main{ width:64px; height:64px; background:var(--cat); color:#fff; box-shadow:var(--shadow-rest); }
+  .sb-tbtn.main svg{ width:27px; height:27px; }
+  @media (hover:hover){
+    .sb-tbtn.side:hover, .sb-tbtn.toggle:hover{ background:var(--cat-soft); color:var(--cat-deep); }
+    .sb-tbtn.main:hover{ filter:brightness(1.06); }
+  }
+  .sb-tbtn:active{ transform:scale(.92); }
+  .sb-tbtn:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .sb-tbtn.toggle.on{ background:var(--cat-soft); color:var(--cat-deep); }
+  .sb-tbtn .badge{ position:absolute; right:7px; bottom:7px; font-size:9px; font-weight:700; line-height:1;
+    background:var(--cat-deep); color:#fff; border-radius:6px; padding:1px 3px; }
+  .sb-tbtn .badge[hidden]{ display:none; }
+  @media (prefers-reduced-motion:reduce){
+    .sb-eq i{ animation:none; height:10px; }
+    .sb-pad:active, .sb-tbtn:active{ transform:none; }
+  }
   fieldset{ border:none; margin:0; padding:0; }
   .field{ margin-bottom:var(--s3); }
   .field > label{ display:block; font-weight:600; margin-bottom:10px; font-size:var(--t-bodysm); color:var(--ink); letter-spacing:-.005em; }
@@ -654,6 +740,14 @@ const ICON = {
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>',
   shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"/></svg>',
   logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/></svg>',
+  // ---- sound library (soundboard) media-player controls -------------------
+  sbPlay:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.87l11-6.8a1 1 0 0 0 0-1.74l-11-6.8A1 1 0 0 0 8 5.2Z"/></svg>',
+  sbPause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>',
+  sbPrev:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="6" width="2.6" height="12" rx="1"/><path d="M20 6.7v10.6a.8.8 0 0 1-1.22.68l-8.5-5.3a.8.8 0 0 1 0-1.36l8.5-5.3A.8.8 0 0 1 20 6.7Z"/></svg>',
+  sbNext:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="16.4" y="6" width="2.6" height="12" rx="1"/><path d="M4 6.7v10.6a.8.8 0 0 0 1.22.68l8.5-5.3a.8.8 0 0 0 0-1.36l-8.5-5.3A.8.8 0 0 0 4 6.7Z"/></svg>',
+  sbShuffle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l4 4"/></svg>',
+  sbRepeat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+  sbSound:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 9a4 4 0 0 1 0 6"/></svg>',
   // ---- per-category monoline icons (positional, see CATEGORY_ICONS) --------
   catEar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 3-2 4-3 5.5-.8 1.2-.5 2.5-1.5 3.5a2.5 2.5 0 0 1-4-2"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .3"/></svg>',
   catSoundDir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M8 9.5a4 4 0 0 0 0 5"/><path d="M16 9.5a4 4 0 0 1 0 5"/><path d="M5 7a8 8 0 0 0 0 10"/><path d="M19 7a8 8 0 0 1 0 10"/></svg>',
@@ -2183,14 +2277,196 @@ function toggleRefSheet(btn, domId){
   btn.setAttribute('aria-expanded', d.open ? 'true' : 'false');
   if(d.open){ d.scrollIntoView({behavior:'smooth', block:'nearest'}); }
 }
+/* ---------------------------------------------------------------------------
+   SOUND LIBRARY (soundboard) — rendered on activities with soundboard:true.
+   Plays bundled mp3s from ./sounds, offline, inside the Capacitor WebView (no
+   server). One sound at a time; the playing pad carries the category accent.
+   Sound list + which activities show it both live in activities.js, so the
+   content team controls all of it without touching this file.
+   --------------------------------------------------------------------------- */
+function buildSoundboard(act){
+  if(!act || !act.soundboard) return '';
+  if(typeof SOUND_LIBRARY === 'undefined' || !Array.isArray(SOUND_LIBRARY) || !SOUND_LIBRARY.length) return '';
+  // Group, preserving first-seen order (matches activities.js authoring order).
+  const groups = [];
+  SOUND_LIBRARY.forEach((s, i)=>{
+    const name = s.group || 'Sounds';
+    let g = groups.find(x=>x.name === name);
+    if(!g){ g = { name, items:[] }; groups.push(g); }
+    g.items.push({ s, i });
+  });
+  // One group visible at a time (tabs) so the panel height stays fixed no
+  // matter how many sounds the content team adds.
+  const tabs = groups.map((g,gi)=>`<button type="button" class="sb-tab" role="tab" aria-selected="${gi===0}" aria-controls="sbGroup${gi}" onclick="SB.showGroup(${gi}, this)">${esc(g.name)}</button>`).join('');
+  const panels = groups.map((g,gi)=>`
+      <div class="sb-gridwrap" id="sbGroup${gi}" role="tabpanel" aria-label="${esc(g.name)}"${gi===0?'':' hidden'}>
+        <div class="sb-grid">${g.items.map(({s,i})=>`
+          <button type="button" class="sb-pad" data-idx="${i}" aria-pressed="false" aria-label="Play ${esc(s.label)}" onclick="SB.playIdx(${i})">
+            <span class="sb-glyph" aria-hidden="true">
+              <span class="sb-ico">${ICON.sbSound}</span>
+              <span class="sb-eq"><i></i><i></i><i></i></span>
+            </span>
+            <span class="sb-label">${esc(s.label)}</span>
+          </button>`).join('')}</div>
+      </div>`).join('');
+  return `
+    <div class="panel" id="soundboardPanel" data-playing="false">
+      <h2 class="panel-title">${ICON.audio} Sound library</h2>
+      <p class="sb-hint">Pick a category, tap a sound, then use the player to replay, skip, shuffle or loop. Watch where the child turns — stand about three steps away.</p>
+      <div class="sb-tabs" role="tablist" aria-label="Sound categories">${tabs}</div>
+      ${panels}
+      <div class="sb-player is-idle" id="sbPlayer">
+        <div class="sb-track">
+          <span class="name" id="sbName">Select a sound</span>
+          <span class="grp" id="sbGrp"></span>
+        </div>
+        <div class="sb-seek">
+          <span class="t" id="sbElapsed">0:00</span>
+          <div class="sb-progress" id="sbProgress" role="slider" tabindex="0"
+               aria-label="Seek position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+               onclick="SB.seekFromClient(event.clientX)" onkeydown="SB.seekKey(event)">
+            <div class="fill" id="sbFill"></div><div class="knob" id="sbKnob"></div>
+          </div>
+          <span class="t total" id="sbTotal">0:00</span>
+        </div>
+        <div class="sb-transport">
+          <button type="button" class="sb-tbtn toggle" id="sbShuffle" aria-pressed="false" aria-label="Shuffle off" onclick="SB.toggleShuffle()">${ICON.sbShuffle}</button>
+          <button type="button" class="sb-tbtn side" id="sbPrev" aria-label="Previous sound" onclick="SB.prev()">${ICON.sbPrev}</button>
+          <button type="button" class="sb-tbtn main" id="sbPlay" aria-label="Play" onclick="SB.toggle()">${ICON.sbPlay}</button>
+          <button type="button" class="sb-tbtn side" id="sbNext" aria-label="Next sound" onclick="SB.next(true)">${ICON.sbNext}</button>
+          <button type="button" class="sb-tbtn toggle" id="sbRepeat" aria-label="Repeat off" onclick="SB.cycleRepeat()">${ICON.sbRepeat}<span class="badge" id="sbRepeatBadge" hidden>1</span></button>
+        </div>
+      </div>
+      <span class="visually-hidden" aria-live="assertive" id="sbLive"></span>
+    </div>`;
+}
+/* Media-player controller for the Sound Library. One <audio> element; the
+   library (SOUND_LIBRARY) is the queue. repeat: off → all → one. The category
+   accent marks the current track (pad + play button + progress + lit toggles). */
+const SB = {
+  audio:null, idx:-1, playing:false, shuffle:false, repeat:'off',
+  _el(id){ return document.getElementById(id); },
+  _ensure(){
+    if(SB.audio) return SB.audio;
+    const a = new Audio();
+    a.addEventListener('timeupdate', SB._onTime);
+    a.addEventListener('loadedmetadata', SB._onMeta);
+    a.addEventListener('ended', SB._onEnded);
+    SB.audio = a; return a;
+  },
+  showGroup(gi){
+    document.querySelectorAll('#soundboardPanel .sb-tab').forEach((t,k)=>t.setAttribute('aria-selected', String(k===gi)));
+    document.querySelectorAll('#soundboardPanel .sb-gridwrap').forEach((w,k)=>{ w.hidden = (k!==gi); });
+  },
+  playIdx(i){ SB.load(i, true); },
+  load(i, autoplay){
+    if(typeof SOUND_LIBRARY==='undefined' || i<0 || i>=SOUND_LIBRARY.length) return;
+    const s = SOUND_LIBRARY[i]; const a = SB._ensure();
+    SB.idx = i; a.src = s.file; try{ a.currentTime = 0; }catch(e){}
+    const player = SB._el('sbPlayer'); if(player){ player.hidden = false; player.classList.remove('is-idle'); }
+    const nm = SB._el('sbName'); if(nm) nm.textContent = s.label;
+    const gp = SB._el('sbGrp'); if(gp) gp.textContent = s.group || '';
+    SB._fill(0); const el = SB._el('sbElapsed'); if(el) el.textContent = '0:00';
+    SB._highlight(i);
+    if(autoplay) SB.play(); else SB._setPlaying(false);
+    SB._announce((autoplay?'Playing ':'Selected ') + s.label);
+  },
+  _first(){ return (SB.shuffle && SOUND_LIBRARY.length > 1) ? Math.floor(Math.random()*SOUND_LIBRARY.length) : 0; },
+  play(){
+    if(SB.idx < 0){ SB.load(SB._first(), true); return; }
+    const a = SB._ensure(); const p = a.play(); if(p && p.catch) p.catch(()=>{});
+    if(navigator.vibrate) navigator.vibrate(25);
+    SB._setPlaying(true);
+  },
+  pause(){ if(SB.audio) SB.audio.pause(); SB._setPlaying(false); },
+  toggle(){ if(SB.idx < 0){ SB.load(SB._first(), true); return; } SB.playing ? SB.pause() : SB.play(); },
+  next(user){
+    if(typeof SOUND_LIBRARY==='undefined' || !SOUND_LIBRARY.length) return;
+    let n;
+    if(SB.shuffle && SOUND_LIBRARY.length > 1){ do { n = Math.floor(Math.random()*SOUND_LIBRARY.length); } while(n === SB.idx); }
+    else { n = SB.idx + 1; if(n >= SOUND_LIBRARY.length) n = 0; }
+    SB.load(n, true);
+  },
+  prev(){
+    const a = SB.audio;
+    if(a && a.currentTime > 2){ try{ a.currentTime = 0; }catch(e){} return; }
+    let n = SB.shuffle ? SB.idx : SB.idx - 1;
+    if(n < 0) n = SOUND_LIBRARY.length - 1;
+    SB.load(n, true);
+  },
+  toggleShuffle(){
+    SB.shuffle = !SB.shuffle;
+    const b = SB._el('sbShuffle');
+    if(b){ b.classList.toggle('on', SB.shuffle); b.setAttribute('aria-pressed', String(SB.shuffle));
+      b.setAttribute('aria-label', SB.shuffle ? 'Shuffle on' : 'Shuffle off'); }
+    SB._announce('Shuffle ' + (SB.shuffle?'on':'off'));
+  },
+  cycleRepeat(){
+    SB.repeat = SB.repeat==='off' ? 'all' : SB.repeat==='all' ? 'one' : 'off';
+    const b = SB._el('sbRepeat'); const badge = SB._el('sbRepeatBadge');
+    if(b){ b.classList.toggle('on', SB.repeat !== 'off');
+      b.setAttribute('aria-label', SB.repeat==='off'?'Repeat off':SB.repeat==='all'?'Repeat all':'Repeat one'); }
+    if(badge) badge.hidden = (SB.repeat !== 'one');
+    SB._announce(SB.repeat==='off'?'Repeat off':SB.repeat==='all'?'Repeat all':'Repeat one');
+  },
+  seekFromClient(clientX){
+    const bar = SB._el('sbProgress'); const a = SB.audio;
+    if(!bar || !a || !a.duration) return;
+    const r = bar.getBoundingClientRect();
+    let ratio = (clientX - r.left) / r.width; ratio = Math.max(0, Math.min(1, ratio));
+    try{ a.currentTime = ratio * a.duration; }catch(e){}
+    SB._fill(ratio*100);
+  },
+  seekKey(e){
+    const a = SB.audio;
+    if(e.key===' '||e.key==='Enter'){ SB.toggle(); e.preventDefault(); return; }
+    if(!a || !a.duration) return;
+    if(e.key==='ArrowRight'){ a.currentTime = Math.min(a.duration, a.currentTime+1); e.preventDefault(); }
+    else if(e.key==='ArrowLeft'){ a.currentTime = Math.max(0, a.currentTime-1); e.preventDefault(); }
+  },
+  _onTime(){
+    const a = SB.audio; if(!a) return;
+    const pct = a.duration ? (a.currentTime/a.duration)*100 : 0;
+    SB._fill(pct);
+    const el = SB._el('sbElapsed'); if(el) el.textContent = SB._fmt(a.currentTime);
+    const pr = SB._el('sbProgress'); if(pr) pr.setAttribute('aria-valuenow', String(Math.round(pct)));
+  },
+  _onMeta(){ const a = SB.audio; const t = SB._el('sbTotal'); if(t) t.textContent = SB._fmt(a && isFinite(a.duration) ? a.duration : 0); },
+  _onEnded(){
+    if(SB.repeat==='one'){ try{ SB.audio.currentTime = 0; }catch(e){} SB.play(); return; }
+    if(SB.repeat==='all'){ SB.next(false); return; }
+    SB._setPlaying(false); try{ SB.audio.currentTime = 0; }catch(e){}
+    SB._fill(0); const el = SB._el('sbElapsed'); if(el) el.textContent = '0:00';
+  },
+  _setPlaying(on){
+    SB.playing = on;
+    const btn = SB._el('sbPlay');
+    if(btn){ btn.innerHTML = on ? ICON.sbPause : ICON.sbPlay; btn.setAttribute('aria-label', on ? 'Pause' : 'Play'); }
+    const panel = SB._el('soundboardPanel'); if(panel) panel.setAttribute('data-playing', String(on));
+  },
+  _fill(pct){ const f = SB._el('sbFill'); const k = SB._el('sbKnob'); if(f) f.style.width = pct+'%'; if(k) k.style.left = pct+'%'; },
+  _highlight(i){ document.querySelectorAll('.sb-pad').forEach(p=>{ p.setAttribute('aria-pressed', String(Number(p.dataset.idx)===i)); }); },
+  _announce(msg){ const a = SB._el('sbLive'); if(a) a.textContent = msg; },
+  _fmt(sec){ sec = Math.max(0, Math.floor(sec||0)); const m = Math.floor(sec/60); const s = sec%60; return m+':'+(s<10?'0':'')+s; },
+  // Stop and fully reset when navigating between screens (no cross-screen audio).
+  reset(){
+    if(SB.audio){ try{ SB.audio.pause(); }catch(e){}
+      SB.audio.removeEventListener('timeupdate', SB._onTime);
+      SB.audio.removeEventListener('loadedmetadata', SB._onMeta);
+      SB.audio.removeEventListener('ended', SB._onEnded);
+    }
+    SB.audio = null; SB.idx = -1; SB.playing = false; SB.shuffle = false; SB.repeat = 'off';
+  }
+};
 function showActivity(catIndex, actIndex, opts){
   opts = opts || {};
+  if(typeof SB !== 'undefined') SB.reset();
   const cat = ACTIVITY_DATA[catIndex];
   const act = cat.activities[actIndex];
   state = { category:catIndex, activity:actIndex };
   crumbEl.textContent = cat.category;
   backBtn.style.display = 'flex';
-  backBtn.onclick = ()=>showCategory(catIndex,'back');
+  backBtn.onclick = ()=>{ if(typeof SB !== 'undefined') SB.reset(); showCategory(catIndex,'back'); };
   homeDot.innerHTML = catIcon(catIndex);
   themeFor(catIndex);
   const audioHtml = buildAudioHtml(act);
@@ -2214,6 +2490,7 @@ function showActivity(catIndex, actIndex, opts){
     </div>
     ${refSheet}
     ${childBar}
+    ${buildSoundboard(act)}
     <div class="panel primary" id="formPanel">
       <h2 class="panel-title">${ICON.edit} Record a result</h2>
       <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${fields}${videoUploadMarkup()}<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button></fieldset></form>

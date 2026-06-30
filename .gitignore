@@ -12,3 +12,6 @@ demo-sound.mp4
 *.mp4
 .env
 audio/
+
+# Soundboard audio (bundled locally + synced to www, like audio/)
+sounds/
