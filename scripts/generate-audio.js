@@ -79,8 +79,10 @@ const FORMAT   = 'mp3';          // WebView-friendly (your demo-video work confi
 const SAMPLE_RATE = 24000;       // v3 default.
 
 const API_URL  = 'https://api.sarvam.ai/text-to-speech';
-const OUT_DIR  = path.join(__dirname, 'audio');
-const ACTIVITIES_FILE = path.join(__dirname, 'activities.js');
+// Script lives in scripts/; audio/ and activities.js live at the project root.
+const ROOT = path.join(__dirname, '..');
+const OUT_DIR  = path.join(ROOT, 'audio');
+const ACTIVITIES_FILE = path.join(ROOT, 'activities.js');
 
 const CHAR_LIMIT = 2400;         // v3 allows ~2500; stay safely under.
 
@@ -231,7 +233,7 @@ async function main() {
 
     for (const [appCode, sarvamCode] of langEntries) {
       const outPath = path.join(OUT_DIR, `${act.id}_${appCode}.mp3`);
-      const rel = path.relative(__dirname, outPath);
+      const rel = path.relative(ROOT, outPath);
 
       // Use the content team's translated text for THIS language. No machine
       // translation — if a language is missing, skip it cleanly.

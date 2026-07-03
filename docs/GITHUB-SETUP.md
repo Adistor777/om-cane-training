@@ -26,8 +26,10 @@ they regenerate from `npm install` + `npx cap sync`:
 | `www/` | Re-created by your `cp` build step |
 
 **What the repo SHOULD contain:** `index.html`, `activities.js`,
-`capacitor.config.json`, `package.json`, and the docs (`BUILD-ANDROID.md`,
-`README.md`, `DESIGN_NOTES.md`, `MEMORY.md`, `TRACKER.md`, this file).
+`capacitor.config.json`, `package.json`, `README.md`, `CONTRIBUTING.md`,
+`MEMORY.md`, `TRACKER.md`, plus the organised folders: `docs/`
+(guides incl. this file, `docs/handoffs/`, `docs/compliance/`),
+`scripts/`, `prototypes/`, and `supabase/`.
 
 > Note `package-lock.json`: if you have one, commit it (it pins exact
 > dependency versions — good). If you don't, no problem.
