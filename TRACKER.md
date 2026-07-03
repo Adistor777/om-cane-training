@@ -46,8 +46,10 @@ _Last updated: 2026-07-03_
 - [ ] Commit on `feat/consent-gate`: the whole consent + erasure envelope is
       ONE feature commit (`index.html` only), `compliance/` docs a second
       commit, MEMORY/TRACKER third.
-- [ ] **Repo reorg** on `chore/repo-structure` — unchanged scope from 06-30;
-      fold `compliance/` into the docs move if desired.
+- [x] **Repo reorg** — DONE (2026-07-03, merged). docs/ (+handoffs/,
+      +compliance/), scripts/, prototypes/; generate-audio.js + test-batch1.js
+      paths fixed; test suite de-staled (schemaVersion read from app, 35/35
+      green); new README, docs/ARCHITECTURE.md, CONTRIBUTING.md.
 
 ## R&D DECISIONS — locked 2026-07-03 (answers to the four questions)
 1. **Architecture A** — server-assigned child ID at enrolment. Enrolment is
