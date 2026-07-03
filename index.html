@@ -2083,6 +2083,10 @@ async function selectChild(id){
 let pendingPhoto = null; // holds a freshly downscaled data URL before save
 function profileFormMarkup(editing, bare){
   pendingPhoto = editing ? (editing.photo || null) : null;
+  // Same reset for the staged consent-form photo: a photo picked for one child
+  // and abandoned must NEVER survive into another child's save (audit found a
+  // cross-child evidence leak here — the avatar reset above set the pattern).
+  pendingConsentPhoto = null;
   const v = (k)=> editing && editing[k] != null ? esc(String(editing[k])) : '';
   const hand = editing ? editing.dominantHand : '';
   const photoInner = pendingPhoto ? `<img id="photoImg" class="photo-preview" src="${pendingPhoto}" alt="Current photo">`
@@ -2347,7 +2351,10 @@ async function handleProfileSave(existingId){
   profile.videoConsentFormSerial = consentChecked
     ? (((document.getElementById('p_consentserial')||{}).value || '').trim() || prev.videoConsentFormSerial || '')
     : (prev.videoConsentFormSerial || '');
-  if(pendingConsentPhoto){
+  // Write only when the photo has a consent context (currently ticked, or a
+  // prior grant it evidences) — a photo staged then unticked before save must
+  // not park guardian PII on a child with no consent claim at all.
+  if(pendingConsentPhoto && (consentChecked || prev.videoConsent)){
     const newPhoto = await writeConsentPhoto(profile.researchId, pendingConsentPhoto);
     if(newPhoto && prev.videoConsentFormPhoto) await deleteVideoFile(prev.videoConsentFormPhoto); // replaced → old file goes
     profile.videoConsentFormPhoto = newPhoto || prev.videoConsentFormPhoto || '';
