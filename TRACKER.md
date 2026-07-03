@@ -49,15 +49,40 @@ _Last updated: 2026-07-03_
 - [ ] **Repo reorg** on `chore/repo-structure` — unchanged scope from 06-30;
       fold `compliance/` into the docs move if desired.
 
+## R&D DECISIONS — locked 2026-07-03 (answers to the four questions)
+1. **Architecture A** — server-assigned child ID at enrolment. Enrolment is
+   ONLINE-ONLY (one moment of connectivity per child, once); assessments stay
+   fully offline.
+2. **Video IS required** for the research — consent gate + uploader ship in
+   the pilot; not cuttable.
+3. **Multi-device-per-child: YES** — confirms A; same child on two phones must
+   join on the same server ID.
+4. **Analysis: BOTH** longitudinal and cross-child — records must be strictly
+   joinable per child across months (research_id is the join key; indexes for
+   both patterns are in the schema draft).
+
 ## Production roadmap (ordered by rework risk)
-- [ ] **1. R&D email** — unchanged, still first. 4 confirmations pending.
-- [ ] **2. Cross-device child ID** — gated on R&D email.
+- [x] **1. R&D email** — SENT + ANSWERED (see decisions above).
+- [ ] **2. Cross-device child ID** — UNBLOCKED. Design: server mints
+      `research_id` via `enrol_child()` RPC (drafted in
+      `supabase/schema.sql`); app's Save-child calls it when online, blocks
+      new enrolment offline with a clear message; local `newResearchId()`
+      remains only as the legacy/migration path. NEEDS: Supabase project
+      (India region) created first — Aditya, ~10 min in dashboard, then share
+      Project URL + anon key.
 - [x] **3. Video consent gate** — DONE this session (see above).
 - [ ] **4. Supabase auth swap** — `verifyCredentials()` → `signInWithPassword()`.
-- [ ] **5. Uploader + cloud storage** — NOTE: uploader must re-check
-      `videoConsent` before upload and honour erasure server-side
+      Schema + RLS + enrol RPC pre-drafted in `supabase/schema.sql`; once the
+      project exists, #2 + #4 + #6 land in one build session.
+- [ ] **5. Uploader + cloud storage** — bucket 'videos' (private), path
+      `{school_id}/{research_id}_{ts}.{ext}` (policy-ready). Uploader must
+      re-check `videoConsent` before upload and honour erasure server-side
       (delete-everywhere); re-review `DPDP-COMPLIANCE-MAP.md` before shipping.
-- [ ] **6. Row-Level Security** — school_id + RLS + JWT claim; India region.
+- [ ] **6. Row-Level Security** — policies DRAFTED in `supabase/schema.sql`
+      (school_id JWT claim via app_metadata, per-table + storage policies).
+      DECISION FLAGGED THERE for legal: child name/DOB stored server-side
+      behind RLS (needed for multi-device child picker); research extracts
+      stay research_id-only.
 - [x] **7. Video memory fix** — DONE (2026-07-03, same session as consent).
       `commitPendingVideo` now copies the clip in 3 MB slices
       (`writeFile` first chunk, `appendFile` rest) — peak JS memory is one
