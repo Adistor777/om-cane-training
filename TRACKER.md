@@ -1,85 +1,93 @@
 # TRACKER.md — O&M Cane Training
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-07-03_
 
-## Done this session (Sound Library)
-- [x] Built an in-app **Sound Library media player** on the Sound-category
-      activities (any activity with `soundboard: true`): play/pause, prev/next,
-      shuffle, repeat off/all/one, tap/arrow-key seek bar, category tabs,
-      animated equaliser. Warm-paper design system, monoline icons, single
-      accent, full a11y + reduced-motion.
-- [x] `SOUND_LIBRARY` (20 sounds, 4 groups) + `soundboard: true` flags added to
-      `activities.js` — no-coder editable, same authoring pattern as activities.
-- [x] 20 mp3s bundled in `sounds/` (root + `www/`), gitignored exactly like
-      `audio/` (media stays out of git, synced into the build).
-- [x] Static-verified (JS parse + integrity greps + isolated `buildSoundboard`
-      test); `cp index.html www/index.html && npx cap sync android`;
-      emulator-verified on Pixel 10 Pro XL.
-- [x] Committed as TWO clean, isolated commits on branch `feat/soundboard`,
-      pushed to origin:
-      - `167afc0` feat(record): record-screen redesign + video evidence (prior work)
-      - `0ae5844` feat(sound): Sound Library media player
-      Split was done by reconstructing a record-only `index.html` so each commit
-      is isolated — record-screen and soundboard never mixed in one commit.
+## Done this session (Compliance — roadmap #3 + F9 + docs)
+- [x] **Video consent gate finished** (was a bare-checkbox skeleton, uncommitted).
+      Now a VERIFIABLE consent record per DPDP Rule 10: `videoConsentBy`
+      (guardian name, required), `videoConsentRelation` (Mother/Father/Legal
+      guardian, required), `videoConsentMethod`, `videoConsentOn`,
+      `videoConsentWithdrawnOn`. Sub-fields revealed by the tick
+      (`toggleConsentFields`); save refuses a tick without name+relation.
+- [x] **Audit-honest withdrawal:** unticking stamps `videoConsentWithdrawnOn`
+      and PRESERVES the original grant fields (history never wiped). Re-grant
+      after withdrawal = fresh consent (new `videoConsentOn`, withdrawn cleared).
+- [x] **Withdrawal erasure prompt:** if stored clips exist at withdrawal, the
+      teacher chooses: delete clips now (erasure request) or keep (pre-withdrawal
+      processing stays lawful). `eraseVideosForProfile()` deletes files AND
+      strips `r.video` pointers; assessment records stay.
+- [x] **Erasure completeness (F9):** `deleteRecord`, `deleteProfile`, and
+      `clearAllData` now delete video FILES, not just pointers — new helpers
+      `deleteVideoFile` / `videoFilenamesForProfile`; `clearAllData` rmdirs the
+      whole `videos/` tree. No orphaned children's data on disk.
+- [x] **CSV consent columns:** every export row carries Video consent
+      (Yes/No/Withdrawn) + granted/withdrawn dates; guardian identity
+      (by/relation/method) exports ONLY on the PII keysheet, same rule as name/DOB.
+- [x] **Child-detail consent line:** on-file since / withdrawn on / none —
+      visible without opening the edit form.
+- [x] **Migration backfill:** pre-consent profiles get explicit
+      `videoConsent:false` + empty envelope fields. `SCHEMA_VERSION` stays 2
+      (additive). JS parse OK; helper def/ref greps OK; `www/index.html` synced.
+- [x] **Compliance docs** in new `compliance/`: `PRIVACY-POLICY.md` (hostable,
+      placeholders for entity/officer), `GUARDIAN-CONSENT-FORM.pdf` (paper form,
+      Part A assessment / Part B video with separate signatures + school
+      ID-verification block), `GUARDIAN-CONSENT-FORM-HINDI.md` (translation for
+      content team to verify/typeset), `PLAY-DATA-SAFETY.md` (Data Safety
+      answers; target audience 18+ teachers — avoids Families review),
+      `DPDP-COMPLIANCE-MAP.md` (requirement → control map for legal sign-off).
 
-## Next session — FIRST tasks
-- [ ] **Merge `feat/soundboard` → `main`** (PR or local) and delete the branch.
-      PR: https://github.com/Adistor777/om-cane-training/pull/new/feat/soundboard
-- [ ] **Commit `MEMORY.md` / `TRACKER.md`** separately (still modified).
-- [ ] **Repo reorg** on its own branch `chore/repo-structure` (scope agreed):
-      move docs → `docs/`, scripts → `scripts/`, prototype → `prototypes/`; fix
-      `generate-audio.js` two `__dirname` paths; repair `GITHUB-SETUP.md` links;
-      write new `README.md`, `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`. Pure
-      `git mv` (history preserved). Defer the `index.html` → `styles.css`/`app.js`
-      split (its own later branch). NB: git writes must run on the Mac, not in
-      the assistant sandbox.
+## Next session — FIRST tasks (on the Mac)
+- [ ] `npx cap sync android` — the sandbox attempt failed with EPERM mid-run;
+      built assets still hold the OLD index.html. `www/` is correct and verified.
+- [ ] Emulator-verify the consent flow: add child without consent → record
+      screen shows locked slot; grant consent (name+relation required) →
+      capture works; withdraw with a stored clip → erasure prompt; child
+      delete → clip file gone from `DATA/videos/`.
+- [ ] Commit on `feat/consent-gate`: the whole consent + erasure envelope is
+      ONE feature commit (`index.html` only), `compliance/` docs a second
+      commit, MEMORY/TRACKER third.
+- [ ] **Repo reorg** on `chore/repo-structure` — unchanged scope from 06-30;
+      fold `compliance/` into the docs move if desired.
 
-## Production roadmap — solving one by one (ordered by rework risk)
-- [ ] **1. R&D email first** — draft + send. 4 confirmations: architecture A/B,
-      identified-video requirement, multi-device-per-child, analysis approach
-      (longitudinal / cross-child / both). Unblocks the child-ID work below
-      without writing throwaway code. **Most rework-prone item; do first.**
-- [ ] **2. Cross-device child ID** — server-assigned ID on enrolment (Entities
-      pattern). Gated on R&D email. Un-backfillable; costs grow with every record.
-- [ ] **3. Video consent gate** — per-child `videoConsent` flag (obtained / by /
-      date) at enrolment; hide/disable Add-video and refuse `commitPendingVideo`
-      when absent. **Get consent-field spec from legal first**, then one-pass impl.
+## Production roadmap (ordered by rework risk)
+- [ ] **1. R&D email** — unchanged, still first. 4 confirmations pending.
+- [ ] **2. Cross-device child ID** — gated on R&D email.
+- [x] **3. Video consent gate** — DONE this session (see above).
 - [ ] **4. Supabase auth swap** — `verifyCredentials()` → `signInWithPassword()`.
-- [ ] **5. Uploader + cloud storage** — Uploader seam (mirror Store), bucket,
-      offline queue + retry, delete-everywhere, save returned URL on record.
-- [ ] **6. Row-Level Security** — `school_id` on every table + RLS + JWT claim.
-- [ ] **7. Video memory fix** — stream to disk via native FS instead of base64
-      round-trip (prevents OOM on long clips).
-- [ ] **8. Play Store production release** — Data Safety form, privacy policy URL,
-      Families/Designed-for-Families review.
+- [ ] **5. Uploader + cloud storage** — NOTE: uploader must re-check
+      `videoConsent` before upload and honour erasure server-side
+      (delete-everywhere); re-review `DPDP-COMPLIANCE-MAP.md` before shipping.
+- [ ] **6. Row-Level Security** — school_id + RLS + JWT claim; India region.
+- [x] **7. Video memory fix** — DONE (2026-07-03, same session as consent).
+      `commitPendingVideo` now copies the clip in 3 MB slices
+      (`writeFile` first chunk, `appendFile` rest) — peak JS memory is one
+      chunk regardless of clip length. Failed mid-write → partial file deleted
+      (no corrupt/orphaned bytes). `handleSave` now toasts honestly when a clip
+      fails to store instead of a silent 'Saved'. Emulator test: attach a
+      multi-minute 1080p clip, confirm Save survives and the file plays back
+      from DATA/videos/.
+- [ ] **8. Play Store release** — Data Safety answers DRAFTED
+      (`compliance/PLAY-DATA-SAFETY.md`); needs privacy policy hosted at a
+      public URL; declare target audience 18+ (teachers) — children are data
+      subjects, not users, so Families programme shouldn't trigger.
 
-## More features to add
-- [x] Sound Library / soundboard for sound activities — DONE this session.
-- [ ] Aditya to name further features at start of a future chat.
-
-## Active / near-term
-- [ ] Designer (Flipkart) review: Sound Library accent usage — it is a deliberately
-      richer-accent surface (player), beyond the "accent in two spots" guardrail.
-- [ ] Designer review: category-tile count pill vs description; child-picker grid.
-- [ ] Substitute real teacher names into seed once Mansi provides them.
-- [ ] Consent/withdraw/erasure envelope (F9, broader than video) — legal input.
-
-## Blockers / gated
-- [ ] Cross-device child ID — gated on R&D email.
-- [ ] Audio pipeline (SOP narration) — blocked on real translated SOP text from
-      content team. (Independent of the Sound Library, which is shipped.)
-- [ ] Play Store closed testing track — not set up yet.
+## Waiting on humans
+- [ ] **Legal:** fiduciary entity of record, grievance officer, effective date,
+      Rule 10 due-diligence sign-off (school sights guardian ID at signing),
+      educational-institution exemption question. All flagged in
+      `compliance/DPDP-COMPLIANCE-MAP.md`.
+- [ ] **Content team:** verify + typeset Hindi consent form; translated SOP
+      text (audio pipeline still blocked).
+- [ ] **Mansi:** real teacher names for the seed.
 
 ## Backlog
-- [ ] File split: `index.html` → `styles.css` + `store.js` + `app.js` (own branch).
-- [ ] Architecture one-pager for stakeholders (now part of repo-reorg as
-      `docs/ARCHITECTURE.md`).
+- [ ] File split: `index.html` → `styles.css` + `store.js` + `app.js`.
+- [ ] Consent envelope for the BROADER assessment data (Part A of the paper
+      form) — currently paper-only; consider mirroring in-app like video consent
+      if legal asks.
 
 ## Standing reminders
 - Every code session ends: `cp index.html www/index.html && npx cap sync android`,
-  grep built assets to confirm, then `./gradlew clean installDebug` if a stale
-  APK is suspected (not hot reload).
-- Media (`audio/`, `sounds/`, `*.mp4`) is gitignored — bundled locally + synced
-  to `www/`, never committed. Keep `sounds/` and `index.html` together.
-- Feature commits stay focused — MEMORY.md / TRACKER.md regenerated at wrap-up,
-  committed separately.
+  grep built assets to confirm, `./gradlew clean installDebug` if stale.
+- Media (`audio/`, `sounds/`, `*.mp4`) stays gitignored.
+- Feature commits stay focused — MEMORY/TRACKER committed separately.

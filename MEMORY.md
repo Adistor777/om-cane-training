@@ -107,14 +107,15 @@ wrong for a closed pilot; these are the production gaps.
    that never join. Fix = server-assigned ID on enrolment (ODK Central "Entities"
    pattern). **Gated on R&D email** (multi-device-per-child confirmation). Draft
    the R&D email FIRST — unblocks this without writing throwaway code.
-2. **Video consent gate** — `videoUploadMarkup` renders the Add-video control
-   unconditionally; `commitPendingVideo` writes regardless of consent. Under DPDP
-   Rules 10/11 child video needs a recorded consent basis. Fix = per-child
-   `videoConsent` flag (obtained / by whom / date) at enrolment; hide/disable the
-   control and refuse `commitPendingVideo` when absent. **Legal-team owns the
-   consent-field spec** — get one line from them, then implement to spec in one
-   pass. Also tied to R&D email's identified-video-requirement question (if video
-   isn't a confirmed requirement, may not ship in pilot build at all).
+2. **Video consent gate — DONE (2026-07-03).** Verifiable per-child consent
+   envelope (DPDP Rule 10): `videoConsent`, `videoConsentBy` (required),
+   `videoConsentRelation` (required), `videoConsentMethod`, `videoConsentOn`,
+   `videoConsentWithdrawnOn`. UI lock in `videoUploadMarkup`, fail-closed
+   enforcement in `commitPendingVideo`. Withdrawal preserves the grant record
+   (audit trail) and offers clip erasure. We defined the consent fields from the
+   Rules directly rather than waiting on legal — legal now REVIEWS a finished
+   implementation (`compliance/DPDP-COMPLIANCE-MAP.md`). Still tied to the R&D
+   email's identified-video question for whether video ships in the pilot.
 3. **Supabase auth swap** — `verifyCredentials()` is a stub, not authentication;
    anyone with the app + a login ID is in. Production = `supabase.auth
    .signInWithPassword()` (seam already designed; only the function body changes).
@@ -125,20 +126,27 @@ wrong for a closed pilot; these are the production gaps.
 5. **Row-Level Security / multi-tenant isolation** — the moment Supabase lands,
    need `school_id` on every table + RLS policies + JWT school claim at login, or
    one school reads another's children.
-6. **Video memory fix** — `commitPendingVideo` does `readAsDataURL` of the whole
-   clip into memory then base64-writes; a multi-minute 1080p clip can OOM the
-   WebView and crash Save. Holds for short pilot clips; production = stream to
-   disk via native filesystem instead of base64 round-trip.
+6. **Video memory fix — DONE (2026-07-03).** `commitPendingVideo` copies clips
+   in 3 MB slices (writeFile + appendFile), so peak memory is one chunk for any
+   clip length; failed writes delete the partial file; `handleSave` toasts
+   honestly on a failed clip store (no silent loss). Chunk size is a multiple
+   of 3 bytes so per-chunk base64 decodes cleanly.
 7. **Play Store production release** — closed pilot = internal testing track
-   (invite-only by Gmail). Production = real Play Console release → Google Data
-   Safety form + privacy policy URL + Families/Designed-for-Families review
-   (children's data). Review gate, not just an upload.
+   (invite-only by Gmail). Data Safety answers drafted
+   (`compliance/PLAY-DATA-SAFETY.md`); privacy policy drafted, needs a public
+   hosting URL. KEY FINDING (2026-07-03): target audience is teachers (18+),
+   children never operate the app → declare 18+ and the Families/
+   Designed-for-Families review should NOT trigger. Children's data is still
+   fully disclosed on the form.
 
 Plus: **a few more features to add** — Aditya to name them next chat.
 
 ## Other on the horizon
-- **Consent/withdraw/erasure envelope (F9)** — broader than just video; needs
-  legal input on photo/biometric consent scope under DPDP Rules 10/11.
+- **Consent/withdraw/erasure envelope (F9) — video side DONE (2026-07-03):**
+  withdrawal flow, clip erasure on withdrawal, and file-level deletion in
+  `deleteRecord`/`deleteProfile`/`clearAllData` (no orphaned clips on disk).
+  Remaining F9 scope: assessment-data consent is paper-only (Part A of
+  `compliance/GUARDIAN-CONSENT-FORM.pdf`); mirror in-app only if legal asks.
 - **File split** (`index.html` → `styles.css` + `store.js` + `app.js`) — its own
   branch, before feature work.
 - **Audio pipeline** — blocked on real translated SOP text from content team
