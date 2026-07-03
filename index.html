@@ -579,6 +579,14 @@
   .video-field .video-name{ flex:1; min-width:0; color:var(--ink-soft); font-size:var(--t-bodysm);
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .video-field .video-actions{ display:flex; gap:8px; flex:0 0 auto; }
+  /* Consent-locked variant: muted, dashed, clearly inert. */
+  .video-field .video-slot--locked{ border-style:dashed; border-color:var(--line); background:var(--line-soft); }
+  .video-field .video-slot--locked .video-name{ white-space:normal; color:var(--ink-faint); }
+  /* Verifiable-consent sub-fields: revealed by the tick, quietly indented so
+     they read as part of the consent row, not a new form section. */
+  .consent-field .consent-sub{ margin-top:var(--s2); padding-left:14px; border-left:2px solid var(--line);
+    display:flex; flex-direction:column; gap:var(--s2); }
+  .consent-field .consent-sub .field{ margin:0; }
   /* Welcome (page 1) — calm, centered, one primary action. */
   .welcome{ min-height:60vh; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:var(--s2); }
   .welcome-mark{ width:60px; height:60px; border-radius:16px; background:var(--cat-soft); color:var(--cat-deep);
@@ -1159,10 +1167,55 @@ function getActiveProfile(){ const id = getActiveProfileId(); return id ? profil
 // Returns true on confirmed write (or confirmed key removal when none remain).
 async function deleteRecord(activityId, recordId){
   const all = loadRecords(activityId);
+  const gone = all.find(r=>r.id === recordId);
   const kept = all.filter(r=>r.id !== recordId);
   if(kept.length === all.length) return false;       // id not found — nothing deleted
+  // ERASURE, not just unlinking: a deleted record must not leave its video
+  // bytes behind in DATA/videos/ (DPDP §12 — orphaned clips are still
+  // children's personal data, now with no record even pointing at them).
+  if(gone && gone.video) await deleteVideoFile(gone.video);
   if(kept.length === 0){ await Store._remove(REC_PREFIX+activityId); return true; }
   return Store.setJSON(REC_PREFIX+activityId, kept);
+}
+/* ---- VIDEO-FILE ERASURE HELPERS (F9). Files live under DATA/videos/ keyed by
+   researchId; records hold only the filename pointer. Every path that removes
+   a record/child/device-data flows through these so no clip is ever orphaned.
+   Deletion is best-effort and silent on a missing file (already gone = goal
+   state); web preview stores no bytes, so it's a no-op there. ---- */
+async function deleteVideoFile(filename){
+  const cap = window.Capacitor;
+  if(!filename || !cap || !cap.isNativePlatform || !cap.isNativePlatform()) return false;
+  try { await cap.Plugins.Filesystem.deleteFile({ path: filename, directory: 'DATA' }); return true; }
+  catch(_){ return false; }
+}
+// Every stored-clip filename referenced by ONE child's records.
+function videoFilenamesForProfile(profileId){
+  const names = [];
+  Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0).forEach(k=>{
+    const recs = Store.getJSON(k, []);
+    if(!Array.isArray(recs)) return;
+    recs.forEach(r=>{ if(r.profileId===profileId && r.video) names.push(r.video); });
+  });
+  return names;
+}
+// Consent-withdrawal erasure: delete this child's clip FILES and strip the
+// dangling `video` pointers from their records (records themselves stay —
+// the assessment data was consented separately; only video is withdrawn).
+async function eraseVideosForProfile(profileId){
+  let n = 0;
+  for(const k of Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0)){
+    const recs = Store.getJSON(k, []);
+    if(!Array.isArray(recs)) continue;
+    let changed = false;
+    for(const r of recs){
+      if(r.profileId===profileId && r.video){
+        await deleteVideoFile(r.video);
+        delete r.video; changed = true; n++;
+      }
+    }
+    if(changed) await Store.setJSON(k, recs);
+  }
+  return n;
 }
 // How many saved records reference a given child, across every activity.
 function recordCountForProfile(profileId){
@@ -1199,6 +1252,10 @@ function recordsForProfile(profileId){
 }
 // If the deleted child was active, clears the active selection too.
 async function deleteProfile(profileId){
+  // 0. erase this child's video FILES first (F9): once the records are swept
+  //    the filename pointers are gone and the clips would be unreachable
+  //    orphans on disk. Files before pointers, always.
+  for(const fn of videoFilenamesForProfile(profileId)){ await deleteVideoFile(fn); }
   // 1. sweep linked records out of every activity bucket
   const recKeys = Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0);
   for(const k of recKeys){
@@ -1220,6 +1277,12 @@ async function deleteProfile(profileId){
 // selection and legacy name. Deliberately KEEPS welcomeSeen so a teacher isn't
 // dumped back to the intro screen after a data wipe.
 async function clearAllData(){
+  // Video files go first (F9): remove the whole videos/ tree so a device wipe
+  // is a real wipe — no clip survives the records that pointed at it.
+  const cap = window.Capacitor;
+  if(cap && cap.isNativePlatform && cap.isNativePlatform()){
+    try { await cap.Plugins.Filesystem.rmdir({ path: 'videos', directory: 'DATA', recursive: true }); } catch(_){}
+  }
   const recKeys = Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0);
   for(const k of recKeys){ await Store._remove(k); }
   await Store._remove(PROFILE_KEY);
@@ -1250,6 +1313,15 @@ async function migrateLegacyData(){
   for(const p of profiles){
     if(!p.researchId){ p.researchId = newResearchId(); pChanged = true; }
     if((p.schemaVersion||1) < SCHEMA_VERSION){ p.schemaVersion = SCHEMA_VERSION; pChanged = true; }
+    // Consent envelope backfill (additive, no schema bump): pre-consent
+    // profiles get an EXPLICIT false, not undefined — no consent on file is a
+    // stated fact, and every consent read stays a plain boolean check.
+    if(p.videoConsent === undefined){
+      p.videoConsent = false;
+      p.videoConsentBy = ''; p.videoConsentRelation = ''; p.videoConsentMethod = '';
+      p.videoConsentOn = ''; p.videoConsentWithdrawnOn = '';
+      pChanged = true;
+    }
   }
   if(pChanged) await saveProfiles(profiles);
   for(const k of Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0)){
@@ -1331,7 +1403,15 @@ function gatherAllRecords(){
         teacherName: teacherNameById(r.teacherRosterId) || '',
         schoolName:  schoolNameById(r.schoolId) || '',
         age: p?ageFromDOB(p.dob):'', dob: p?(p.dob||''):'', height: p?p.height:'', weight: p?p.weight:'',
-        hand: p?p.dominantHand:'', filledBy: p?(p.filledBy||''):'', video: r.video || '', values: r.values || {} });
+        hand: p?p.dominantHand:'', filledBy: p?(p.filledBy||''):'', video: r.video || '',
+        // Consent envelope — lets researchers verify consent coverage per row.
+        // Status is derived, never stored: Withdrawn beats No (audit-honest).
+        videoConsent: p ? (p.videoConsent ? 'Yes' : (p.videoConsentWithdrawnOn ? 'Withdrawn' : 'No')) : '',
+        videoConsentOn: p?(p.videoConsentOn||''):'', videoConsentWithdrawnOn: p?(p.videoConsentWithdrawnOn||''):'',
+        // Guardian identity is PII — exported only on the keysheet, like name/DOB.
+        videoConsentBy: p?(p.videoConsentBy||''):'', videoConsentRelation: p?(p.videoConsentRelation||''):'',
+        videoConsentMethod: p?(p.videoConsentMethod||''):'',
+        values: r.values || {} });
     });
   });
   return rows;
@@ -1350,11 +1430,20 @@ function buildCSV(rows, includePII){
   // so they stay. This is the F1/F8 fix: the file that leaves the device by
   // default carries no name and no date of birth.
   const idCols  = includePII ? ['Research ID','Student','DOB'] : ['Research ID'];
-  const header = [...idCols,'Category','Activity','Age','Height (cm)','Weight (kg)','Dominant hand','Filled by','When','School','Teacher','Teacher ID','Video file', ...valueCols];
+  // Consent columns: status + dates ship in EVERY export (researchers must be
+  // able to verify coverage); the guardian's identity (by/relation/method) is
+  // PII and ships only on the keysheet, same rule as name and DOB.
+  const consentCols = includePII
+    ? ['Video consent','Consent on','Consent withdrawn on','Consent by','Guardian relation','Consent method']
+    : ['Video consent','Consent on','Consent withdrawn on'];
+  const header = [...idCols,'Category','Activity','Age','Height (cm)','Weight (kg)','Dominant hand','Filled by','When','School','Teacher','Teacher ID','Video file', ...consentCols, ...valueCols];
   const lines = [header.map(csvCell).join(',')];
   rows.forEach(r=>{
     const idVals = includePII ? [r.researchId, r.student, r.dob] : [r.researchId];
-    const base = [...idVals, r.category, r.activity, r.age, r.height, r.weight, r.hand, r.filledBy, r.when, r.schoolName, r.teacherName, r.teacherId, r.video];
+    const consentVals = includePII
+      ? [r.videoConsent, r.videoConsentOn, r.videoConsentWithdrawnOn, r.videoConsentBy, r.videoConsentRelation, r.videoConsentMethod]
+      : [r.videoConsent, r.videoConsentOn, r.videoConsentWithdrawnOn];
+    const base = [...idVals, r.category, r.activity, r.age, r.height, r.weight, r.hand, r.filledBy, r.when, r.schoolName, r.teacherName, r.teacherId, r.video, ...consentVals];
     const vals = valueCols.map(c=> r.values[c] != null ? r.values[c] : '');
     lines.push(base.concat(vals).map(csvCell).join(','));
   });
@@ -1824,6 +1913,14 @@ function showChildDetail(profileId, opts){
       }).join('')
     : '<p class="empty">No results saved for this child yet.</p>';
   const filledLine = p.filledBy ? `<p class="muted" style="margin:0 0 var(--s3)">Details filled by ${esc(p.filledBy)}.</p>` : '';
+  // Consent at a glance — teachers must see video-consent state without
+  // opening the edit form. Derived, same precedence as the CSV export.
+  const consentLine = (function(){
+    const d = iso => { const t = new Date(iso); return isNaN(t) ? iso : t.toLocaleDateString(); };
+    if(p.videoConsent) return `<p class="muted" style="margin:0 0 var(--s3)">Video consent on file since ${esc(d(p.videoConsentOn))} — given by ${esc(p.videoConsentBy||'guardian')}${p.videoConsentRelation?` (${esc(p.videoConsentRelation)})`:''}.</p>`;
+    if(p.videoConsentWithdrawnOn) return `<p class="muted" style="margin:0 0 var(--s3)">Video consent withdrawn on ${esc(d(p.videoConsentWithdrawnOn))} — video capture is locked.</p>`;
+    return `<p class="muted" style="margin:0 0 var(--s3)">No video consent on file — video capture is locked.</p>`;
+  })();
   const isActive = p.id === getActiveProfileId();
   const activateRow = isActive
     ? '<p class="muted" style="margin:0 0 var(--s3)">This is the active student.</p>'
@@ -1835,6 +1932,7 @@ function showChildDetail(profileId, opts){
   paint(`
     <div class="activechild" style="margin-bottom:var(--s3)">${avatarFor(p,'avatar')}<span class="who">${esc(p.name)}<small>${esc(childSub(p) || 'No demographics')}</small></span></div>
     ${filledLine}
+    ${consentLine}
     ${activateRow}
     <details class="disclosure" id="childForm" ${opts.editForm?'open':''}>
       <summary>${ICON.edit}<span class="disclosure-label">Edit details</span><span class="chev">${ICON.chevron}</span></summary>
@@ -2017,6 +2115,30 @@ function profileFormMarkup(editing, bare){
             <input type="file" id="p_photo" accept="image/*" style="display:none" onchange="handlePhotoPick(this)">
           </div>
         </div>
+        <div class="field consent-field">
+          <div class="checkrow">
+            <input type="checkbox" id="p_videoconsent" onchange="toggleConsentFields(this)" ${editing && editing.videoConsent ? 'checked' : ''}>
+            <label for="p_videoconsent">Guardian consent for video — this child may be filmed performing activities and the clips shared with researchers</label>
+          </div>
+          <span class="field-hint">Required before any video can be attached for this child. Withdraw anytime by unticking and saving.</span>
+          <!-- VERIFIABLE consent record (DPDP Rule 10): a bare tick is not enough.
+               WHO consented, their RELATION to the child, and HOW consent was
+               taken are recorded with the grant. Hidden until the box is ticked. -->
+          <div class="consent-sub" id="consentSub" ${editing && editing.videoConsent ? '' : 'style="display:none"'}>
+            <div class="field"><label for="p_consentby">Consent given by</label>
+              <input type="text" id="p_consentby" value="${esc((editing||{}).videoConsentBy||'')}" placeholder="Guardian's full name" autocomplete="off"></div>
+            <div class="field"><label id="lbl_consentrel">Relation to child</label>
+              <div class="seg" id="p_consentrel" data-value="${esc((editing||{}).videoConsentRelation||'')}" role="group" aria-labelledby="lbl_consentrel">
+                ${['Mother','Father','Legal guardian'].map(rel=>`<button type="button" onclick="pickSeg('p_consentrel','${rel}',this)" aria-pressed="${((editing||{}).videoConsentRelation||'')===rel}">${rel}</button>`).join('')}
+              </div>
+            </div>
+            <div class="field"><label for="p_consentmethod">How consent was taken</label>
+              <select id="p_consentmethod" class="select">
+                ${['Signed paper form','Verbal, in person at school','Other'].map(m=>`<option value="${m}" ${(((editing||{}).videoConsentMethod)||'Signed paper form')===m?'selected':''}>${m}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+        </div>
         <button type="button" class="save" id="saveProfileBtn" onclick="handleProfileSave('${editing ? editing.id : ''}')">${ editing ? 'Save changes' : 'Save child'}</button>
       </fieldset></form>`;
   if(bare) return body;
@@ -2068,9 +2190,23 @@ function clearPhoto(){
   const clr = document.getElementById('photoClear'); if(clr) clr.style.display = 'none';
   const file = document.getElementById('p_photo'); if(file) file.value = '';
 }
+// Reveal/hide the verifiable-consent sub-fields with the checkbox.
+function toggleConsentFields(cb){
+  const sub = document.getElementById('consentSub');
+  if(!sub) return;
+  sub.style.display = cb.checked ? '' : 'none';
+  if(cb.checked){ const by = document.getElementById('p_consentby'); if(by) by.focus(); }
+}
 async function handleProfileSave(existingId){
   const name = (document.getElementById('p_name').value || '').trim();
   if(!name){ toast('Please enter the child\u2019s name.'); return; }
+  // Consent validation: a tick without WHO and RELATION is not verifiable
+  // consent (DPDP Rule 10) \u2014 refuse the save until both are filled.
+  const consentChecked = !!(document.getElementById('p_videoconsent') || {}).checked;
+  const consentBy  = ((document.getElementById('p_consentby')||{}).value || '').trim();
+  const consentRel = (document.getElementById('p_consentrel')||{dataset:{}}).dataset.value || '';
+  if(consentChecked && !consentBy){ toast('Enter the guardian\u2019s name who gave video consent.'); return; }
+  if(consentChecked && !consentRel){ toast('Pick the guardian\u2019s relation to the child.'); return; }
   const btn = document.getElementById('saveProfileBtn');
   if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
   const profile = {
@@ -2089,10 +2225,51 @@ async function handleProfileSave(existingId){
     photo: pendingPhoto || '',
     capturedOn: existingId ? (profileById(existingId)||{}).capturedOn || new Date().toISOString() : new Date().toISOString()
   };
+  // ---- Per-child guardian VIDEO CONSENT envelope (DPDP §6 + Rule 10) ----
+  // Grant: stamp who/relation/method/when. Re-grant after a withdrawal is a
+  // FRESH consent (new videoConsentOn, withdrawnOn cleared). Withdrawal: keep
+  // the original grant fields as the audit record and stamp withdrawnOn —
+  // never wipe history, or there is no evidence consent ever existed.
+  const prev = existingId ? (profileById(existingId) || {}) : {};
+  if(consentChecked){
+    profile.videoConsent         = true;
+    profile.videoConsentBy       = consentBy;
+    profile.videoConsentRelation = consentRel;
+    profile.videoConsentMethod   = (document.getElementById('p_consentmethod')||{}).value || 'Signed paper form';
+    profile.videoConsentOn       = (prev.videoConsent ? prev.videoConsentOn : '') || new Date().toISOString();
+    profile.videoConsentWithdrawnOn = '';
+  } else {
+    profile.videoConsent         = false;
+    profile.videoConsentBy       = prev.videoConsentBy || '';
+    profile.videoConsentRelation = prev.videoConsentRelation || '';
+    profile.videoConsentMethod   = prev.videoConsentMethod || '';
+    profile.videoConsentOn       = prev.videoConsentOn || '';
+    profile.videoConsentWithdrawnOn = prev.videoConsent
+      ? new Date().toISOString()                        // this save IS the withdrawal
+      : (prev.videoConsentWithdrawnOn || '');
+  }
+  // Withdrawal + stored clips → offer erasure (DPDP §6(6)/§12). Processing
+  // before withdrawal was lawful, so keeping the clips is permitted — but the
+  // guardian can ask for erasure, so the teacher gets the choice right here.
+  const isWithdrawal = !!prev.videoConsent && !consentChecked;
+  let eraseAfterSave = false;
+  if(isWithdrawal){
+    const clips = videoFilenamesForProfile(profile.id);
+    if(clips.length){
+      eraseAfterSave = window.confirm(
+        `Consent withdrawn. ${clips.length} video ${clips.length===1?'clip is':'clips are'} already stored for ${name}.\n\n` +
+        'OK — also delete the stored clips now (recommended if the guardian asked for erasure).\n' +
+        'Cancel — keep clips already taken; only future video is blocked.');
+    }
+  }
   const ok = await upsertProfile(profile);
   if(!ok){
     toast('Could not save — storage may be full. Export your data, then try again.');
     return;
+  }
+  if(eraseAfterSave){
+    const n = await eraseVideosForProfile(profile.id);
+    toast(`Consent withdrawn — ${n} video ${n===1?'clip':'clips'} deleted.`);
   }
   // A newly added child becomes the active one.
   await setActiveProfileId(profile.id);
@@ -2518,6 +2695,19 @@ function showActivity(catIndex, actIndex, opts){
    --------------------------------------------------------------------------- */
 let pendingVideo = null; // { tempName, displayName, mime } staged before save
 function videoUploadMarkup(){
+  // Consent gate (UI layer): no guardian video-consent on this child → no capture
+  // control at all. The hard enforcement lives in handleSave/commitPendingVideo;
+  // this just keeps the teacher from staging a clip that would be refused.
+  const child = getActiveProfile();
+  if(!child || !child.videoConsent){
+    return `<div class="field video-field">
+      <label>Video evidence <span class="field-hint">— optional; filmed by you, sent to researchers</span></label>
+      <div class="video-slot video-slot--locked">
+        <span class="video-name">Locked — no guardian video-consent on file for this child.</span>
+      </div>
+      <span class="field-hint">Open this child’s profile (Edit child → Guardian consent for video) to enable video.</span>
+    </div>`;
+  }
   const has = !!pendingVideo;
   const label = has ? esc(pendingVideo.displayName) : 'No video attached';
   return `<div class="field video-field">
@@ -2558,6 +2748,11 @@ function clearPendingVideo(){
 // Returns { filename } to stamp on the record, or null on web / no file / error.
 async function commitPendingVideo(researchId){
   if(!pendingVideo) return null;
+  // Consent chokepoint (enforcement layer): never write video bytes for a child
+  // without recorded guardian video-consent. Fail closed — if we can't confirm
+  // consent, we refuse. This is the line the UI lock backstops, not the reverse.
+  const child = getActiveProfile();
+  if(!child || !child.videoConsent){ return null; }
   const cap = window.Capacitor;
   if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()){
     // Web preview has no persistent file store — keep the metadata so the record
@@ -2613,6 +2808,11 @@ async function handleSave(activityId){
   });
   // Content only — id / schemaVersion / teacherId / whenISO are stamped
   // inside saveRecord (the envelope chokepoint).
+  // Drop any staged clip if consent isn't on file, and tell the teacher why.
+  if(pendingVideo && !child.videoConsent){
+    pendingVideo = null;
+    toast('Video not saved — no guardian video-consent for this child.');
+  }
   const videoMeta = await commitPendingVideo(researchId);
   const rec = { researchId, profileId: child.id, values };
   if(videoMeta){ rec.video = videoMeta.filename; }
