@@ -2759,18 +2759,33 @@ async function commitPendingVideo(researchId){
     // still reflects that a clip was taken, but no bytes are copied.
     return { filename: `${researchId}_${Date.now()}_${pendingVideo.displayName}`, stored:false };
   }
+  const Filesystem = cap.Plugins.Filesystem;
+  const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+  const ext = (pendingVideo.displayName.split('.').pop() || 'mp4').toLowerCase();
+  const filename = `videos/${researchId}_${stamp}.${ext}`;
   try {
-    const Filesystem = cap.Plugins.Filesystem;
-    const stamp = new Date().toISOString().replace(/[:.]/g,'-');
-    const ext = (pendingVideo.displayName.split('.').pop() || 'mp4').toLowerCase();
-    const filename = `videos/${researchId}_${stamp}.${ext}`;
-    // Read the picked file as base64, then write into the app Data directory.
-    const dataUrl = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(pendingVideo.file); });
-    const base64 = String(dataUrl).split(',')[1];
-    await Filesystem.writeFile({ path: filename, data: base64, directory: 'DATA', recursive: true });
+    // CHUNKED copy (memory fix): the old path read the WHOLE clip into memory
+    // as one base64 string (~1.35x the file size, on top of the Blob) — a long
+    // 1080p clip could OOM the WebView and crash Save. Now the file is read in
+    // 3 MB slices, each decoded and appended natively, so peak JS memory is one
+    // chunk no matter how long the clip is. 3 MB is a multiple of 3 bytes, so
+    // every chunk's base64 decodes cleanly with no mid-file padding.
+    const file = pendingVideo.file;
+    if(!file || !file.size) return null;
+    const CHUNK = 3 * 1024 * 1024;
+    for(let off = 0; off < file.size; off += CHUNK){
+      const slice = file.slice(off, Math.min(off + CHUNK, file.size));
+      const dataUrl = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(slice); });
+      const base64 = String(dataUrl).split(',')[1] || '';
+      if(off === 0) await Filesystem.writeFile({ path: filename, data: base64, directory: 'DATA', recursive: true });
+      else          await Filesystem.appendFile({ path: filename, data: base64, directory: 'DATA' });
+    }
     return { filename, stored:true };
   } catch(e){
     console.warn('Video store failed', e);
+    // A half-written clip is corrupt AND unconsented-adjacent junk — remove it
+    // so a failed save leaves the disk exactly as it was.
+    await deleteVideoFile(filename);
     return null;
   }
 }
@@ -2813,6 +2828,7 @@ async function handleSave(activityId){
     pendingVideo = null;
     toast('Video not saved — no guardian video-consent for this child.');
   }
+  const hadClip = !!pendingVideo;   // remember before commit clears/consumes it
   const videoMeta = await commitPendingVideo(researchId);
   const rec = { researchId, profileId: child.id, values };
   if(videoMeta){ rec.video = videoMeta.filename; }
@@ -2822,7 +2838,11 @@ async function handleSave(activityId){
     return;
   }
   pendingVideo = null;
-  toast(videoMeta && videoMeta.stored === false ? 'Saved (video kept on web preview only)' : 'Saved');
+  // Honest toasts: a clip that failed to store must not be a silent loss —
+  // the teacher can re-attach it now; discovering it missing weeks later, they can't.
+  if(hadClip && !videoMeta)                       toast('Saved — but the video could not be stored. Please re-attach it.');
+  else if(videoMeta && videoMeta.stored === false) toast('Saved (video kept on web preview only)');
+  else                                             toast('Saved');
   showActivity(state.category, state.activity, { sopCollapsed:true, focusForm:true, dir:'none' });
 }
 // Human-readable timestamp, derived AT RENDER from the canonical whenISO.
