@@ -4,12 +4,18 @@ const { JSDOM } = require('jsdom');
 const fs = require('fs');
 const path = require('path');
 
+// Script lives in scripts/; app source lives at the project root.
+const ROOT = path.join(__dirname, '..');
 // Inline activities.js so jsdom needs no resource loading at all.
-const ACTIVITIES = fs.readFileSync(path.join(__dirname,'activities.js'),'utf8');
+const ACTIVITIES = fs.readFileSync(path.join(ROOT, 'activities.js'), 'utf8');
 
-const HTML = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8')
+const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
   .replace('<script src="activities.js"></script>', '<script>\n' + ACTIVITIES + '\n</script>');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// Read the CURRENT schema version out of the app itself, so the migration
+// assertions track the app instead of freezing at the version the test was
+// written against (they were hardcoded to 1 and went stale when v2 shipped).
+const SCHEMA_VERSION = parseInt((HTML.match(/const SCHEMA_VERSION\s*=\s*(\d+)/) || [,'1'])[1], 10);
 
 let pass = 0, fail = 0;
 function ok(cond, label){
@@ -79,14 +85,14 @@ function bootApp(seed){
   ok(recs.length === 2, 'both legacy records survive migration');
   ok(recs.every(r => UUID_RE.test(r.id)), 'every legacy record backfilled with a v4 UUID id');
   ok(new Set(recs.map(r=>r.id)).size === 2, 'backfilled ids are unique');
-  ok(recs.every(r => r.schemaVersion === 1), 'every legacy record stamped schemaVersion:1');
+  ok(recs.every(r => r.schemaVersion === SCHEMA_VERSION), 'every legacy record migrated to current schemaVersion');
   ok(recs.every(r => r.teacherId === 'legacy'), "every legacy record tagged teacherId:'legacy' (not the new op_ id)");
   ok(typeof recs[0].whenISO === 'string' && !isNaN(Date.parse(recs[0].whenISO)), 'round-trippable when converted to whenISO');
   ok(recs[1].whenISO === undefined, 'ambiguous/unparseable when NOT converted (no silent day/month swap)');
   ok(recs[1].when === '31/02/9999 zz', 'ambiguous legacy display string preserved untouched');
 
   let profs = JSON.parse(w.localStorage.getItem('profiles'));
-  ok(profs.every(p => p.schemaVersion === 1), 'legacy profiles stamped schemaVersion:1');
+  ok(profs.every(p => p.schemaVersion === SCHEMA_VERSION), 'legacy profiles migrated to current schemaVersion');
   ok(profs[0].id === 'cabc1' && profs[1].id === 'cabc2', 'profile ids untouched by migration');
 
   /* ---- SUITE 2: idempotence on second boot ------------------------------ */
@@ -106,7 +112,7 @@ function bootApp(seed){
   recs = JSON.parse(w.localStorage.getItem('rec_act1'));
   const fresh = recs[0]; // unshift puts newest first
   ok(UUID_RE.test(fresh.id), 'new record has UUID id');
-  ok(fresh.schemaVersion === 1, 'new record has schemaVersion:1');
+  ok(fresh.schemaVersion === SCHEMA_VERSION, 'new record has current schemaVersion');
   ok(fresh.teacherId === tid, 'new record stamped with THIS device teacherId (not legacy)');
   ok(typeof fresh.whenISO === 'string' && !isNaN(Date.parse(fresh.whenISO)), 'new record has canonical ISO whenISO');
   ok(!('when' in fresh), 'new record carries NO locale display string (derived at render)');
@@ -151,7 +157,7 @@ function bootApp(seed){
   ok(!!tid2 && tid2.startsWith('op_') && tid2 !== tid, 'fresh install mints its own distinct teacherId');
   await w.saveRecord('actX', { student:'New', profileId:'c1', values:{} });
   const nr = JSON.parse(w.localStorage.getItem('rec_actX'))[0];
-  ok(nr.teacherId === tid2 && UUID_RE.test(nr.id) && nr.schemaVersion === 1, 'first record on fresh install fully stamped');
+  ok(nr.teacherId === tid2 && UUID_RE.test(nr.id) && nr.schemaVersion === SCHEMA_VERSION, 'first record on fresh install fully stamped');
 
   console.log(`\n========== ${pass} passed, ${fail} failed ==========`);
   process.exit(fail ? 1 : 0);
