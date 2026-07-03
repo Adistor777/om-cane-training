@@ -98,6 +98,15 @@ _Last updated: 2026-07-03_
       public URL; declare target audience 18+ (teachers) — children are data
       subjects, not users, so Families programme shouldn't trigger.
 
+## Consent evidence (added 2026-07-03, merged)
+- [x] **feat/consent-evidence** — photo of the signed form (1400px JPEG, file
+      in DATA/consent/ keyed by researchId) + optional form serial at consent
+      entry; viewer on child detail; evidence survives withdrawal, deleted
+      with child / device wipe; CSV gets serial + photo Yes/No columns.
+      NEEDS Mac: cap sync + emulator pass (photo capture, viewer, replace,
+      child-delete sweep) + push.
+- [ ] Print forms WITH serial numbers once legal placeholders are filled.
+
 ## Waiting on humans
 - [ ] **Legal:** fiduciary entity of record, grievance officer, effective date,
       Rule 10 due-diligence sign-off (school sights guardian ID at signing),
