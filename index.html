@@ -587,6 +587,14 @@
   .consent-field .consent-sub{ margin-top:var(--s2); padding-left:14px; border-left:2px solid var(--line);
     display:flex; flex-direction:column; gap:var(--s2); }
   .consent-field .consent-sub .field{ margin:0; }
+  /* Consent-evidence viewer: full-screen scrim, form photo fit to screen. */
+  .evidence-overlay{ position:fixed; inset:0; z-index:60; background:rgba(30,26,20,.88);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--s2); padding:var(--s3); }
+  .evidence-overlay img{ max-width:100%; max-height:82vh; border-radius:10px; background:#fff; }
+  .evidence-overlay .evidence-close{ background:var(--paper, #fff); }
+  /* Quiet inline text-button for the child-detail evidence tail. */
+  .linklike{ background:none; border:none; padding:0; font:inherit; color:var(--cat-deep, inherit);
+    text-decoration:underline; cursor:pointer; }
   /* Welcome (page 1) — calm, centered, one primary action. */
   .welcome{ min-height:60vh; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:var(--s2); }
   .welcome-mark{ width:60px; height:60px; border-radius:16px; background:var(--cat-soft); color:var(--cat-deep);
@@ -1256,6 +1264,9 @@ async function deleteProfile(profileId){
   //    the filename pointers are gone and the clips would be unreachable
   //    orphans on disk. Files before pointers, always.
   for(const fn of videoFilenamesForProfile(profileId)){ await deleteVideoFile(fn); }
+  // Consent-form photo is a file too — same rule, no orphans.
+  const _p = profileById(profileId);
+  if(_p && _p.videoConsentFormPhoto) await deleteVideoFile(_p.videoConsentFormPhoto);
   // 1. sweep linked records out of every activity bucket
   const recKeys = Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0);
   for(const k of recKeys){
@@ -1282,6 +1293,7 @@ async function clearAllData(){
   const cap = window.Capacitor;
   if(cap && cap.isNativePlatform && cap.isNativePlatform()){
     try { await cap.Plugins.Filesystem.rmdir({ path: 'videos', directory: 'DATA', recursive: true }); } catch(_){}
+    try { await cap.Plugins.Filesystem.rmdir({ path: 'consent', directory: 'DATA', recursive: true }); } catch(_){}
   }
   const recKeys = Store._keys().filter(k=>k.indexOf(REC_PREFIX)===0);
   for(const k of recKeys){ await Store._remove(k); }
@@ -1320,6 +1332,11 @@ async function migrateLegacyData(){
       p.videoConsent = false;
       p.videoConsentBy = ''; p.videoConsentRelation = ''; p.videoConsentMethod = '';
       p.videoConsentOn = ''; p.videoConsentWithdrawnOn = '';
+      pChanged = true;
+    }
+    // Consent-evidence backfill (additive, later than the envelope fields).
+    if(p.videoConsentFormPhoto === undefined){
+      p.videoConsentFormPhoto = ''; p.videoConsentFormSerial = '';
       pChanged = true;
     }
   }
@@ -1411,6 +1428,9 @@ function gatherAllRecords(){
         // Guardian identity is PII — exported only on the keysheet, like name/DOB.
         videoConsentBy: p?(p.videoConsentBy||''):'', videoConsentRelation: p?(p.videoConsentRelation||''):'',
         videoConsentMethod: p?(p.videoConsentMethod||''):'',
+        // Evidence: serial is a printed number (not PII); photo exported as Yes/No.
+        videoConsentFormSerial: p?(p.videoConsentFormSerial||''):'',
+        videoConsentFormPhoto: p ? (p.videoConsentFormPhoto ? 'Yes' : 'No') : '',
         values: r.values || {} });
     });
   });
@@ -1434,15 +1454,15 @@ function buildCSV(rows, includePII){
   // able to verify coverage); the guardian's identity (by/relation/method) is
   // PII and ships only on the keysheet, same rule as name and DOB.
   const consentCols = includePII
-    ? ['Video consent','Consent on','Consent withdrawn on','Consent by','Guardian relation','Consent method']
-    : ['Video consent','Consent on','Consent withdrawn on'];
+    ? ['Video consent','Consent on','Consent withdrawn on','Consent form serial','Consent form photo','Consent by','Guardian relation','Consent method']
+    : ['Video consent','Consent on','Consent withdrawn on','Consent form serial','Consent form photo'];
   const header = [...idCols,'Category','Activity','Age','Height (cm)','Weight (kg)','Dominant hand','Filled by','When','School','Teacher','Teacher ID','Video file', ...consentCols, ...valueCols];
   const lines = [header.map(csvCell).join(',')];
   rows.forEach(r=>{
     const idVals = includePII ? [r.researchId, r.student, r.dob] : [r.researchId];
     const consentVals = includePII
-      ? [r.videoConsent, r.videoConsentOn, r.videoConsentWithdrawnOn, r.videoConsentBy, r.videoConsentRelation, r.videoConsentMethod]
-      : [r.videoConsent, r.videoConsentOn, r.videoConsentWithdrawnOn];
+      ? [r.videoConsent, r.videoConsentOn, r.videoConsentWithdrawnOn, r.videoConsentFormSerial, r.videoConsentFormPhoto, r.videoConsentBy, r.videoConsentRelation, r.videoConsentMethod]
+      : [r.videoConsent, r.videoConsentOn, r.videoConsentWithdrawnOn, r.videoConsentFormSerial, r.videoConsentFormPhoto];
     const base = [...idVals, r.category, r.activity, r.age, r.height, r.weight, r.hand, r.filledBy, r.when, r.schoolName, r.teacherName, r.teacherId, r.video, ...consentVals];
     const vals = valueCols.map(c=> r.values[c] != null ? r.values[c] : '');
     lines.push(base.concat(vals).map(csvCell).join(','));
@@ -1917,8 +1937,13 @@ function showChildDetail(profileId, opts){
   // opening the edit form. Derived, same precedence as the CSV export.
   const consentLine = (function(){
     const d = iso => { const t = new Date(iso); return isNaN(t) ? iso : t.toLocaleDateString(); };
-    if(p.videoConsent) return `<p class="muted" style="margin:0 0 var(--s3)">Video consent on file since ${esc(d(p.videoConsentOn))} — given by ${esc(p.videoConsentBy||'guardian')}${p.videoConsentRelation?` (${esc(p.videoConsentRelation)})`:''}.</p>`;
-    if(p.videoConsentWithdrawnOn) return `<p class="muted" style="margin:0 0 var(--s3)">Video consent withdrawn on ${esc(d(p.videoConsentWithdrawnOn))} — video capture is locked.</p>`;
+    // Evidence tail: serial + form-photo viewer, appended to whichever state line applies.
+    const ev = [];
+    if(p.videoConsentFormSerial) ev.push(`form no. ${esc(p.videoConsentFormSerial)}`);
+    if(p.videoConsentFormPhoto)  ev.push(`<button type="button" class="linklike" onclick="viewConsentPhoto('${p.id}')">view form photo</button>`);
+    const tail = ev.length ? ` (${ev.join(' · ')})` : '';
+    if(p.videoConsent) return `<p class="muted" style="margin:0 0 var(--s3)">Video consent on file since ${esc(d(p.videoConsentOn))} — given by ${esc(p.videoConsentBy||'guardian')}${p.videoConsentRelation?` (${esc(p.videoConsentRelation)})`:''}${tail}.</p>`;
+    if(p.videoConsentWithdrawnOn) return `<p class="muted" style="margin:0 0 var(--s3)">Video consent withdrawn on ${esc(d(p.videoConsentWithdrawnOn))} — video capture is locked${tail}.</p>`;
     return `<p class="muted" style="margin:0 0 var(--s3)">No video consent on file — video capture is locked.</p>`;
   })();
   const isActive = p.id === getActiveProfileId();
@@ -2137,6 +2162,18 @@ function profileFormMarkup(editing, bare){
                 ${['Signed paper form','Verbal, in person at school','Other'].map(m=>`<option value="${m}" ${(((editing||{}).videoConsentMethod)||'Signed paper form')===m?'selected':''}>${m}</option>`).join('')}
               </select>
             </div>
+            <div class="field"><label for="p_consentserial">Form serial no. <span class="field-hint">(optional — printed on the paper form)</span></label>
+              <input type="text" id="p_consentserial" value="${esc((editing||{}).videoConsentFormSerial||'')}" placeholder="e.g. RNKS-023" autocomplete="off"></div>
+            <div class="field"><label>Photo of the signed form <span class="field-hint">(recommended — audit evidence)</span></label>
+              <div class="video-slot" id="consentPhotoSlot">
+                <span class="video-name" id="consentPhotoName">${(editing||{}).videoConsentFormPhoto ? 'Form photo on file' : 'No photo attached'}</span>
+                <div class="video-actions">
+                  <button type="button" class="tool-btn" onclick="document.getElementById('p_consentphoto').click()">${ICON.video} ${(editing||{}).videoConsentFormPhoto ? 'Replace' : 'Add photo'}</button>
+                  <button type="button" class="tool-btn" id="consentPhotoClear" onclick="clearConsentPhoto()" style="display:none">Remove</button>
+                </div>
+              </div>
+              <input type="file" id="p_consentphoto" accept="image/*" capture="environment" style="display:none" onchange="handleConsentPhotoPick(this)">
+            </div>
           </div>
         </div>
         <button type="button" class="save" id="saveProfileBtn" onclick="handleProfileSave('${editing ? editing.id : ''}')">${ editing ? 'Save changes' : 'Save child'}</button>
@@ -2189,6 +2226,63 @@ function clearPhoto(){
   }
   const clr = document.getElementById('photoClear'); if(clr) clr.style.display = 'none';
   const file = document.getElementById('p_photo'); if(file) file.value = '';
+}
+/* ---- CONSENT EVIDENCE: photo of the signed paper form + optional serial.
+   The tick is the teacher's attestation; the photo makes it AUDITABLE without
+   visiting the school's paper file. Stored like video: a JPEG file in app Data
+   under consent/, keyed by researchId — the profile holds only the filename.
+   WITHDRAWAL DOES NOT DELETE IT (it is the evidence consent existed); child
+   deletion and device wipe do. ---- */
+let pendingConsentPhoto = null;   // staged dataURL before Save child
+function handleConsentPhotoPick(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  // 1400px keeps handwriting/signatures readable at ~200–400 KB.
+  downscaleImage(file, 1400).then(dataUrl=>{
+    pendingConsentPhoto = dataUrl;
+    const nameEl = document.getElementById('consentPhotoName');
+    if(nameEl) nameEl.textContent = 'Photo ready — saved with this child';
+    const clr = document.getElementById('consentPhotoClear'); if(clr) clr.style.display = '';
+  }).catch(()=>toast('Could not read that photo.'));
+}
+function clearConsentPhoto(){
+  pendingConsentPhoto = null;
+  const nameEl = document.getElementById('consentPhotoName');
+  if(nameEl) nameEl.textContent = 'No photo attached';
+  const clr = document.getElementById('consentPhotoClear'); if(clr) clr.style.display = 'none';
+  const f = document.getElementById('p_consentphoto'); if(f) f.value = '';
+}
+// Write the staged form photo to app Data. Returns filename, or '' on web
+// preview / failure (same stance as video: web persists no bytes).
+async function writeConsentPhoto(researchId, dataUrl){
+  const cap = window.Capacitor;
+  if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()) return '';
+  try {
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+    const filename = `consent/${researchId}_${stamp}.jpg`;
+    const base64 = String(dataUrl).split(',')[1] || '';
+    await cap.Plugins.Filesystem.writeFile({ path: filename, data: base64, directory: 'DATA', recursive: true });
+    return filename;
+  } catch(e){ console.warn('Consent photo store failed', e); return ''; }
+}
+// Full-screen viewer so an auditor can SEE the signed form from the app.
+async function viewConsentPhoto(profileId){
+  const p = profileById(profileId);
+  if(!p || !p.videoConsentFormPhoto){ toast('No form photo on file.'); return; }
+  const cap = window.Capacitor;
+  if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()){
+    toast('Form photo is stored on the device (not available in web preview).'); return;
+  }
+  try {
+    const res = await cap.Plugins.Filesystem.readFile({ path: p.videoConsentFormPhoto, directory: 'DATA' });
+    const overlay = document.createElement('div');
+    overlay.className = 'evidence-overlay';
+    overlay.innerHTML = `<img alt="Photo of the signed consent form" src="data:image/jpeg;base64,${res.data}">
+      <button type="button" class="tool-btn evidence-close">Close</button>`;
+    overlay.querySelector('.evidence-close').onclick = ()=>overlay.remove();
+    overlay.onclick = (e)=>{ if(e.target === overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  } catch(e){ toast('Could not open the form photo — the file may have been removed.'); }
 }
 // Reveal/hide the verifiable-consent sub-fields with the checkbox.
 function toggleConsentFields(cb){
@@ -2248,6 +2342,18 @@ async function handleProfileSave(existingId){
       ? new Date().toISOString()                        // this save IS the withdrawal
       : (prev.videoConsentWithdrawnOn || '');
   }
+  // Consent EVIDENCE (photo of the signed form + serial). Evidence survives
+  // withdrawal — it proves consent existed for what was already recorded.
+  profile.videoConsentFormSerial = consentChecked
+    ? (((document.getElementById('p_consentserial')||{}).value || '').trim() || prev.videoConsentFormSerial || '')
+    : (prev.videoConsentFormSerial || '');
+  if(pendingConsentPhoto){
+    const newPhoto = await writeConsentPhoto(profile.researchId, pendingConsentPhoto);
+    if(newPhoto && prev.videoConsentFormPhoto) await deleteVideoFile(prev.videoConsentFormPhoto); // replaced → old file goes
+    profile.videoConsentFormPhoto = newPhoto || prev.videoConsentFormPhoto || '';
+  } else {
+    profile.videoConsentFormPhoto = prev.videoConsentFormPhoto || '';
+  }
   // Withdrawal + stored clips → offer erasure (DPDP §6(6)/§12). Processing
   // before withdrawal was lawful, so keeping the clips is permitted — but the
   // guardian can ask for erasure, so the teacher gets the choice right here.
@@ -2275,6 +2381,7 @@ async function handleProfileSave(existingId){
   await setActiveProfileId(profile.id);
   await setStudent(profile.name);
   pendingPhoto = null;
+  pendingConsentPhoto = null;
   toast(existingId ? 'Child updated' : 'Child saved');
   // After an edit, return to that child's detail; after an add, to the list —
   // unless the add originated from the activity child-picker, in which case go
