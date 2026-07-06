@@ -16,7 +16,7 @@
 
 -- ---------- schools: stable human-readable IDs (match seedSchools in-app) ----
 create table schools (
-  id         text primary key,          -- e.g. 'saksham-noida', 'rnks-jaipur', 'nab-kullu'
+  id         text primary key,          -- canonical app IDs: 'sch_saksham_noida' etc. (match seedSchools in index.html)
   name       text not null,
   created_at timestamptz not null default now()
 );
@@ -122,7 +122,7 @@ create index on records (activity_id, when_iso);   -- cross-child
 
 -- ---------- Row-Level Security: school isolation --------------------------------
 -- JWT carries school_id via app_metadata (set when creating each teacher's
--- auth user: app_metadata: { school_id: 'rnks-jaipur' }).
+-- auth user: app_metadata: { school_id: 'sch_rnks_jaipur' }).
 create or replace function jwt_school_id() returns text
 language sql stable as
 $$ select coalesce(auth.jwt() -> 'app_metadata' ->> 'school_id', '') $$;
@@ -146,8 +146,8 @@ create policy videos_rw on storage.objects for all
 
 -- ---------- seed ---------------------------------------------------------------
 insert into schools (id, name) values
-  ('saksham-noida', 'Saksham School, Noida'),
-  ('rnks-jaipur',   'Rajasthan Netraheen Kalyan Sangam, Jaipur'),
-  ('nab-kullu',     'National Association of Blind, Kullu');
+  ('sch_saksham_noida', 'Saksham School, Noida'),
+  ('sch_rnks_jaipur',   'Rajasthan Netraheen Kalyan Sangam, Jaipur'),
+  ('sch_nab_kullu',     'National Association of Blind, Kullu');
 -- teachers: insert once Mansi sends real names; create auth users with
 -- app_metadata.school_id, then update teachers.auth_user_id.
