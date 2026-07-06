@@ -6,12 +6,15 @@ cost real data.
 
 ## Ground rules
 
-1. **`index.html` at the root is the source of truth.** Never edit
-   `www/index.html` or anything under `android/` — both are build output.
+1. **Root files are the source of truth** — `index.html` (markup shell),
+   `styles.css`, `store.js`, `app.js`. Never edit anything under `www/` or
+   `android/` — both are build output.
 2. **`activities.js` belongs to the content team.** Don't touch it without
    their sign-off; treat the local copy as authoritative content.
-3. **No bundler, no framework, no file split** without an explicit decision.
-   The no-toolchain workflow is a feature.
+3. **No bundler, no framework.** Plain files with script tags is the whole
+   toolchain, and that's a feature. The four-file split (2026-07-06) is the
+   agreed structure — don't re-merge it and don't split further without an
+   explicit decision.
 4. **One feature per branch, one concern per commit.** Branch names:
    `feat/…`, `fix/…`, `chore/…`, `docs/…`. MEMORY.md / TRACKER.md are
    committed separately from feature work.
@@ -20,21 +23,20 @@ cost real data.
 
 ```bash
 git checkout -b feat/my-feature
-# … edit index.html …
+# … edit app.js / store.js / styles.css / index.html …
 
-# 1. static checks (before any device work)
-node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');const m=html.match(/<script[^>]*>([\s\S]*?)<\/script>/g)||[];let b=m.map(s=>s.replace(/<\/?script[^>]*>/g,'')).join('\n');try{new Function(b);console.log('JS parse: OK')}catch(e){console.log('ERROR:',e.message)}"
+# 1. tests (before any device work; build.sh runs the parse check itself)
 node scripts/test-batch1.js          # must be all-green
 
-# 2. sync the build copy (every time, no exceptions)
-cp index.html www/index.html && npx cap sync android
+# 2. build: ID guard + JS parse + www copy + cap sync + built-asset verify
+./scripts/build.sh
 
-# 3. verify the built assets actually changed
-grep -c "myNewFunction" android/app/src/main/assets/public/index.html
+# 3. spot-check your change landed in the built assets
+grep -c "myNewFunction" android/app/src/main/assets/public/app.js
 
 # 4. emulator-verify (Pixel emulator; stale APK → ./gradlew clean installDebug)
 
-# 5. commit index.html only, merge, delete branch
+# 5. commit app files only, merge, delete branch
 ```
 
 ## Data-safety rules for any new code

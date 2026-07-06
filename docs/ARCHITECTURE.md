@@ -10,7 +10,8 @@ One page on how O&M Cane Training is put together and why. For the roadmap see
 ┌────────────────────────────── Android device ──────────────────────────────┐
 │  Capacitor 8 WebView                                                       │
 │  ┌───────────────────────────────────────────────────────────────────────┐ │
-│  │ index.html  — styles + UI + logic, one file, no bundler               │ │
+│  │ index.html — markup shell   styles.css — the look                    │ │
+│  │ store.js — storage seam     app.js — UI + logic    (no bundler)       │ │
 │  │ activities.js — activity content (content-team owned, no build step)  │ │
 │  │                                                                       │ │
 │  │   UI screens ──► Store seam ──► Capacitor Preferences (key-value)     │ │
@@ -26,10 +27,12 @@ One page on how O&M Cane Training is put together and why. For the roadmap see
 
 ## Load-bearing decisions
 
-**Single file, no bundler.** The content team edits `activities.js` with no
-toolchain. Everything else lives in `index.html`. `www/index.html` is a copy
-made at build time (`cp index.html www/index.html && npx cap sync android`) —
-root `index.html` is always the source of truth.
+**Plain files, no bundler.** The content team edits `activities.js` with no
+toolchain. The app itself is four plain files loaded in order — `index.html`
+(markup shell), `styles.css`, `store.js`, `app.js` (split 2026-07-06; was one
+file). `www/` holds build-time copies made by `./scripts/build.sh` (which also
+runs the school-ID consistency guard, a JS parse check, `npx cap sync android`,
+and verifies the built assets) — root files are always the source of truth.
 
 **The Store seam.** Every read/write goes through `Store`
 (`_get/_set/_remove/_keys` over Capacitor Preferences). The future cloud swap
@@ -65,10 +68,11 @@ device data. `SCHEMA_VERSION` currently 2; additive fields don't bump it.
 
 ## Verification workflow
 
-Static first: JS parse check + `node scripts/test-batch1.js` (35 assertions:
-migration, envelope stamping, delete-by-id, attribution) + integrity greps.
-Then build-copy sync, grep the built assets, and emulator-verify on
-Pixel 10 Pro XL. Stale-APK fix: `./gradlew clean installDebug`.
+Static first: `node scripts/test-batch1.js` (35 assertions: migration,
+envelope stamping, delete-by-id, attribution) + integrity greps. Then
+`./scripts/build.sh` (guard + parse + www copy + sync + built-asset verify)
+and emulator-verify on Pixel 10 Pro XL. Stale-APK fix:
+`./gradlew clean installDebug`.
 
 ## Trust boundaries (today → cloud phase)
 

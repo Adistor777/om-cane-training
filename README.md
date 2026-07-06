@@ -12,14 +12,18 @@ per India's DPDP Act, 2023 + DPDP Rules, 2025 — see
 
 ## How it's built
 
-Plain HTML/CSS/JS in a **single `index.html`**, no bundler, no framework,
-wrapped with **Capacitor 8** for Android. This is a deliberate, load-bearing
-choice: the content team edits `activities.js` (all activity text, SOPs and
-scoring fields) directly, with no build step. Do not introduce a bundler.
+Plain HTML/CSS/JS — no bundler, no framework — wrapped with **Capacitor 8**
+for Android. This is a deliberate, load-bearing choice: the content team edits
+`activities.js` (all activity text, SOPs and scoring fields) directly, with no
+build step. Do not introduce a bundler. The app is four plain files, loaded in
+order:
 
 | Path | What it is |
 |------|------------|
-| `index.html` | The entire app (styles, store, UI). **Source of truth.** |
+| `index.html` | Markup shell + script/style tags. **Source of truth** (with the three files below) |
+| `styles.css` | The look — design guardrails at the top of the file |
+| `store.js` | Storage seam — the ONLY code touching the storage backend |
+| `app.js` | Rendering, navigation, behaviour |
 | `activities.js` | Activity content — **owned by the content team** |
 | `www/` | Build copy Capacitor serves (gitignored — never edit) |
 | `android/` | Generated Capacitor project (gitignored) |
@@ -34,16 +38,16 @@ scoring fields) directly, with no build step. Do not introduce a bundler.
 
 ```bash
 npm install
-cp index.html www/index.html && npx cap sync android
+./scripts/build.sh                          # guard + parse check + www copy + cap sync + verify
 cd android && ./gradlew installDebug        # or open in Android Studio
 ```
 
 Web preview: open `index.html` directly, or `python3 -m http.server` in the
 project root (needed once media is involved).
 
-**After every edit to `index.html`:** `cp index.html www/index.html &&
-npx cap sync android` — `www/` is what the device runs. Verify with
-`grep -c "SCHEMA_VERSION" android/app/src/main/assets/public/index.html`.
+**After every edit to app files:** `./scripts/build.sh` — it copies web assets
+to `www/` (what the device runs), syncs, and verifies the built assets landed.
+If the emulator still shows stale code: `cd android && ./gradlew clean installDebug`.
 
 ## Testing
 
