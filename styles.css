@@ -1,0 +1,656 @@
+/* =========================================================================
+   THE LOOK. Markup shell: index.html · content: activities.js ·
+   storage seam: store.js · behaviour: app.js.
+
+   ───────────────────────────────────────────────────────────────────────
+   DESIGN DIRECTION — "field notebook, not dashboard"
+   ───────────────────────────────────────────────────────────────────────
+   Quiet, editorial, confident. The personality lives in ONE place per
+   screen (the large Instrument Serif title) and ONE accent placement (the
+   category colour). Everything else is calm and out of the way so a teacher
+   can glance and log a result in seconds. The point of view is RESTRAINT —
+   the opposite of a busy, evenly-decorated layout.
+
+   ⚠ MAINTENANCE GUARDRAILS — READ BEFORE EDITING THE LOOK ⚠
+   This build deliberately SUBTRACTS. The most common way to wreck it is to
+   "helpfully" add decoration back. Don't. Specifically:
+
+     1. ONE accent, not five. The colour spine (the 5px stripe) lives ONLY
+        on category cards (screen 1), where it does real wayfinding. Do NOT
+        add a stripe to panels, the SOP box, records, or the form. On the
+        run screen the category colour appears in exactly TWO spots on
+        purpose: the Save button and the active result selection. If you're
+        tempted to colour a third thing — don't.
+
+     2. ONE shadow tier. The page is flat. The single real shadow
+        (--shadow-lift) is reserved for the primary form panel and for
+        hover-lifted cards, so "elevated" means "interactive/important."
+        Do NOT add a second shadow level or float the records.
+
+     3. The serif is SACRED and SINGULAR. Instrument Serif appears once per
+        screen, large, on the .lede only — never on labels, buttons, or
+        panel titles. Need a second heading? Use Inter 600, not the serif.
+
+     4. Differentiated radii are intentional: 20px containers / 14px records
+        / 11px controls. All-one-radius reads as a template; keep the
+        inner/outer contrast.
+
+     5. Colours are contrast-checked. Every category pair and every text/bg
+        pair meets WCAG AA (4.5:1). --ink-faint is #736b5e specifically
+        because lighter warm-grays fail at 12–13px on the warm paper. If you
+        lighten it for looks, you break accessibility for a blindness-
+        community tool. Re-check any colour change at 12px before shipping.
+
+     RULE OF THUMB: when something "looks too plain / too AI," SUBTRACT
+     (a stripe, a shadow, a gradient, a font) before you add. Adding
+     decoration to fix the look is what made the earlier versions worse.
+
+   See DESIGN_NOTES.md for the full rationale.
+   ========================================================================= */
+
+  @property --cat       { syntax:'<color>'; inherits:true; initial-value:#2f6f4e; }
+  @property --cat-deep  { syntax:'<color>'; inherits:true; initial-value:#1f4d36; }
+  @property --cat-soft  { syntax:'<color>'; inherits:true; initial-value:#e2efe5; }
+  @property --cat-line  { syntax:'<color>'; inherits:true; initial-value:#cce0d1; }
+  :root{
+    --ink:#22201b; --ink-soft:#6b6458; --ink-faint:#736b5e; /* faint passes WCAG AA at 12px on paper; don't lighten (guardrail #5) */
+    --paper:#f7f4ed; --card:#fffdf8; --line:#e8e0d0; --line-soft:#f0e9da;
+    --cat:#2f6f4e; --cat-deep:#1f4d36; --cat-soft:#e2efe5; --cat-line:#cce0d1;
+    --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s5:48px;
+    --t-display:38px; --t-title:18px; --t-body:17px; --t-bodysm:15px; --t-caption:13px; --t-micro:12px;
+    --r-lg:20px; --r-md:14px; --r-sm:11px;
+    --shadow-lift:0 1px 2px rgba(60,45,15,.05), 0 18px 40px -16px rgba(70,55,25,.22);
+    --shadow-rest:0 1px 2px rgba(60,45,15,.04);
+    /* The one selection ring for "this item is active" (active child, etc.).
+       Used by both the picker tile and the manage-data row so the highlight is
+       identical everywhere. */
+    --ring-active:0 0 0 3px var(--cat-soft);
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box;}
+  svg{ max-width:100%; }
+  .panel-title > svg, .media-slot > svg, .back > svg{ flex:0 0 auto; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{ margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
+    font-family:"Inter", system-ui, -apple-system, sans-serif; font-size:var(--t-body); line-height:1.5;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    /* App-feel on touch: smooth momentum scroll, no blue tap flash, no rubber-band overscroll into white. */
+    -webkit-overflow-scrolling:touch; overscroll-behavior-y:none;
+    -webkit-tap-highlight-color:transparent; }
+  /* Interactive controls shouldn't show a text-selection caret / iOS callout menu on long-press. */
+  .card, .back, .seg button, .save, details.sop summary, .tool-btn{
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;
+    touch-action:manipulation; }
+  /* But real text inputs must stay selectable. */
+  input, textarea{ -webkit-user-select:text; user-select:text; }
+  header{ position:sticky; top:0; z-index:20; background:rgba(255,253,248,.82);
+    backdrop-filter:saturate(120%) blur(12px); -webkit-backdrop-filter:saturate(120%) blur(12px);
+    border-bottom:1px solid var(--line); color:var(--ink);
+    /* Safe-area: clear the notch/status bar on top, and the rounded corners on the sides. */
+    padding:calc(var(--s2) + env(safe-area-inset-top)) calc(var(--s3) + env(safe-area-inset-right)) var(--s2) calc(var(--s3) + env(safe-area-inset-left));
+    display:flex; align-items:center; gap:var(--s2); }
+  header::before{ content:""; position:absolute; left:0; right:0; top:0; height:3px; background:var(--cat); }
+  .home-dot{ width:42px; height:42px; border-radius:12px; background:var(--cat-soft); color:var(--cat-deep);
+    flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    font-family:"Inter", sans-serif; font-weight:600; font-size:var(--t-title); }
+  .home-dot svg{ width:21px; height:21px; }
+  .brand{ font-size:var(--t-bodysm); margin:0; font-weight:600; line-height:1.2; color:var(--ink); letter-spacing:-.01em; }
+  .crumb{ font-size:var(--t-caption); margin-top:1px; color:var(--cat-deep); font-weight:500; }
+  /* Header overflow menu — utilities (Export, Manage, About, Sign out) that
+     aren't the primary task. Pushed to the far right; the popover hangs below. */
+  .hmenu{ margin-left:auto; position:relative; flex:0 0 auto; }
+  .hmenu-btn{ width:42px; height:42px; border-radius:12px; background:transparent; border:1px solid var(--line);
+    color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:background .15s, border-color .15s, color .15s; }
+  .hmenu-btn svg{ width:21px; height:21px; }
+  @media (hover:hover){ .hmenu-btn:hover{ background:var(--cat-soft); color:var(--cat-deep); border-color:var(--cat-line); } }
+  .hmenu-btn:active{ background:var(--cat-soft); color:var(--cat-deep); }
+  .hmenu-btn:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .hmenu-pop{ position:absolute; right:0; top:calc(100% + 8px); min-width:212px; z-index:40;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r-md);
+    box-shadow:var(--shadow-lift); padding:6px; }
+  .hmenu-pop[hidden]{ display:none; }
+  .hmenu-item{ display:flex; align-items:center; gap:11px; width:100%; text-align:left; font:inherit;
+    font-size:var(--t-bodysm); font-weight:500; color:var(--ink); background:transparent; border:0; cursor:pointer;
+    padding:11px 12px; border-radius:var(--r-sm); min-height:44px; }
+  .hmenu-item svg{ width:19px; height:19px; flex:0 0 auto; color:var(--ink-soft); }
+  @media (hover:hover){ .hmenu-item:hover{ background:var(--cat-soft); } }
+  .hmenu-item:active{ background:var(--cat-soft); }
+  .hmenu-item:focus-visible{ outline:3px solid var(--cat); outline-offset:-2px; }
+  .hmenu-sep{ height:1px; background:var(--line-soft); margin:6px 4px; }
+  .hmenu-item.danger{ color:#8a3c12; }
+  .hmenu-item.danger svg{ color:#8a3c12; }
+  .back{ width:42px; height:42px; flex:0 0 auto; background:transparent; border:1px solid var(--line);
+    color:var(--ink-soft); cursor:pointer; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    transition:background .15s ease, transform .15s ease, color .15s ease, border-color .15s; }
+  .back svg{ width:21px; height:21px; }
+  @media (hover:hover){
+    .back:hover{ background:var(--cat-soft); color:var(--cat-deep); border-color:var(--cat-line); transform:translateX(-2px); }
+  }
+  .back:active{ background:var(--cat-soft); color:var(--cat-deep); }
+  .back:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .wrap{ max-width:880px; margin:0 auto;
+    padding:var(--s5) calc(24px + env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left)); }
+  #screen{ animation:enterFwd .42s var(--ease) both; }
+  #screen[data-dir="back"]{ animation:enterBack .42s var(--ease) both; }
+  @keyframes enterFwd { from{opacity:0; transform:translateX(24px);} to{opacity:1; transform:translateX(0);} }
+  @keyframes enterBack{ from{opacity:0; transform:translateX(-24px);} to{opacity:1; transform:translateX(0);} }
+  .stagger .card, .stagger .cat-group{ animation:cardIn .46s var(--ease) both; }
+  .stagger .card:nth-child(1), .stagger .cat-group:nth-of-type(1){animation-delay:0ms}
+  .stagger .card:nth-child(2), .stagger .cat-group:nth-of-type(2){animation-delay:55ms}
+  .stagger .card:nth-child(3), .stagger .cat-group:nth-of-type(3){animation-delay:110ms}
+  .stagger .card:nth-child(4), .stagger .cat-group:nth-of-type(4){animation-delay:165ms}
+  .stagger .card:nth-child(5), .stagger .cat-group:nth-of-type(5){animation-delay:210ms}
+  .stagger .card:nth-child(n+6), .stagger .cat-group:nth-of-type(n+6){animation-delay:240ms}
+  @keyframes cardIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+  @media (prefers-reduced-motion:reduce){
+    #screen, #screen[data-dir="back"], .stagger .card, .stagger .cat-group{ animation:fade .2s ease both; }
+    @keyframes fade{ from{opacity:0;} to{opacity:1;} }
+    .card:hover{ transform:none !important; }
+    .card:active{ transform:none !important; }
+    .seg button:active, .save:active{ transform:none !important; }
+    details.sop summary .chev{ transition:none !important; }
+    details.disclosure > summary .chev{ transition:none !important; }
+    .sop-body{ transition:none !important; }
+  }
+  /* THE ONE SERIF MOMENT — .lede only, never elsewhere (guardrail #3). */
+  .lede{ font-family:"Instrument Serif", Georgia, serif; font-weight:400; font-size:var(--t-display);
+    line-height:1.04; letter-spacing:-.01em; margin:0 0 var(--s4); color:var(--ink); max-width:20ch; }
+  .lede small{ display:block; font-family:"Inter", sans-serif; font-weight:400; font-size:var(--t-bodysm);
+    line-height:1.5; color:var(--ink-soft); margin-top:var(--s2); max-width:52ch; letter-spacing:0; }
+  .lede:focus{ outline:none; }
+  .grid{ display:grid; gap:20px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); }
+  .card{ --c:var(--cat); background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+    padding:28px; box-shadow:var(--shadow-rest); cursor:pointer; text-align:left; font:inherit; color:inherit;
+    width:100%; position:relative; overflow:hidden;
+    transition:transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s; }
+  @media (hover:hover){
+    .card:hover{ transform:translateY(-4px); box-shadow:var(--shadow-lift); border-color:var(--c); }
+  }
+  .card:active{ transform:translateY(-1px); box-shadow:var(--shadow-lift); border-color:var(--c); }
+  .card:focus-visible{ outline:3px solid var(--c); outline-offset:3px; }
+  /* The wayfinding spine — the ONLY place it's allowed. See guardrail #1. */
+  .card::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--c); }
+  .card .kicker{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .card .blob{ width:34px; height:34px; border-radius:10px; flex:0 0 auto; background:var(--c);
+    display:flex; align-items:center; justify-content:center; color:#fff;
+    font-family:"Inter",sans-serif; font-weight:700; font-size:var(--t-bodysm); letter-spacing:-.02em; }
+  .card h2{ font-family:"Inter", sans-serif; font-weight:600; font-size:var(--t-title); margin:0; line-height:1.25; letter-spacing:-.01em; }
+  .card p{ margin:0; font-size:var(--t-bodysm); color:var(--ink-soft); line-height:1.5; }
+  .card .meta{ display:flex; align-items:center; gap:var(--s1); margin-top:18px; flex-wrap:wrap; }
+  .card .count-text{ font-size:var(--t-micro); color:var(--ink-faint); font-weight:500; letter-spacing:.01em; }
+  .card.activity h2{ margin-bottom:0; }
+  .tag{ display:inline-block; font-size:var(--t-micro); padding:3px 11px; border-radius:999px; font-weight:600; letter-spacing:.01em; }
+  .tag.cane{ background:#f3e2d6; color:#8a3c12; }
+  .tag.nocane{ background:var(--cat-soft); color:var(--cat-deep); }
+  .tag.neutral{ background:transparent; color:var(--ink-soft); border:1px solid var(--line); }
+  .pill.saved{ display:inline-block; font-size:var(--t-micro); padding:3px 11px; border-radius:999px; font-weight:600; background:transparent; color:var(--ink-faint); border:1px solid var(--line); }
+  /* RUN-SCREEN PANELS: near-flat, NO colour spine (guardrail #1). */
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+    padding:var(--s4); margin-bottom:var(--s3); position:relative; }
+  /* Only the primary form panel is elevated — that's what makes it the hero (guardrail #2). */
+  .panel.primary{ box-shadow:var(--shadow-lift); border-color:var(--line); }
+  /* Past-results is a quiet list: flat, transparent, border-only. Don't float it. */
+  .panel.quiet{ box-shadow:none; background:transparent; border:none; padding:var(--s2) 0 0; }
+  .panel-title{ font-family:"Inter", sans-serif; font-weight:600; font-size:var(--t-title);
+    margin:0 0 var(--s3); color:var(--ink); display:flex; align-items:center; gap:10px; letter-spacing:-.01em; }
+  .panel-title svg{ width:19px; height:19px; flex:0 0 auto; color:var(--cat-deep); }
+  .panel.quiet .panel-title{ color:var(--ink-soft); font-size:var(--t-bodysm); margin-bottom:var(--s2); }
+  .panel.quiet .panel-title svg{ width:17px; height:17px; }
+  details.sop{ margin-bottom:var(--s3); background:transparent; border:1px solid var(--line);
+    border-radius:var(--r-lg); position:relative; overflow:hidden; padding:var(--s3) var(--s4); }
+  details.sop summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px;
+    font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-title); color:var(--ink); user-select:none; letter-spacing:-.01em; }
+  details.sop summary > svg{ width:19px; height:19px; flex:0 0 auto; color:var(--cat-deep); }
+  details.sop summary::-webkit-details-marker{ display:none; }
+  details.sop summary .chev{ margin-left:auto; transition:transform .24s var(--ease); width:19px; height:19px; flex:0 0 auto; color:var(--ink-faint); }
+  details.sop summary .chev svg{ width:19px; height:19px; display:block; }
+  details.sop[open] summary .chev{ transform:rotate(180deg); }
+  details.sop summary:focus-visible{ outline:3px solid var(--cat); outline-offset:3px; border-radius:8px; }
+  details.sop:not([open]) .sop-body{ display:grid; }
+  .sop-body{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .26s var(--ease); }
+  details.sop[open] .sop-body{ grid-template-rows:1fr; }
+  .sop-body > .sop-inner{ overflow:hidden; min-height:0; }
+  details.sop[open] .sop-body > .sop-inner{ padding-top:var(--s3); }
+  /* Hub demographics disclosure — same slide-down mechanism as the SOP
+     (grid-rows 0fr→1fr), styled as a tappable form-opener. One container; the
+     form inside renders bare so there's no double framing or second shadow. */
+  details.disclosure{ margin-bottom:var(--s3); background:var(--card); border:1px solid var(--line);
+    border-radius:var(--r-lg); position:relative; overflow:hidden; }
+  details.disclosure > summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:12px;
+    padding:18px var(--s3); font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-bodysm);
+    color:var(--ink); user-select:none; letter-spacing:-.005em; }
+  details.disclosure > summary::-webkit-details-marker{ display:none; }
+  details.disclosure > summary > svg{ width:20px; height:20px; flex:0 0 auto; color:var(--cat-deep);
+    background:var(--cat-soft); border-radius:11px; padding:9px; box-sizing:content-box; }
+  details.disclosure > summary .disclosure-label{ flex:1; min-width:0; }
+  details.disclosure > summary .chev{ margin-left:auto; transition:transform .24s var(--ease); width:19px; height:19px; flex:0 0 auto; color:var(--ink-faint); }
+  details.disclosure > summary .chev svg{ width:19px; height:19px; display:block; }
+  details.disclosure[open] > summary .chev{ transform:rotate(180deg); }
+  details.disclosure > summary:focus-visible{ outline:3px solid var(--cat); outline-offset:-3px; border-radius:var(--r-lg); }
+  details.disclosure:not([open]) .sop-body{ display:grid; }
+  details.disclosure[open] .sop-body{ grid-template-rows:1fr; }
+  details.disclosure[open] .sop-body > .sop-inner{ padding:0 var(--s3) var(--s3); }
+  @media (hover:hover){ details.disclosure > summary:hover{ background:var(--cat-soft); } }
+  .sop-list{ margin:0; padding:0; list-style:none; counter-reset:step; }
+  .sop-list li{ counter-increment:step; position:relative; padding:0 0 var(--s3) 42px; margin:0; color:var(--ink); }
+  .sop-list li:last-child{ padding-bottom:0; }
+  .sop-list li::before{ content:counter(step); position:absolute; left:0; top:-2px; width:28px; height:28px;
+    border-radius:50%; background:var(--cat-soft); color:var(--cat-deep);
+    font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-caption); display:flex; align-items:center; justify-content:center; }
+  .sop-list li:not(:last-child)::after{ content:""; position:absolute; left:13px; top:30px; bottom:6px; width:2px; background:var(--cat-line); }
+  .note{ background:#fbf3da; border:1px solid #ecdca6; border-radius:var(--r-md);
+    padding:var(--s2) var(--s3); margin-top:var(--s3); font-size:var(--t-bodysm); color:#5c4a1e; }
+  .note strong{ display:block; margin-bottom:4px; font-weight:600; color:#7a5e16; }
+  .media-slot{ margin-top:var(--s2); border:1.5px dashed var(--line); border-radius:var(--r-md);
+    padding:var(--s2) var(--s3); font-size:var(--t-bodysm); color:var(--ink-faint); text-align:left; display:flex; align-items:center; gap:10px; }
+  .media-slot svg{ width:18px; height:18px; flex:0 0 auto; }
+  /* SOP audio language switcher: reuses .seg styling (same control as the result
+     picker), inherits the category accent. The native-script labels (हिन्दी /
+     தமிழ் / বাংলা) let a teacher recognise their language at a glance. */
+  .audio-lang{ margin-top:var(--s2); }
+  .audio-lang .audio-lang-label{ display:block; font-size:var(--t-micro); color:var(--ink-faint); font-weight:500; margin-bottom:8px; }
+  .audio-lang audio{ width:100%; margin-top:12px; }
+  /* SOUND LIBRARY (soundboard) — sound-category activities only.
+     A restrained media player on the warm-paper system: a flat .panel (the form
+     panel stays the one elevated hero, guardrail #2), monoline icons (no emoji).
+     The category accent carries "what is playing" — the active pad, the round
+     play button, the progress fill, and lit transport toggles. Reviewed as a
+     deliberate player surface (richer than the 2-spot rule), per the soundboard
+     note left for the designer. One sound plays at a time. */
+  .sb-hint{ margin:-6px 0 var(--s3); font-size:var(--t-bodysm); color:var(--ink-faint); }
+  /* category tabs — only the selected group's pads show, so height is fixed */
+  .sb-tabs{ display:flex; gap:8px; overflow-x:auto; margin-bottom:var(--s3); padding-bottom:2px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .sb-tabs::-webkit-scrollbar{ display:none; }
+  .sb-tab{ flex:0 0 auto; font:inherit; font-size:var(--t-bodysm); font-weight:600; color:var(--ink-soft);
+    background:transparent; border:1px solid var(--line); border-radius:999px; padding:9px 15px; min-height:40px;
+    cursor:pointer; white-space:nowrap; transition:background .15s, color .15s, border-color .15s; }
+  @media (hover:hover){ .sb-tab:hover{ border-color:var(--cat-line); color:var(--ink); } }
+  .sb-tab[aria-selected="true"]{ background:var(--cat); color:#fff; border-color:var(--cat); }
+  .sb-tab:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .sb-gridwrap[hidden]{ display:none; }
+  .sb-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .sb-pad{ display:flex; align-items:center; gap:11px; text-align:left; font:inherit;
+    font-weight:600; font-size:var(--t-bodysm); color:var(--ink); background:#fff;
+    border:1px solid var(--line); border-radius:var(--r-sm); padding:11px 13px; min-height:56px;
+    cursor:pointer; transition:border-color .15s, background .15s, color .15s, box-shadow .15s, transform .08s; }
+  .sb-pad .sb-glyph{ width:32px; height:32px; flex:0 0 auto; border-radius:9px; display:flex;
+    align-items:center; justify-content:center; background:var(--paper); border:1px solid var(--line-soft);
+    color:var(--ink-faint); transition:background .15s, color .15s, border-color .15s; }
+  .sb-pad .sb-glyph svg{ width:15px; height:15px; }
+  .sb-pad .sb-label{ flex:1; min-width:0; }
+  @media (hover:hover){ .sb-pad:hover{ border-color:var(--cat-line); box-shadow:var(--shadow-rest); } }
+  .sb-pad:active{ transform:scale(.98); }
+  .sb-pad:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .sb-pad[aria-pressed="true"]{ background:var(--cat); color:#fff; border-color:var(--cat); }
+  .sb-pad[aria-pressed="true"] .sb-glyph{ background:rgba(255,255,255,.2); border-color:transparent; color:#fff; }
+  /* equaliser replaces the glyph icon while the current pad is playing */
+  .sb-eq{ display:none; align-items:flex-end; gap:2px; height:15px; }
+  .sb-pad[aria-pressed="true"] .sb-glyph .sb-ico{ display:none; }
+  .sb-pad[aria-pressed="true"] .sb-glyph .sb-eq{ display:flex; }
+  .sb-eq i{ width:3px; background:#fff; border-radius:2px; height:5px; animation:sb-eq .9s ease-in-out infinite; }
+  .sb-eq i:nth-child(2){ animation-delay:.15s; } .sb-eq i:nth-child(3){ animation-delay:.3s; }
+  @keyframes sb-eq{ 0%,100%{ height:5px; } 50%{ height:15px; } }
+  /* freeze the equaliser when the current sound is paused */
+  #soundboardPanel:not([data-playing="true"]) .sb-eq i{ animation-play-state:paused; }
+
+  /* ---- player (transport) — hidden until a sound is chosen ---- */
+  .sb-player{ margin-top:var(--s3); padding-top:var(--s3); border-top:1px solid var(--line-soft); }
+  .sb-player[hidden]{ display:none; }
+  /* idle state: shown before any sound is picked — controls visible but quiet */
+  .sb-player.is-idle .name{ color:var(--ink-faint); }
+  .sb-player.is-idle .sb-progress{ opacity:.5; }
+  .sb-track{ display:flex; align-items:baseline; gap:9px; margin-bottom:11px; min-width:0; }
+  .sb-track .name{ font-weight:600; font-size:var(--t-title); color:var(--ink); letter-spacing:-.01em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sb-track .grp{ font-size:var(--t-caption); color:var(--ink-faint); flex:0 0 auto; }
+  .sb-seek{ display:flex; align-items:center; gap:10px; margin-bottom:15px; }
+  .sb-seek .t{ font-size:var(--t-micro); color:var(--ink-faint); font-variant-numeric:tabular-nums; min-width:32px; }
+  .sb-seek .t.total{ text-align:right; }
+  .sb-progress{ position:relative; flex:1; height:6px; border-radius:99px; background:var(--line);
+    cursor:pointer; touch-action:none; }
+  .sb-progress .fill{ position:absolute; top:0; left:0; bottom:0; width:0%; background:var(--cat); border-radius:99px; }
+  .sb-progress .knob{ position:absolute; top:50%; left:0%; width:14px; height:14px; margin-left:-7px;
+    transform:translateY(-50%); border-radius:50%; background:var(--cat); box-shadow:0 1px 3px rgba(60,45,15,.3); }
+  .sb-progress:focus-visible{ outline:3px solid var(--cat); outline-offset:5px; border-radius:99px; }
+  .sb-transport{ display:flex; align-items:center; justify-content:center; gap:6px; }
+  .sb-tbtn{ display:inline-flex; align-items:center; justify-content:center; background:transparent;
+    border:none; color:var(--ink-soft); cursor:pointer; border-radius:50%; position:relative;
+    transition:background .15s, color .15s, filter .15s, transform .08s; }
+  .sb-tbtn svg{ width:22px; height:22px; }
+  .sb-tbtn.side{ width:52px; height:52px; color:var(--ink); }
+  .sb-tbtn.toggle{ width:46px; height:46px; }
+  .sb-tbtn.main{ width:64px; height:64px; background:var(--cat); color:#fff; box-shadow:var(--shadow-rest); }
+  .sb-tbtn.main svg{ width:27px; height:27px; }
+  @media (hover:hover){
+    .sb-tbtn.side:hover, .sb-tbtn.toggle:hover{ background:var(--cat-soft); color:var(--cat-deep); }
+    .sb-tbtn.main:hover{ filter:brightness(1.06); }
+  }
+  .sb-tbtn:active{ transform:scale(.92); }
+  .sb-tbtn:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .sb-tbtn.toggle.on{ background:var(--cat-soft); color:var(--cat-deep); }
+  .sb-tbtn .badge{ position:absolute; right:7px; bottom:7px; font-size:9px; font-weight:700; line-height:1;
+    background:var(--cat-deep); color:#fff; border-radius:6px; padding:1px 3px; }
+  .sb-tbtn .badge[hidden]{ display:none; }
+  @media (prefers-reduced-motion:reduce){
+    .sb-eq i{ animation:none; height:10px; }
+    .sb-pad:active, .sb-tbtn:active{ transform:none; }
+  }
+  fieldset{ border:none; margin:0; padding:0; }
+  .field{ margin-bottom:var(--s3); }
+  .field > label{ display:block; font-weight:600; margin-bottom:10px; font-size:var(--t-bodysm); color:var(--ink); letter-spacing:-.005em; }
+  .field input[type=number], .field input[type=text], .field input[type=password], .field textarea{ width:100%; padding:13px 15px; border:1px solid var(--line); border-radius:var(--r-sm);
+    font:inherit; background:#fff; color:var(--ink); transition:border-color .15s, box-shadow .15s; }
+  .field input[type=number]::placeholder, .field input[type=text]::placeholder, .field input[type=password]::placeholder, .field textarea::placeholder{ color:var(--ink-faint); }
+  .field input[type=number]:focus, .field input[type=text]:focus, .field input[type=password]:focus, .field textarea:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .field textarea{ min-height:84px; resize:vertical; }
+  .field .select{ width:100%; padding:13px 40px 13px 15px; border:1px solid var(--line); border-radius:var(--r-sm);
+    font:inherit; background:#fff; color:var(--ink); cursor:pointer; min-height:48px;
+    -webkit-appearance:none; appearance:none; transition:border-color .15s, box-shadow .15s;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23736b5e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat:no-repeat; background-position:right 13px center; }
+  .field .select:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .login-err{ color:#8a3c12; background:#fbeee6; border:1px solid #f0d4c2; border-radius:var(--r-sm);
+    padding:11px 14px; margin:0 0 var(--s2); font-size:var(--t-bodysm); font-weight:500; }
+  .seg{ display:flex; gap:var(--s1); flex-wrap:wrap; }
+  .seg button{ flex:1; min-width:96px; padding:13px; border:1px solid var(--line); border-radius:var(--r-sm);
+    background:#fff; cursor:pointer; font:inherit; font-size:var(--t-bodysm); font-weight:500; color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .12s var(--ease), background .15s, border-color .15s, color .15s; }
+  @media (hover:hover){
+    .seg button:hover{ border-color:var(--cat-line); color:var(--ink); }
+  }
+  .seg button:active{ transform:scale(.97); }
+  .seg button[aria-pressed="true"]{ background:var(--cat); color:#fff; border-color:var(--cat); font-weight:600; }
+  .seg button:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .checkrow{ display:flex; align-items:center; gap:12px; }
+  .checkrow input{ width:24px; height:24px; accent-color:var(--cat); }
+  .checkrow label{ margin:0; font-weight:600; font-size:var(--t-bodysm); color:var(--ink); }
+  .save{ background:var(--cat); color:#fff; border:none; border-radius:var(--r-sm); padding:16px 24px;
+    font-size:var(--t-body); font-weight:600; cursor:pointer; font-family:"Inter",sans-serif; width:100%;
+    letter-spacing:-.005em; transition:transform .12s, filter .15s, background .15s; margin-top:var(--s1); }
+  @media (hover:hover){
+    .save:hover{ filter:brightness(1.07); transform:translateY(-1px); }
+  }
+  .save:active{ transform:translateY(0) scale(.99); }
+  .save:disabled{ opacity:.55; cursor:default; transform:none; filter:none; }
+  .save:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+  .record{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-md);
+    padding:var(--s2) var(--s3); margin-bottom:10px; }
+  .record .who{ font-weight:600; color:var(--ink); }
+  .record .when{ color:var(--ink-faint); font-size:var(--t-caption); }
+  .record .vals{ margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+  .record .vals span{ display:inline-block; background:var(--line-soft); color:var(--ink-soft);
+    padding:3px 11px; border-radius:999px; font-size:var(--t-caption); font-weight:500; }
+  .record .vals span.val-result{ background:var(--cat-soft); color:var(--cat-deep); font-weight:600; }
+  /* Video-attached marker on a record. Quiet, neutral — it flags presence of an
+     evidence clip without competing with the result pill. */
+  .record .vals span.val-video{ display:inline-flex; align-items:center; gap:5px; background:var(--line-soft); color:var(--ink-soft); font-weight:500; }
+  .record .vals span.val-video svg{ width:13px; height:13px; }
+  /* Per-record delete: a quiet icon button, neutral until interacted with, then
+     the existing semantic rust (#8a3c12 — same as the "with cane" tag, NOT a new
+     accent). Border-only, no new shadow tier. */
+  .record .rec-head{ display:flex; align-items:flex-start; gap:var(--s2); }
+  .record .rec-meta{ flex:1; min-width:0; }
+  .rec-del{ flex:0 0 auto; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+    background:transparent; border:1px solid var(--line); border-radius:var(--r-sm); color:var(--ink-faint);
+    cursor:pointer; padding:0; transition:background .15s, border-color .15s, color .15s; }
+  .rec-del svg{ width:16px; height:16px; }
+  @media (hover:hover){ .rec-del:hover{ border-color:#dcab8e; color:#8a3c12; background:#f6e3d6; } }
+  .rec-del:active{ background:#f3e2d6; color:#8a3c12; }
+  .rec-del:focus-visible{ outline:3px solid #8a3c12; outline-offset:2px; }
+  /* "Remove" on the Manage-data child rows: reuse the .swap chip, rust on intent. */
+  .swap.danger{ display:inline-flex; align-items:center; gap:7px; }
+  .swap.danger svg{ width:15px; height:15px; }
+  @media (hover:hover){ .swap.danger:hover{ border-color:#dcab8e; color:#8a3c12; } }
+  .swap.danger:active{ background:#f6e3d6; color:#8a3c12; }
+  /* Danger zone: border-only block, no shadow (guardrail #2), rust framing only. */
+  .danger-zone{ margin-top:var(--s5); border:1px solid #ecceb9; border-radius:var(--r-lg);
+    padding:var(--s4); background:transparent; }
+  .danger-zone .panel-title{ margin-bottom:var(--s2); }
+  .danger-zone .panel-title svg{ color:#8a3c12; }
+  .save.danger-btn{ background:#8a3c12; }
+  @media (hover:hover){ .save.danger-btn:hover{ filter:brightness(1.08); } }
+  .empty{ color:var(--ink-faint); font-style:italic; }
+  /* Quiet utility button (export). Border-only, neutral — not an accent surface
+     (guardrail #1) and not elevated (guardrail #2). A tool, not a hero. */
+  .tools{ display:flex; justify-content:flex-end; margin-top:var(--s4); }
+  .tool-btn{ display:inline-flex; align-items:center; gap:9px; background:transparent;
+    border:1px solid var(--line); color:var(--ink-soft); cursor:pointer; font:inherit;
+    font-size:var(--t-bodysm); font-weight:600; padding:11px 16px; border-radius:var(--r-sm);
+    min-height:44px; transition:background .15s, border-color .15s, color .15s; }
+  .tool-btn svg{ width:18px; height:18px; flex:0 0 auto; }
+  @media (hover:hover){
+    .tool-btn:hover{ border-color:var(--ink-faint); color:var(--ink); }
+  }
+  .tool-btn:active{ background:var(--line-soft); }
+  .tool-btn:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+  /* Login screen controls. */
+  .rowlist{ display:flex; flex-direction:column; gap:8px; }
+  .rowbtn{ display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+           padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-sm);
+           background:var(--paper); font:inherit; color:var(--ink); cursor:pointer; }
+  .rowbtn:hover{ border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .rowbtn .who{ font-weight:600; }
+  .linklike{ background:none; border:none; padding:6px 0; color:var(--cat);
+             font:inherit; font-weight:600; cursor:pointer; }
+  .linklike:hover{ text-decoration:underline; }
+  .muted{ color:var(--ink-faint); font-size:var(--t-bodysm); }
+  #lg_school{ padding:12px 15px; border:1px solid var(--line); border-radius:var(--r-sm);
+              font:inherit; width:100%; background:var(--paper); color:var(--ink); }
+  #lg_school:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .studentbar{ display:flex; align-items:center; gap:14px; margin-bottom:var(--s3); background:transparent; border:none; padding:0; }
+  .studentbar label{ font-weight:600; flex:0 0 auto; color:var(--ink-soft); font-size:var(--t-bodysm); }
+  .studentbar input{ padding:12px 15px; border:1px solid var(--line); border-radius:var(--r-sm); font:inherit;
+    flex:1; background:var(--card); min-width:0; color:var(--ink); }
+  .studentbar input::placeholder{ color:var(--ink-faint); }
+  .studentbar input:focus{ outline:none; border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  /* Active-child chip on the activity screen: a quiet selector, not an accent surface. */
+  /* A child row that is also a button into the child-detail view. */
+  .rowtap{ width:100%; text-align:left; font:inherit; color:var(--ink); cursor:pointer; }
+  .rowtap .action-go{ margin-left:auto; color:var(--ink-faint); display:flex; }
+  .rowtap .action-go svg{ width:20px; height:20px; }
+  .rowtap:hover{ border-color:var(--cat); box-shadow:0 0 0 3px var(--cat-soft); }
+  .activechild{ display:flex; align-items:center; gap:12px; margin-bottom:var(--s3); padding:12px 15px;
+    border:1px solid var(--line); border-radius:var(--r-sm); background:var(--card); }
+  .activechild .avatar{ width:38px; height:38px; border-radius:10px; flex:0 0 auto; object-fit:cover;
+    background:var(--cat-soft); color:var(--cat-deep); display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:var(--t-bodysm); }
+  .activechild .who{ font-weight:600; color:var(--ink); font-size:var(--t-bodysm); flex:1; min-width:0; }
+  .activechild .who small{ display:block; font-weight:500; color:var(--ink-faint); font-size:var(--t-micro); margin-top:1px; }
+  .activechild .swap{ flex:0 0 auto; background:transparent; border:1px solid var(--line); color:var(--ink-soft);
+    cursor:pointer; font:inherit; font-size:var(--t-caption); font-weight:600; padding:8px 12px; border-radius:var(--r-sm); min-height:44px;
+    transition:background .15s, border-color .15s, color .15s; }
+  @media (hover:hover){ .activechild .swap:hover{ border-color:var(--ink-faint); color:var(--ink); } }
+  .activechild .swap:active{ background:var(--line-soft); }
+  .activechild .swap:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+  /* Child cards on screen 1 reuse .card; the avatar replaces the .blob. */
+  .card .avatar-img{ width:34px; height:34px; border-radius:10px; flex:0 0 auto; object-fit:cover; }
+  /* Students list: a pick-to-teach button + a separate open-detail chevron, so
+     the two intents don't share one tap. Reuses .activechild's inner pieces. */
+  .student-row{ display:flex; align-items:stretch; gap:0; margin-bottom:var(--s2);
+    border:1px solid var(--line); border-radius:var(--r-sm); background:var(--card); overflow:hidden; }
+  .student-row.is-active{ border-color:var(--cat); box-shadow:var(--ring-active); }
+  .student-pick{ flex:1; min-width:0; display:flex; align-items:center; gap:12px; padding:12px 15px;
+    background:transparent; border:0; font:inherit; text-align:left; color:var(--ink); cursor:pointer; }
+  .student-pick .avatar{ width:38px; height:38px; border-radius:10px; flex:0 0 auto; object-fit:cover;
+    background:var(--cat-soft); color:var(--cat-deep); display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:var(--t-bodysm); }
+  .student-pick .who{ font-weight:600; color:var(--ink); font-size:var(--t-bodysm); flex:1; min-width:0; }
+  .student-pick .who small{ display:block; font-weight:500; color:var(--ink-faint); font-size:var(--t-micro); margin-top:1px; }
+  @media (hover:hover){ .student-pick:hover{ background:var(--cat-soft); } }
+  .student-pick:active{ background:var(--cat-soft); }
+  .student-pick:focus-visible{ outline:3px solid var(--cat); outline-offset:-3px; }
+  .student-open{ flex:0 0 auto; width:52px; border:0; border-left:1px solid var(--line);
+    background:transparent; color:var(--ink-faint); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .student-open svg{ width:20px; height:20px; }
+  @media (hover:hover){ .student-open:hover{ background:var(--line-soft); color:var(--ink); } }
+  .student-open:active{ background:var(--line-soft); }
+  .student-open:focus-visible{ outline:3px solid var(--cat); outline-offset:-3px; }
+  /* ---------------------------------------------------------------------------
+     CHILD PICKER — "who are we working with?" Netflix-profile grid that sits
+     between an activity tap and the run screen. Avatars are big and tappable
+     (the whole point is a fast face-pick), category-themed selection ring on
+     the active child, and a dashed "add" tile. The ? in the lede row opens the
+     activity's step sequence as a quick reference (reuses details.sop).
+     --------------------------------------------------------------------------- */
+  .picker-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr));
+    gap:var(--s3) var(--s2); margin-top:var(--s2); }
+  .pick-tile{ display:flex; flex-direction:column; align-items:center; gap:9px; padding:6px 4px 8px;
+    background:transparent; border:0; cursor:pointer; border-radius:var(--r-md);
+    font:inherit; color:var(--ink); }
+  .pick-tile .face{ width:84px; height:84px; border-radius:18px; object-fit:cover; flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+    background:var(--cat-soft); color:var(--cat-deep); font-weight:600; font-size:32px;
+    border:2px solid transparent; transition:border-color .15s, box-shadow .15s, transform .15s var(--ease); }
+  .pick-tile img.face{ background:var(--line-soft); }
+  .pick-tile .pick-name{ font-size:var(--t-caption); font-weight:600; line-height:1.25; text-align:center;
+    max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pick-tile.is-active .face{ border-color:var(--cat); box-shadow:var(--ring-active); }
+  .pick-tile.is-active .pick-name{ color:var(--cat-deep); }
+  @media (hover:hover){ .pick-tile:hover .face{ border-color:var(--cat-line); transform:translateY(-2px); } }
+  .pick-tile:active .face{ transform:translateY(0); border-color:var(--cat); }
+  .pick-tile:focus-visible{ outline:none; }
+  .pick-tile:focus-visible .face{ outline:3px solid var(--cat); outline-offset:2px; }
+  /* The ? help button, parked at the end of the lede row. */
+  .lede-row{ display:flex; align-items:flex-start; gap:var(--s2); }
+  .lede-row .lede{ flex:1; min-width:0; }
+  .help-btn{ flex:0 0 auto; width:42px; height:42px; margin-top:6px; border-radius:50%;
+    background:var(--cat-soft); color:var(--cat-deep); border:1px solid var(--cat-line);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-family:"Inter",sans-serif; font-weight:700; font-size:var(--t-title); line-height:1; }
+  @media (hover:hover){ .help-btn:hover{ background:var(--card); border-color:var(--cat); } }
+  .help-btn:active{ background:var(--card); }
+  .help-btn:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  /* Headless SOP: no visible summary bar — the ? button is the only control.
+     The summary is kept in the DOM (details needs it) but collapsed to nothing.
+     When CLOSED the whole box disappears (no border/padding/background); the
+     border + padding only paint once it's open via the ?. */
+  details.sop-headless > summary.sop-hidden-summary{ display:none; }
+  details.sop-headless{ margin-top:0; margin-bottom:0; }
+  details.sop-headless:not([open]){ border-color:transparent; padding:0; }
+  details.sop-headless[open]{ margin-top:var(--s2); margin-bottom:var(--s3); }
+  details.sop-headless .sop-inner .section-label{ margin-top:0; }
+  /* "Active" pseudo-badge — quiet, not a third accent: it borrows the category
+     soft tint already in play on this surface. */
+  .active-tag{ display:inline-block; font-size:var(--t-micro); font-weight:600; letter-spacing:.02em;
+    text-transform:uppercase; color:var(--cat-deep); background:var(--cat-soft);
+    padding:2px 7px; border-radius:6px; margin-right:8px; vertical-align:middle; }
+  .who .active-tag{ display:inline-block; margin-bottom:3px; }
+  .card.child[aria-current="true"]{ border-color:var(--cat); box-shadow:var(--shadow-lift); }
+  .card.child[aria-current="true"]::before{ background:var(--cat); }
+  .card.child .check{ margin-left:auto; color:var(--cat-deep); width:20px; height:20px; flex:0 0 auto; }
+  .card.add{ display:flex; align-items:center; justify-content:center; gap:10px; color:var(--ink-soft);
+    border-style:dashed; min-height:96px; font-weight:600; font-size:var(--t-bodysm); }
+  .card.add svg{ width:20px; height:20px; }
+  .card.add::before{ display:none; }
+  /* Photo capture control in the profile form. */
+  .photo-field{ display:flex; align-items:center; gap:16px; }
+  .photo-preview{ width:72px; height:72px; border-radius:var(--r-md); flex:0 0 auto; object-fit:cover;
+    border:1px solid var(--line); background:var(--cat-soft); color:var(--cat-deep);
+    display:flex; align-items:center; justify-content:center; }
+  .photo-preview svg{ width:26px; height:26px; }
+  .photo-actions{ display:flex; flex-direction:column; gap:8px; }
+  .section-label{ font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-bodysm); color:var(--ink-soft);
+    margin:var(--s4) 0 var(--s2); letter-spacing:-.005em; }
+  /* Demo block inside the ? reference sheet — first child has no top margin so it
+     sits flush under the headless sheet's padding. */
+  .ref-block{ margin-bottom:var(--s3); }
+  .ref-block:first-child .section-label{ margin-top:0; }
+  /* Teacher video-evidence control on the record form. Neutral, not a primary
+     surface — the Save button stays the only emphasised action. */
+  .field-hint{ font-weight:400; color:var(--ink-faint); font-size:var(--t-caption); }
+  .video-field .video-slot{ margin-top:8px; display:flex; align-items:center; justify-content:space-between;
+    gap:var(--s2); flex-wrap:wrap; border:1px solid var(--line); border-radius:var(--r-md);
+    padding:10px 12px; background:var(--card); }
+  .video-field .video-name{ flex:1; min-width:0; color:var(--ink-soft); font-size:var(--t-bodysm);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .video-field .video-actions{ display:flex; gap:8px; flex:0 0 auto; }
+  /* Consent-locked variant: muted, dashed, clearly inert. */
+  .video-field .video-slot--locked{ border-style:dashed; border-color:var(--line); background:var(--line-soft); }
+  .video-field .video-slot--locked .video-name{ white-space:normal; color:var(--ink-faint); }
+  /* Verifiable-consent sub-fields: revealed by the tick, quietly indented so
+     they read as part of the consent row, not a new form section. */
+  .consent-field .consent-sub{ margin-top:var(--s2); padding-left:14px; border-left:2px solid var(--line);
+    display:flex; flex-direction:column; gap:var(--s2); }
+  .consent-field .consent-sub .field{ margin:0; }
+  /* Consent-evidence viewer: full-screen scrim, form photo fit to screen. */
+  .evidence-overlay{ position:fixed; inset:0; z-index:60; background:rgba(30,26,20,.88);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--s2); padding:var(--s3); }
+  .evidence-overlay img{ max-width:100%; max-height:82vh; border-radius:10px; background:#fff; }
+  .evidence-overlay .evidence-close{ background:var(--paper, #fff); }
+  /* Quiet inline text-button for the child-detail evidence tail. */
+  .linklike{ background:none; border:none; padding:0; font:inherit; color:var(--cat-deep, inherit);
+    text-decoration:underline; cursor:pointer; }
+  /* Welcome (page 1) — calm, centered, one primary action. */
+  .welcome{ min-height:60vh; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:var(--s2); }
+  .welcome-mark{ width:60px; height:60px; border-radius:16px; background:var(--cat-soft); color:var(--cat-deep);
+    display:flex; align-items:center; justify-content:center; margin-bottom:var(--s2); }
+  .welcome-mark svg{ width:30px; height:30px; }
+  .welcome .lede{ margin-bottom:var(--s3); }
+  .welcome-btn{ width:auto; min-width:200px; }
+  /* Hub action rows (page 2). Border-only; the primary one carries the accent. */
+  .hub-actions{ display:flex; flex-direction:column; gap:var(--s2); margin-top:var(--s3); }
+  .action-row{ display:flex; align-items:center; gap:14px; width:100%; text-align:left; font:inherit;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg); padding:18px var(--s3);
+    cursor:pointer; color:var(--ink); transition:transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s; }
+  .action-row .action-ic{ width:40px; height:40px; border-radius:11px; flex:0 0 auto; background:var(--cat-soft); color:var(--cat-deep);
+    display:flex; align-items:center; justify-content:center; }
+  .action-row .action-ic svg{ width:20px; height:20px; }
+  .action-row .action-text{ flex:1; min-width:0; }
+  .action-row .action-text strong{ display:block; font-weight:600; font-size:var(--t-bodysm); color:var(--ink); }
+  .action-row .action-text small{ display:block; font-weight:400; font-size:var(--t-micro); color:var(--ink-faint); margin-top:2px; }
+  .action-row .action-go{ flex:0 0 auto; color:var(--ink-faint); display:flex; }
+  .action-row .action-go svg{ width:20px; height:20px; }
+  .action-row.primary-action{ border-color:var(--cat); }
+  .action-row.primary-action .action-ic{ background:var(--cat); color:#fff; }
+  @media (hover:hover){ .action-row:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lift); border-color:var(--cat); } }
+  .action-row:active{ transform:translateY(0); box-shadow:var(--shadow-lift); }
+  .action-row:disabled{ opacity:.55; cursor:default; }
+  .action-row:disabled:hover, .action-row:disabled:active{ transform:none; box-shadow:none; border-color:var(--line); }
+  .action-row:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  /* Flat activity card (page 3) — keeps the colour spine; adds a category line. */
+  .card.activity.flat{ padding-left:24px; }
+  .card.activity.flat .flat-cat{ font-size:var(--t-micro); color:var(--ink-faint); font-weight:500; margin:4px 0 0; }
+  /* GROUPED activities list (screen 3). The category hue appears ONCE per group
+     on the header (icon chip + name); the cards beneath are neutral — no colour
+     spine — so colour groups rather than stipples (guardrail #1). */
+  .cat-group{ margin-bottom:var(--s4); }
+  .cat-group:last-child{ margin-bottom:0; }
+  .cat-head{ display:flex; align-items:center; gap:11px; margin-bottom:var(--s2); }
+  .cat-ic{ width:34px; height:34px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#fff; }
+  .cat-ic svg{ width:19px; height:19px; }
+  .cat-name{ font-family:"Inter",sans-serif; font-weight:600; font-size:var(--t-bodysm); letter-spacing:-.005em; }
+  .cat-cards{ display:grid; gap:10px; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); }
+  /* Neutral grouped card: no ::before spine, flatter padding than the screen-1
+     category cards. Inherits the base .card shadow + hover-lift tiers. */
+  .card.activity.grouped{ padding:16px 18px; }
+  .card.activity.grouped::before{ display:none; }
+  .card.activity.grouped h2{ margin:0; }
+  /* CATEGORY GRID (the new screen 3a). Each tile is an action-row variant whose
+     icon chip carries that category's own hue — colour does ONE job (naming the
+     category), exactly as on the grouped header. The chip colour is set inline
+     per tile via --tile; the rest of the row stays neutral. */
+  .cat-grid{ display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); }
+  .cat-tile .action-ic{ background:var(--tile); color:#fff; }
+  @media (hover:hover){ .cat-tile:hover{ border-color:var(--tile); } }
+  .cat-tile:focus-visible{ outline-color:var(--tile); }
+  .cat-tile .count-pill{ flex:0 0 auto; font-size:var(--t-micro); font-weight:600; color:var(--ink-faint);
+    background:var(--surface-2,#f2efe9); border-radius:999px; padding:3px 10px; margin-left:auto; }
+  .toast{ position:fixed; bottom:28px; left:50%; transform:translate(-50%,12px); background:var(--ink); color:#fff;
+    padding:14px 24px; border-radius:var(--r-sm); opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s var(--ease); z-index:60; box-shadow:0 14px 34px rgba(0,0,0,.24); font-weight:500; font-size:var(--t-bodysm); }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+  .visually-hidden{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+  @media (max-width:640px){
+    .wrap{ padding:var(--s4) calc(18px + env(safe-area-inset-right)) calc(110px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left)); }
+    :root{ --t-display:30px; }
+    .lede{ max-width:none; }
+    .studentbar{ flex-wrap:wrap; }
+    .seg{ flex-direction:column; }
+    .seg button{ width:100%; min-height:50px; }
+    .save{ padding:18px 24px; }
+    .panel{ padding:var(--s3); }
+    .card{ padding:var(--s3); }
+  }

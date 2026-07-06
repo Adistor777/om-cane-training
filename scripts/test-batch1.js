@@ -6,11 +6,14 @@ const path = require('path');
 
 // Script lives in scripts/; app source lives at the project root.
 const ROOT = path.join(__dirname, '..');
-// Inline activities.js so jsdom needs no resource loading at all.
-const ACTIVITIES = fs.readFileSync(path.join(ROOT, 'activities.js'), 'utf8');
+// Inline every app script so jsdom needs no resource loading at all.
+// Load order must mirror index.html: activities.js -> store.js -> app.js.
+const inline = f => '<script>\n' + fs.readFileSync(path.join(ROOT, f), 'utf8') + '\n</script>';
 
 const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
-  .replace('<script src="activities.js"></script>', '<script>\n' + ACTIVITIES + '\n</script>');
+  .replace('<script src="activities.js"></script>', inline('activities.js'))
+  .replace('<script src="store.js"></script>', inline('store.js'))
+  .replace('<script src="app.js"></script>', inline('app.js'));
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 // Read the CURRENT schema version out of the app itself, so the migration
 // assertions track the app instead of freezing at the version the test was

@@ -21,7 +21,7 @@
        audio/sound-which_hi.mp3
    The app computes that exact path from the activity id + the selected
    language, so activities.js stays clean — no filenames stored in it.
-   IF YOU RENAME THIS CONVENTION HERE, you must change it in index.html too
+   IF YOU RENAME THIS CONVENTION HERE, you must change it in app.js too
    (function audioPathFor()). They are two halves of one contract.
 
    ---------------------------------------------------------------------------
@@ -50,10 +50,9 @@
         node generate-audio.js --only sound-which --force
 
    After generating, listen to the files in ./audio/. When happy, build:
-        cp -r index.html activities.js audio www/
+        cp -r audio www/ && ./scripts/build.sh
         # verify www/audio has the files BEFORE syncing:
         ls -lh www/audio
-        npx cap sync android
         npx cap run android
    ============================================================================= */
 
@@ -284,7 +283,7 @@ async function main() {
   console.log(`\nSummary: ${DRY_RUN ? `${planned} would be generated` : `${made} generated`}, ${skipped} skipped${failed ? `, ${failed} failed` : ''}.`);
   if (!DRY_RUN && made > 0) {
     console.log(`\nFiles are in ./audio/ — listen, then build:`);
-    console.log(`  cp -r index.html activities.js audio www/`);
+    console.log(`  cp -r audio www/ && ./scripts/build.sh`);
     console.log(`  ls -lh www/audio   # confirm they landed BEFORE syncing`);
     console.log(`  npx cap sync android && npx cap run android\n`);
   }
