@@ -2,7 +2,45 @@
 
 _Last updated: 2026-07-06_
 
-## Done this session (2026-07-06 — workflow hardening + file split)
+## Done this session (2026-07-06 pm — cloud wiring, `feat/cloud-sync`, UNMERGED)
+- [x] **Code wiring complete, behind `CLOUD_SYNC` flag (default OFF).**
+      Flag OFF = byte-identical offline pilot; tests 35/35. Commits `9b0a7a0`
+      (wiring) + `d68f429` (dashboard SQL), on `feat/cloud-sync`.
+      - Vendored `@supabase/supabase-js` 2.110.0 UMD as root `supabase.js`
+        (NO CDN); `<script>` before store.js; in build.sh copy + verify lists.
+      - `Cloud` seam appended to store.js (lazy init so flag-OFF builds never
+        touch it): `signIn()` maps loginId → `<id>@test.local`
+        (`CLOUD_AUTH_DOMAIN`; a full typed email passes through), `enrolChild()`
+        wraps the `enrol_child()` RPC with numeric/date null-coercion; all
+        errors return `{ok:false, offline, error}` — nothing throws.
+      - Save-child: NEW child + flag ON → RPC mints `research_id` server-side;
+        offline → blocked with a teacher-facing message; EDITS stay local;
+        `newResearchId()` demoted to legacy/migration path only.
+      - `verifyCredentials()` → `signInWithPassword` behind the flag.
+        `PILOT_LOCAL_AUTH=true` fallback fires ONLY when the server is
+        UNREACHABLE — a rejected password is always final. A fallback login has
+        no cloud session, so enrolment still refuses until a real online
+        sign-in.
+- [x] **`supabase/pilot-dashboard-setup.sql`** — the ~10-min dashboard prep as
+      runnable sections (school re-seed insert-first/FK-safe, private `videos`
+      bucket, test-teacher provisioning, verification query). Step 3a (create
+      auth user) is dashboard UI, rest is SQL.
+- [x] Stale `.git/index.lock` from a sandboxed git run cleared — repo healthy.
+
+## NEXT — manual steps (Aditya), then device verify
+- [ ] Mac: `./scripts/build.sh` on `feat/cloud-sync` (sandbox couldn't run
+      `cap sync`), then push branch + the 2 unpushed doc commits on `main`.
+- [ ] Dashboard: run `supabase/pilot-dashboard-setup.sql` section by section
+      (Step 3a in Auth UI: `saksham01@test.local`, auto-confirm, note password).
+- [ ] Real device: flip `CLOUD_SYNC=true`, build, install. Matrix: wrong
+      password online FAILS; new child online → `OM-XXXX-XXXX` appears in
+      `children`; airplane mode → new child blocked, edit works; cross-school
+      RLS (second user, different school_id → sees none of these rows);
+      parked video-picker test (`content://` URI → `commitPendingVideo`).
+- [ ] All green → merge `feat/cloud-sync` → `main`, push, flag back to false
+      for pilot builds.
+
+## Done earlier same day (2026-07-06 — workflow hardening + file split)
 - [x] **`scripts/build.sh` — the ONE build command.** Replaces the remembered
       `cp … && npx cap sync` ritual. Steps: school-ID consistency guard
       (app.js seedSchools vs supabase/schema.sql — fails the build on drift),
@@ -25,27 +63,6 @@ _Last updated: 2026-07-06_
 - [x] Leftover MEMORY/TRACKER wrap-up from 07-03 committed; all work pushed
       (`main` = `ef4eae1` + wrap-up).
 
-## NEXT SESSION — FIRST tasks (cloud wiring; file refs updated post-split)
-- [ ] **Dashboard (Aditya, ~10 min, SQL already drafted in chat):**
-      (1) Table Editor: schools/teachers/children/records present, 3 school rows;
-      (2) re-seed `schools` to `sch_*` IDs (delete+insert);
-      (3) Storage: create PRIVATE bucket `videos`;
-      (4) Auth: add `saksham01@test.local` (auto-confirm) + SQL to set
-      `raw_app_meta_data.school_id = 'sch_saksham_noida'` and insert the linked
-      `teachers` row. Without this, enrol_child + RLS can't be tested.
-- [ ] **Code wiring (branch `feat/cloud-sync`, behind `CLOUD_SYNC` flag,
-      default OFF so the offline pilot is untouched):**
-      vendor `supabase-js` locally (NO CDN — must boot offline;
-      `<script src="supabase.js">` BEFORE store.js in index.html; add to
-      build.sh copy list); init client with URL + publishable key;
-      wire `enrol_child()` RPC into Save-child (`upsertProfile`, app.js ~L351 —
-      online-only, block NEW enrolment offline with a clear message,
-      `newResearchId()` stays as legacy/migration path only);
-      swap `verifyCredentials()` (app.js ~L280) to `signInWithPassword`,
-      keep the stub as `PILOT_LOCAL_AUTH` fallback.
-- [ ] **Verify on a real Android device** (emulator video-picker test parked —
-      picker hands a `content://` URI; watch `commitPendingVideo` resolution).
-
 ## R&D DECISIONS — locked 2026-07-03
 1. **Architecture A** — server-assigned child ID at enrolment (online-only
    enrolment, one moment of connectivity per child; assessments stay offline).
@@ -56,13 +73,14 @@ _Last updated: 2026-07-06_
 
 ## Production roadmap (ordered by rework risk)
 - [x] **1. R&D email** — sent + answered (decisions above).
-- [ ] **2. Cross-device child ID** — design done (`enrol_child()` RPC in
-      `supabase/schema.sql`, deployed). Remaining: dashboard steps + app wiring
-      (next session, above).
+- [ ] **2. Cross-device child ID** — app wiring DONE 2026-07-06
+      (`feat/cloud-sync`, flag OFF). Remaining: dashboard steps + device verify
+      + merge (NEXT, above).
 - [x] **3. Video consent gate** — DONE 2026-07-03 (verifiable envelope,
       audit-honest withdrawal, erasure prompt, F9 file-level deletion,
       consent-evidence photo + serial).
-- [ ] **4. Supabase auth swap** — next session (see wiring task).
+- [ ] **4. Supabase auth swap** — code DONE 2026-07-06 (`feat/cloud-sync`,
+      flag OFF; unreachable-only local fallback). Remaining: device verify.
 - [ ] **5. Uploader + cloud storage** — bucket `videos` (private), path
       `{school_id}/{research_id}_{ts}.{ext}`. Must re-check `videoConsent`
       before upload; erasure honoured server-side (delete-everywhere);
