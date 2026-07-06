@@ -106,3 +106,109 @@ const Store = {
     await this._backendRemove(key);
   }
 };
+
+/* ---------------------------------------------------------------------------
+   CLOUD SEAM — the ONLY place that touches Supabase. (feat/cloud-sync)
+
+   >>> CLOUD_SYNC is the master switch. DEFAULT OFF. <<<
+   OFF = the app is byte-for-byte the offline pilot: local stub auth, local
+   newResearchId() minting, no network calls, supabase.js loads but is never
+   initialised. Flip to true ONLY on a build where the dashboard prep is done
+   (schools re-seeded to sch_* IDs, test teacher provisioned with
+   app_metadata.school_id + linked teachers row) — see TRACKER.md.
+
+   What lives here and why:
+   • Client init is LAZY (first use, not boot) so flag-OFF builds never pay
+     for it and a missing/corrupt supabase.js cannot break offline boot.
+   • signIn(loginId, pw) — loginId is what the teacher types (e.g. saksham01);
+     auth users are provisioned as <loginId>@CLOUD_AUTH_DOMAIN. A full email
+     typed as loginId is passed through untouched, so real school emails work
+     later without a code change.
+   • enrolChild(fields) — wraps the enrol_child() RPC (security definer).
+     The SERVER mints research_id and stamps school_id from the signed-in
+     teacher's JWT — the device never chooses either. Requires a live cloud
+     session; RLS rejects anonymous calls ('not an active roster teacher').
+   • Errors are returned as {ok:false, error, offline} — callers decide the
+     teacher-facing message. Nothing here throws.
+   --------------------------------------------------------------------------- */
+const CLOUD_SYNC = false;   // MASTER SWITCH — keep false until dashboard prep is verified
+const CLOUD_URL  = 'https://nrnmxgggmqddhbsjtuob.supabase.co';
+const CLOUD_KEY  = 'sb_publishable_jrpvaGwr9d53AysVlTpLJg_qZepOmQh'; // publishable (anon) key — RLS-protected, safe in client
+const CLOUD_AUTH_DOMAIN = 'test.local'; // pilot: auth users are <loginId>@test.local; swap when real accounts land
+
+const Cloud = {
+  _client: null,
+
+  enabled(){ return CLOUD_SYNC; },
+  // navigator.onLine is optimistic inside a WebView (can report true on dead
+  // links) — treat it as a fast pre-check only; every call still handles the
+  // real network failure.
+  online(){ return typeof navigator === 'undefined' ? true : navigator.onLine !== false; },
+
+  _init(){
+    if(this._client) return this._client;
+    if(!CLOUD_SYNC) return null;
+    if(!(window.supabase && window.supabase.createClient)){
+      console.error('Cloud: vendored supabase.js not loaded — check script order in index.html');
+      return null;
+    }
+    this._client = window.supabase.createClient(CLOUD_URL, CLOUD_KEY);
+    return this._client;
+  },
+
+  _emailFor(loginId){
+    const id = (loginId || '').trim().toLowerCase();
+    return id.includes('@') ? id : `${id}@${CLOUD_AUTH_DOMAIN}`;
+  },
+
+  // (loginId, password) -> {ok, offline?, error?}. Session persists via
+  // supabase-js (localStorage) so enrol_child() has auth.uid() later.
+  async signIn(loginId, password){
+    const c = this._init();
+    if(!c) return { ok:false, error:'cloud-disabled' };
+    if(!this.online()) return { ok:false, offline:true, error:'offline' };
+    try {
+      const { error } = await c.auth.signInWithPassword({ email: this._emailFor(loginId), password });
+      if(error) return { ok:false, offline: this._isNetworkError(error), error: error.message };
+      return { ok:true };
+    } catch(e){
+      return { ok:false, offline:true, error: String(e && e.message || e) };
+    }
+  },
+
+  // fields: {name, dob, height, weight, hand, filledBy, consent, consentBy,
+  // consentRelation, consentMethod} — app-side strings; numerics/date are
+  // null-coerced here so empty inputs don't fail Postgres casts.
+  // -> {ok, researchId?, offline?, error?}
+  async enrolChild(fields){
+    const c = this._init();
+    if(!c) return { ok:false, error:'cloud-disabled' };
+    if(!this.online()) return { ok:false, offline:true, error:'offline' };
+    const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+    try {
+      const { data, error } = await c.rpc('enrol_child', {
+        p_name: fields.name,
+        p_dob: (fields.dob || '').trim() || null,           // 'YYYY-MM-DD' or null
+        p_height: num(fields.height),
+        p_weight: num(fields.weight),
+        p_hand: fields.hand || null,
+        p_filled_by: fields.filledBy || null,
+        p_consent: !!fields.consent,
+        p_consent_by: fields.consentBy || null,
+        p_consent_relation: fields.consentRelation || null,
+        p_consent_method: fields.consentMethod || null
+      });
+      if(error) return { ok:false, offline: this._isNetworkError(error), error: error.message };
+      return { ok:true, researchId: data };                 // server-minted 'OM-XXXX-XXXX'
+    } catch(e){
+      return { ok:false, offline:true, error: String(e && e.message || e) };
+    }
+  },
+
+  // Heuristic: supabase-js surfaces fetch failures with these shapes; RLS and
+  // auth rejections come back as structured errors instead.
+  _isNetworkError(err){
+    const m = String(err && err.message || err).toLowerCase();
+    return m.includes('fetch') || m.includes('network') || m.includes('timeout');
+  }
+};

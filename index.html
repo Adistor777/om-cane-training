@@ -46,6 +46,10 @@
 <main class="wrap"><div id="screen"></div></main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="activities.js"></script>
+<!-- Vendored supabase-js UMD (exposes window.supabase). Local file, NO CDN —
+     the app must boot fully offline. Loaded BEFORE store.js: the Cloud seam
+     there reads window.supabase at init. -->
+<script src="supabase.js"></script>
 <script src="store.js"></script>
 <script src="app.js"></script>
 </body>

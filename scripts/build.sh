@@ -40,9 +40,9 @@ catch (e) { console.error("BUILD FAILED: JS parse error: " + e.message); process
 '
 
 # ---- 3. Copy web assets to www/ ------------------------------------------------
-# index.html always; the split files (styles.css, store.js, app.js) and
-# activities.js whenever they exist at root.
-for f in index.html styles.css store.js app.js activities.js; do
+# index.html always; the split files (styles.css, store.js, app.js),
+# activities.js, and vendored supabase.js whenever they exist at root.
+for f in index.html styles.css store.js app.js activities.js supabase.js; do
   [ -f "$f" ] && cp "$f" "www/$f" && echo "OK  copied $f -> www/"
 done
 
@@ -52,7 +52,7 @@ npx cap sync android
 # ---- 5. Verify built Android assets actually got the new code ------------------
 pub="android/app/src/main/assets/public"
 [ -d "$pub" ] || fail "built assets not found at $pub"
-for f in index.html styles.css store.js app.js activities.js; do
+for f in index.html styles.css store.js app.js activities.js supabase.js; do
   [ -f "www/$f" ] || continue
   cmp -s "www/$f" "$pub/$f" || fail "built $f differs from www/ copy — sync did not land"
 done
