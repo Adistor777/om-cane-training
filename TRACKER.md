@@ -2,6 +2,48 @@
 
 _Last updated: 2026-07-03_
 
+## Session pickup (Supabase project live — cloud phase unblocked)
+- [x] **Build verified on Mac:** `cp index.html www/index.html && npx cap sync
+      android` clean (grep SCHEMA_VERSION = 6); `node scripts/test-batch1.js`
+      = 35/35 green; consent code confirmed on `main` (`videoConsentBy` x7).
+      Nothing left to commit — prior session already pushed. Debug APK installed
+      OK on Pixel emulator.
+- [x] **Supabase project created** (India region). Project ID
+      `nrnmxgggmqddhbsjtuob`; URL `https://nrnmxgggmqddhbsjtuob.supabase.co`;
+      publishable key `sb_publishable_jrpvaGwr9d53AysVlTpLJg_qZepOmQh` (new-format
+      anon key, RLS-protected, safe in client). `supabase/schema.sql` ran
+      successfully (4 tables + RPCs + RLS + storage policy + school seed).
+- [x] **BUG CAUGHT — school-ID mismatch.** App seeds `sch_saksham_noida` /
+      `sch_rnks_jaipur` / `sch_nab_kullu` (index.html ~L1014) and stamps every
+      record's `schoolId` with those; `schema.sql` seeded `saksham-noida` etc.
+      RLS keys school_id (JWT app_metadata) against row school_id → mismatch =
+      every insert/read denied. DECISION: app's `sch_*` IDs are canonical (app is
+      tested + stamps records). Fix schema seed + re-seed live `schools` table.
+
+## Next session — FIRST tasks (cloud wiring)
+- [ ] **Dashboard confirm:** Table Editor shows schools/teachers/children/records;
+      `schools` has 3 rows. Create PRIVATE storage bucket `videos`.
+- [ ] **Re-seed schools to canonical `sch_*` IDs** (delete+insert; nothing
+      references them yet) — SQL drafted in chat handoff.
+- [ ] **Provision ONE test teacher** (Mansi's real names can wait): Auth → Add
+      user `saksham01@test.local` (auto-confirm); then SQL to set
+      `raw_app_meta_data.school_id = 'sch_saksham_noida'` and insert the matching
+      `teachers` row with `auth_user_id`. Without this, enrol_child + RLS can't be
+      tested (enrol_child requires an active roster teacher via auth.uid()).
+- [ ] **Code wiring (behind a `CLOUD_SYNC` flag, default OFF so offline pilot is
+      untouched):** fix schema seed to `sch_*`; vendor `supabase-js` locally
+      (NO CDN — app must boot offline; add `<script src="supabase.js">` before the
+      inline script, copy to www/, add to cap-sync step); init client with URL +
+      key; wire `enrol_child()` into Save-child (upsertProfile path ~L2312,
+      online-only, block NEW enrolment offline with clear msg, keep
+      `newResearchId()` as legacy/migration only); swap `verifyCredentials()`
+      (~L1079) body to `signInWithPassword`, keep stub as `PILOT_LOCAL_AUTH`
+      fallback.
+- [ ] **Verify** on a real Android device (emulator video-picker test parked —
+      picker hands a `content://` URI; watch `commitPendingVideo` URI resolution).
+- Note: `.env` holds `SARVAM_API_KEY` (gitignored). `www/` is gitignored (build
+  copy). Structure: index.html loads `activities.js` then inline `<script>`.
+
 ## Done this session (Compliance — roadmap #3 + F9 + docs)
 - [x] **Video consent gate finished** (was a bare-checkbox skeleton, uncommitted).
       Now a VERIFIABLE consent record per DPDP Rule 10: `videoConsentBy`

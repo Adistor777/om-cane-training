@@ -1,6 +1,6 @@
 # MEMORY.md — O&M Cane Training
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-07-03_
 
 ## What this is
 Offline-first Android app (`org.omcane.trainer`) for teachers running structured
@@ -23,6 +23,40 @@ clean seams for a future Supabase backend swap.
 3. National Association of Blind, Kullu
 
 Real teacher names still pending from Mansi — placeholder teachers for now.
+
+## Supabase project — LIVE (2026-07-03), cloud phase unblocked
+- **Project created, India region.** ID `nrnmxgggmqddhbsjtuob`; URL
+  `https://nrnmxgggmqddhbsjtuob.supabase.co`; publishable key
+  `sb_publishable_jrpvaGwr9d53AysVlTpLJg_qZepOmQh` (new-format anon key,
+  RLS-protected, safe in client).
+- **`supabase/schema.sql` ran successfully:** tables `schools`, `teachers`,
+  `children`, `records`; RPCs `mint_research_id()` + `enrol_child()` (security
+  definer, mints server-side `research_id`, requires an active roster teacher via
+  `auth.uid()`); `jwt_school_id()`; RLS policies (school isolation via
+  `app_metadata.school_id`); storage policy for a private `videos` bucket; seeded
+  3 schools.
+- **BUG — school-ID mismatch (must fix before any cloud read/write).** App seeds
+  `sch_saksham_noida` / `sch_rnks_jaipur` / `sch_nab_kullu` (index.html ~L1014)
+  and stamps every record's `schoolId` with those; `schema.sql` seeded
+  `saksham-noida` etc. RLS matches JWT school_id against row school_id → mismatch
+  = all inserts/reads denied. **DECISION: the app's `sch_*` IDs are canonical**
+  (app is tested + stamps records). Fix = update schema seed + re-seed the live
+  `schools` table (delete+insert; nothing references them yet).
+- **Cloud path is not testable until ONE teacher auth user exists** with
+  `app_metadata.school_id` set + a matching `teachers` row (`auth_user_id`
+  linked). Mansi's real names can wait; provision one throwaway teacher
+  (`saksham01@test.local`) to test enrol + RLS.
+- **Build state going in:** `cap sync` clean (SCHEMA_VERSION=6), tests 35/35,
+  consent code confirmed on `main`, debug APK installs on emulator. Emulator
+  video-picker test parked for a real device (picker returns a `content://` URI —
+  watch `commitPendingVideo` resolution).
+- **NEXT (code, behind a `CLOUD_SYNC` flag, default OFF so offline pilot is
+  untouched):** vendor `supabase-js` LOCALLY (no CDN — must boot offline; add
+  `<script src="supabase.js">` before the inline script, copy to `www/`, add to
+  the cap-sync step); init client; wire `enrol_child()` at Save-child
+  (`upsertProfile` ~L2312, online-only, block NEW enrolment offline, keep
+  `newResearchId()` as legacy/migration only); swap `verifyCredentials()` (~L1079)
+  to `signInWithPassword`, keep stub as `PILOT_LOCAL_AUTH` fallback.
 
 ## Current state (committed on `feat/soundboard`, pushed, NOT yet merged to main)
 - **Sound Library media player (this session) — built, verified, emulator-tested,
