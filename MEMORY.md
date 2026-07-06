@@ -1,6 +1,6 @@
 # MEMORY.md — O&M Cane Training
 
-_Last updated: 2026-07-03_
+_Last updated: 2026-07-06_
 
 ## What this is
 Offline-first Android app (`org.omcane.trainer`) for teachers running structured
@@ -8,6 +8,14 @@ orientation & mobility assessments with visually impaired children. Plain
 HTML/CSS/JS, **no bundler** (deliberate — `activities.js` is content-team owned
 and must stay editable without a build step). Wrapped via Capacitor 8.
 Lives in `~/Desktop/om-app` on an M5 MacBook Air.
+
+**Four-file structure since 2026-07-06** (split from the single index.html,
+zero behavior change, merged + emulator-verified): `index.html` (markup shell,
+87 lines) · `styles.css` (look; design guardrails at top of file) · `store.js`
+(storage seam ONLY — the cloud swap point) · `app.js` (rendering/nav/
+behaviour). Load order: activities.js → store.js → app.js.
+Build with **`./scripts/build.sh`** — ID guard + JS parse + www copy +
+cap sync + built-asset verify in one command.
 
 Closed research pilot: IIT Delhi + NCAHT, 3 schools, ~6 teachers.
 Manager: Mansi (IIT Delhi). Collaborators: Flipkart UI/UX designer (peer
@@ -35,13 +43,14 @@ Real teacher names still pending from Mansi — placeholder teachers for now.
   `auth.uid()`); `jwt_school_id()`; RLS policies (school isolation via
   `app_metadata.school_id`); storage policy for a private `videos` bucket; seeded
   3 schools.
-- **BUG — school-ID mismatch (must fix before any cloud read/write).** App seeds
-  `sch_saksham_noida` / `sch_rnks_jaipur` / `sch_nab_kullu` (index.html ~L1014)
-  and stamps every record's `schoolId` with those; `schema.sql` seeded
-  `saksham-noida` etc. RLS matches JWT school_id against row school_id → mismatch
-  = all inserts/reads denied. **DECISION: the app's `sch_*` IDs are canonical**
-  (app is tested + stamps records). Fix = update schema seed + re-seed the live
-  `schools` table (delete+insert; nothing references them yet).
+- **BUG — school-ID mismatch. Half fixed (2026-07-06).** App seeds
+  `sch_saksham_noida` / `sch_rnks_jaipur` / `sch_nab_kullu` (app.js
+  `seedSchools` ~L213) and stamps every record's `schoolId` with those;
+  `schema.sql` had seeded `saksham-noida` etc. RLS matches JWT school_id
+  against row school_id → mismatch = all inserts/reads denied.
+  **DECISION: the app's `sch_*` IDs are canonical.** `schema.sql` seed FIXED
+  and committed; `build.sh` now guards against future drift. REMAINING: re-seed
+  the LIVE `schools` table in the dashboard (delete+insert; SQL drafted in chat).
 - **Cloud path is not testable until ONE teacher auth user exists** with
   `app_metadata.school_id` set + a matching `teachers` row (`auth_user_id`
   linked). Mansi's real names can wait; provision one throwaway teacher
@@ -50,13 +59,14 @@ Real teacher names still pending from Mansi — placeholder teachers for now.
   consent code confirmed on `main`, debug APK installs on emulator. Emulator
   video-picker test parked for a real device (picker returns a `content://` URI —
   watch `commitPendingVideo` resolution).
-- **NEXT (code, behind a `CLOUD_SYNC` flag, default OFF so offline pilot is
-  untouched):** vendor `supabase-js` LOCALLY (no CDN — must boot offline; add
-  `<script src="supabase.js">` before the inline script, copy to `www/`, add to
-  the cap-sync step); init client; wire `enrol_child()` at Save-child
-  (`upsertProfile` ~L2312, online-only, block NEW enrolment offline, keep
-  `newResearchId()` as legacy/migration only); swap `verifyCredentials()` (~L1079)
-  to `signInWithPassword`, keep stub as `PILOT_LOCAL_AUTH` fallback.
+- **NEXT (code, branch `feat/cloud-sync`, behind a `CLOUD_SYNC` flag, default
+  OFF so offline pilot is untouched):** vendor `supabase-js` LOCALLY (no CDN —
+  must boot offline; `<script src="supabase.js">` BEFORE store.js in
+  index.html; add to build.sh copy list); init client; wire `enrol_child()` at
+  Save-child (`upsertProfile`, app.js ~L351, online-only, block NEW enrolment
+  offline, keep `newResearchId()` as legacy/migration only); swap
+  `verifyCredentials()` (app.js ~L280) to `signInWithPassword`, keep stub as
+  `PILOT_LOCAL_AUTH` fallback.
 
 ## Current state (committed on `feat/soundboard`, pushed, NOT yet merged to main)
 - **Sound Library media player (this session) — built, verified, emulator-tested,
@@ -181,8 +191,10 @@ Plus: **a few more features to add** — Aditya to name them next chat.
   `deleteRecord`/`deleteProfile`/`clearAllData` (no orphaned clips on disk).
   Remaining F9 scope: assessment-data consent is paper-only (Part A of
   `compliance/GUARDIAN-CONSENT-FORM.pdf`); mirror in-app only if legal asks.
-- **File split** (`index.html` → `styles.css` + `store.js` + `app.js`) — its own
-  branch, before feature work.
+- **File split — DONE 2026-07-06** (see "What this is"). Cloud wiring now
+  lands in clean files.
+- **Offline-enrolment queue** — only if online-only enrolment proves painful in
+  the field (watch Kullu, weakest connectivity). Flagged, not committed to.
 - **Audio pipeline** — blocked on real translated SOP text from content team
   (Hindi, Tamil, Bengali via Sarvam Bulbul v3).
 - **Architecture one-pager** — offered, not yet produced.
@@ -197,10 +209,11 @@ Plus: **a few more features to add** — Aditya to name them next chat.
 ## Key principles
 - **Un-backfillable decisions first**: child ID scheme, consent envelope, schema
   version. Pseudonymisation was sequenced before any upload code for this reason.
-- **`www/` is the recurring gotcha**: root `index.html` is source of truth;
-  `www/index.html` is the gitignored build copy the app loads. Every code session
-  ends with `cp index.html www/index.html && npx cap sync android`, then grep the
-  built assets to confirm. Branch switches don't touch `www/`.
+- **`www/` was the recurring gotcha — now automated**: root files
+  (`index.html`, `styles.css`, `store.js`, `app.js`) are source of truth;
+  `www/` is the gitignored build copy the app loads. Every code session ends
+  with **`./scripts/build.sh`** (copies, syncs, byte-verifies built assets,
+  plus school-ID guard and JS parse check). Branch switches don't touch `www/`.
 - **Stale APK**: if the emulator shows old behavior after a clean sync, it's a
   stale install, not stale assets — `./gradlew clean installDebug` (full reinstall,
   not Apply Changes / hot reload). Diagnosed exactly this on 2026-06-30: root +
@@ -235,24 +248,26 @@ Plus: **a few more features to add** — Aditya to name them next chat.
   children's data; consent burden on app as data fiduciary.
 
 ## Key files
-- `index.html` — source of truth (incl. `buildSoundboard` + `SB` player controller)
+- `index.html` — markup shell; `styles.css` — look; `store.js` — storage seam;
+  `app.js` — behaviour (incl. `buildSoundboard` + `SB`, `seedSchools` ~L213,
+  `verifyCredentials` ~L280, `upsertProfile` ~L351, `SCHEMA_VERSION` ~L128)
 - `activities.js` — content-team owned; holds `ACTIVITY_DATA`, the `soundboard:true`
   flags, and `SOUND_LIBRARY` (soundboard sound list). Do not modify without content team.
+- `scripts/build.sh` — the one build command (guard + parse + copy + sync + verify)
 - `sounds/` — bundled soundboard mp3s (gitignored, like `audio/`); synced to `www/`
 - `MEMORY.md`, `TRACKER.md`, `DESIGN_NOTES.md`, `REVIEW_PACKET.md`
 
 ## Useful commands
-JS syntax check:
+Build + verify (replaces the old cp/sync/grep ritual AND the JS parse one-liner):
 ```
-node -e "const fs=require('fs'); const html=fs.readFileSync('index.html','utf8'); const m=html.match(/<script[^>]*>([\s\S]*?)<\/script>/g)||[]; let body=m.map(s=>s.replace(/<\/?script[^>]*>/g,'')).join('\n'); try{ new Function(body); console.log('JS parse: OK'); }catch(e){ console.log('JS parse ERROR:', e.message); }"
+./scripts/build.sh
 ```
-Post-sync verify (record-screen work):
+Post-sync spot-check (any function you just added — note: app.js, not index.html):
 ```
-grep -c "buildRefSheet" ~/Desktop/om-app/android/app/src/main/assets/public/index.html
+grep -c "myNewFunction" ~/Desktop/om-app/android/app/src/main/assets/public/app.js
 ```
-Post-sync verify (soundboard reached the build + sounds bundled):
+Soundboard sounds bundled:
 ```
-grep -c "buildSoundboard" ~/Desktop/om-app/android/app/src/main/assets/public/index.html
 ls ~/Desktop/om-app/android/app/src/main/assets/public/sounds | wc -l   # expect 20
 ```
 Clean reinstall (stale APK fix):
