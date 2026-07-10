@@ -28,10 +28,13 @@ _Last updated: 2026-07-06_
 - [x] Stale `.git/index.lock` from a sandboxed git run cleared — repo healthy.
 
 ## NEXT — manual steps (Aditya), then device verify
-- [ ] Mac: `./scripts/build.sh` on `feat/cloud-sync` (sandbox couldn't run
-      `cap sync`), then push branch + the 2 unpushed doc commits on `main`.
-- [ ] Dashboard: run `supabase/pilot-dashboard-setup.sql` section by section
-      (Step 3a in Auth UI: `saksham01@test.local`, auto-confirm, note password).
+- [x] Mac: `./scripts/build.sh` all green (supabase.js in www + built assets);
+      branch + main pushed.
+- [x] Dashboard prep DONE 2026-07-06 (driven via browser, each step verified):
+      schools re-seeded to the 3 `sch_*` rows; `videos` bucket private
+      (`public=f`); `saksham01@test.local` created (Aditya holds the password),
+      `app_metadata.school_id=sch_saksham_noida`, linked ACTIVE teachers row.
+      Verify query returned the expected single row. Cloud path is testable.
 - [ ] Real device: flip `CLOUD_SYNC=true`, build, install. Matrix: wrong
       password online FAILS; new child online → `OM-XXXX-XXXX` appears in
       `children`; airplane mode → new child blocked, edit works; cross-school
