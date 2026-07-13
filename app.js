@@ -366,7 +366,21 @@ function newProfileId(){ return 'c' + Date.now().toString(36) + Math.random().to
    researchId is minted locally (legacy path) on purpose: demo children must
    NOT be enrolled to the cloud. */
 async function ensureDemoChildrenSeeded(){
-  if(loadProfiles().length) return;
+  const list = loadProfiles();
+  const BUNDLED = { aditya: 'faces/aditya.jpg', vaishu: 'faces/vaishu.jpg' };
+  if(list.length){
+    // REPAIR pass: profiles named after the demo children but photo-less
+    // (created by hand, or resurrected by an OS backup restore — allowBackup
+    // was on until 2026-07-13) get the bundled photo attached at boot.
+    // Never overwrites a photo that's actually set.
+    let changed = false;
+    list.forEach(p=>{
+      const key = (p.name || '').trim().toLowerCase();
+      if(!p.photo && BUNDLED[key]){ p.photo = BUNDLED[key]; changed = true; }
+    });
+    if(changed) await saveProfiles(list);
+    return;
+  }
   const now = new Date().toISOString();
   const mk = (name, photo) => ({
     id: newProfileId(), researchId: newResearchId(), schemaVersion: SCHEMA_VERSION,
@@ -376,7 +390,7 @@ async function ensureDemoChildrenSeeded(){
     videoConsentMethod: '', videoConsentOn: '', videoConsentWithdrawnOn: '',
     videoConsentFormSerial: '', videoConsentFormPhoto: ''
   });
-  await saveProfiles([ mk('Aditya', 'faces/aditya.jpg'), mk('Vaishu', 'faces/vaishu.jpg') ]);
+  await saveProfiles([ mk('Aditya', BUNDLED.aditya), mk('Vaishu', BUNDLED.vaishu) ]);
 }
 // The active child whose name flows into saved records.
 function getActiveProfileId(){ return Store.getString('activeProfile', ''); }
