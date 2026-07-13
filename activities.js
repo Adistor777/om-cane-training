@@ -284,20 +284,20 @@ const ACTIVITY_DATA = [
         withCane: false,
         group: true,
         sop: [
-          "Seat the children in a row and settle the room to quiet.",
-          "One person walks a short distance with clear, even steps.",
-          "The group listens and counts the steps together.",
-          "Ask the group for the number, then walk a different count and repeat."
+          "Stand the children scattered around the room and settle it to quiet.",
+          "One child calls another child's name.",
+          "The called child points to the voice and estimates how many steps away it is.",
+          "Keep going until every child's name has been called."
         ],
-        facilitatorNote: "Whole-group drill — the app saves ONE result for the group; no child is selected. Listen for who counts confidently and who echoes the others — those are the children to watch in the Individual drill. Even, audible steps matter more than speed.",
+        facilitatorNote: "Whole-group drill — the app saves ONE result for the group; no child is selected. The voice IS the sound source, so keep the room silent between calls. Watch the order: pointing first, estimate second means the ears are leading. Note who estimates confidently and who guesses — those are the children to follow up in the Individual drill.",
         // DRAFT translation (machine-drafted 2026-07-13) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
         sopTranslations: {
           hi: [
-            "बच्चों को एक पंक्ति में बिठाएँ और कमरे में शांति करवाएँ।",
-            "एक व्यक्ति साफ़, बराबर कदमों से थोड़ी दूरी चले।",
-            "पूरा समूह सुनकर साथ में कदम गिने।",
-            "समूह से संख्या पूछें, फिर अलग संख्या के कदम चलकर दोहराएँ।"
+            "बच्चों को कमरे में अलग-अलग जगह खड़ा करें और शांति करवाएँ।",
+            "एक बच्चा दूसरे बच्चे का नाम पुकारे।",
+            "जिसका नाम पुकारा गया, वह आवाज़ की ओर इशारा करे और बताए कि वह कितने कदम दूर है।",
+            "तब तक जारी रखें जब तक हर बच्चे का नाम न पुकारा जाए।"
           ]
         },
         audioFile: "",
@@ -312,28 +312,29 @@ const ACTIVITY_DATA = [
         name: "Counting Steps — Individual",
         withCane: false,
         sop: [
-          "Mark a start point and a destination the child knows.",
-          "The child walks to it, counting every step aloud.",
-          "Record the number of steps.",
-          "Repeat the same path and compare the counts."
+          "Stand the child in open space; you stand some steps away.",
+          "Call the child's name once.",
+          "The child points to your voice and estimates how many steps away you are.",
+          "The child walks to you counting aloud — compare the count with the estimate."
         ],
-        facilitatorNote: "The step count is a measuring tool, not a score — what matters is whether the count stays consistent across repeats and whether the child can recall it afterwards. Even steps first; speed never.",
+        facilitatorNote: "The gap between estimate and actual count IS the data — record both numbers every round. Move to a new spot each time and mix near with far. Even steps, no rushing; a shrinking gap across sessions is the progress you're looking for.",
         // DRAFT translation (machine-drafted 2026-07-13) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
         sopTranslations: {
           hi: [
-            "एक शुरुआती बिंदु और बच्चे की जानी-पहचानी मंज़िल तय करें।",
-            "बच्चा हर कदम ज़ोर से गिनते हुए वहाँ तक चले।",
-            "कदमों की संख्या दर्ज करें।",
-            "वही रास्ता दोहराएँ और दोनों गिनतियों की तुलना करें।"
+            "बच्चे को खुली जगह में खड़ा करें; आप कुछ कदम दूर खड़े हों।",
+            "बच्चे का नाम एक बार पुकारें।",
+            "बच्चा आपकी आवाज़ की ओर इशारा करे और बताए कि आप कितने कदम दूर हैं।",
+            "बच्चा ज़ोर से गिनते हुए आप तक चले — गिनती की तुलना अनुमान से करें।"
           ]
         },
         audioFile: "",
         videoFile: "demo-snddir-steps-solo.mp4",
         dataFields: [
-          { id: "steps",  label: "Number of steps",       type: "count" },
-          { id: "result", label: "Did the child get it?", type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
+          { id: "estimate", label: "Estimated steps",       type: "count" },
+          { id: "steps",    label: "Actual steps counted",  type: "count" },
+          { id: "result",   label: "Did the child get it?", type: "mastery" },
+          { id: "notes",    label: "Teacher's notes",       type: "teacherNotes" }
         ]
       }
     ]
