@@ -1,6 +1,6 @@
 # MEMORY.md — O&M Cane Training
 
-_Last updated: 2026-07-13_
+_Last updated: 2026-07-13 (pm — Sound + Direction + group seam)_
 
 ## Direction category + audio model (settled 2026-07-13, `feat/sop-content`)
 - **Direction = Basic / Advanced** (egocentric commands → cardinal compass;
@@ -25,9 +25,33 @@ _Last updated: 2026-07-13_
   gitignored → this lives ONLY on the Mac; re-apply if regenerated.
 - Media copy (audio/, sounds/, faces/, demo-*.mp4 → www/) is now build.sh's
   job, step 3b. Both generators read SARVAM_API_KEY from .env.
-- **Per-activity content workflow** (videos #2, #3 pending): Aditya uploads a
+- **Per-activity content workflow** (video #3 pending): Aditya uploads a
   demo video → deduce SOP from frames → simplify (≤4 steps, craft into
   facilitatorNote) → wire videoFile → mastery+teacherNotes fields.
+
+## Sound + Direction + GROUP seam (2026-07-13 pm, `feat/sound-direction`, UNMERGED)
+- **Category 3 rebuilt from video batch #2** (4 videos): Near-Far → Near-Far
+  with Cane → Counting Steps — Group → Counting Steps — Individual. Old
+  snddir-clap / snddir-cane-count retired (orphaned pre-pilot records, same
+  call as Direction). Video mapping confirmed by Aditya. Commit `f406c55`;
+  emulator verify + merge is the first NEXT item.
+- **`group: true` on an activity = whole-group scoring** (content-team
+  editable flag): card shows a Group pill and routes STRAIGHT to the record
+  screen — child picker skipped (guarded inside showChildPicker too);
+  "Whole group" bar replaces the child bar; record saved as
+  `{group:true, values}` with NO researchId/profileId; renders as "Group";
+  CSV Research ID column says `GROUP`.
+- **No video evidence on group saves — fails closed.** Video consent is
+  per-child; a group clip can't be verified against unidentified children.
+  Control not rendered AND commit skipped. Flagged to legal in TRACKER if
+  researchers ever want group footage.
+- **Sandbox has no ASR path**: HuggingFace (whisper) and api.sarvam.ai both
+  403 behind the workspace proxy — SOP-from-video runs on frame montages
+  (ffmpeg fps=1/N + tile), which worked fine. Don't burn time retrying ASR.
+- **Demo video compression is part of the wiring step**: WhatsApp-sized
+  uploads still ballooned the bundle (87 MB one!) — re-encode 640p CRF~30
+  before dropping into the repo root (mount can't overwrite: rm-then-cp,
+  deletion needs the permission prompt once per session).
 
 ## What this is
 Offline-first Android app (`org.omcane.trainer`) for teachers running structured

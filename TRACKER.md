@@ -1,31 +1,69 @@
 # TRACKER.md — O&M Cane Training
 
-_Last updated: 2026-07-13_
+_Last updated: 2026-07-13 (pm — Sound + Direction + group seam)_
 
-## MERGED STATE (2026-07-13) — both tracks now on `main`
-`feat/sop-content` (Direction end-to-end) and `feat/cloud-sync` (cloud wiring,
-flag OFF → inert) are merged. ONE unified NEXT list below; session logs follow.
+## STATE (2026-07-13 pm) — Sound + Direction done on `feat/sound-direction`
+Video #2 batch (4 videos) processed same day: Sound + Direction rebuilt +
+NEW group-activity seam (`group:true` skips the child picker, saves one
+child-free record). Sits UNMERGED on `feat/sound-direction` (commit
+`f406c55`) pending emulator verify. Tests 40/40; build.sh full pipeline OK.
 
 ## NEXT — one list, in order
+- [ ] **Aditya, Mac:** emulator-verify `feat/sound-direction`, then merge:
+      Sound + Direction card grid (4 activities, Group pill on Counting
+      Steps — Group) → group card goes STRAIGHT to record screen (no child
+      picker, "Whole group" bar, NO video control) → save → record shows
+      "Group" → per-child activity still asks for a child and shows video
+      control. Then `git checkout main && git merge feat/sound-direction`,
+      delete branch. Stale APK → `cd android && ./gradlew clean installDebug`.
 - [ ] **Aditya, Mac (10 min):** English narration —
       `node scripts/generate-audio.js --only dir-basic-commands` (+ advanced;
-      plain run for ALL activities before the next school demo). Then
-      `./scripts/build.sh`, `cd android && ./gradlew installDebug`.
+      after merge add the four snddir-* ids; plain run for ALL activities
+      before the next school demo). Then `./scripts/build.sh`,
+      `cd android && ./gradlew installDebug`.
 - [ ] **Aditya:** push everything —
-      `git push origin main feat/sop-content feat/cloud-sync`
+      `git push origin main feat/sound-direction`
       (main's push is what refreshes project-knowledge sync).
+- [ ] **Optional trim:** `demo-snddir-steps-solo.mp4` is 23 MB (9½ min,
+      already re-encoded from 87 MB). If APK size bites, trim to the best
+      ~2 min on the Mac; filename stays, no code change.
 - [ ] **Cloud device test** (when the real device is handy): flip
       `CLOUD_SYNC=true`, build, install. Matrix: wrong password online FAILS;
       new child online → `OM-XXXX-XXXX` in `children`; airplane mode → new
       child blocked, edit works; cross-school RLS (second user, different
       school_id, sees none); parked video-picker test (`content://` URI →
       `commitPendingVideo`). Flag back to false after.
-- [ ] **Videos #2 and #3** (next chats): per-activity workflow — deduce SOP
-      from video, simplify to ≤4 steps, wire demo file, mastery+teacherNotes.
-- [ ] **Content team:** verify Direction Hindi SOP drafts; deliver ta/bn text
-      (paste into sopTranslations → run generator — no code).
+- [ ] **Video #3** (next chat): per-activity workflow — deduce SOP from
+      video, simplify to ≤4 steps, wire demo file, mastery+teacherNotes.
+- [ ] **Content team:** verify Direction + Sound + Direction Hindi SOP drafts;
+      deliver ta/bn text (paste into sopTranslations → run generator — no code).
 - [ ] **Consent check** before any APK leaves the team: bundled photos of the
       demo children (faces/) need guardian consent on file.
+- [ ] **Legal (flagged):** group activities save no video by design (consent
+      is per-child; a group clip can't be verified against unidentified
+      children). If researchers want group footage, legal must define a
+      group-consent envelope first.
+
+## Done 2026-07-13 (second wave pm — Sound + Direction, `feat/sound-direction`)
+- [x] **Category 3 rebuilt from the four SOP demo videos (#2)**: `Near-Far`
+      (ears only) → `Near-Far with Cane` (cane points to / touches source) →
+      `Counting Steps — Group` → `Counting Steps — Individual` (steps count +
+      mastery). Old ids snddir-clap / snddir-cane-count retired knowingly.
+      SOPs ≤4 crisp steps deduced from video frames (sandbox ASR blocked:
+      HF + Sarvam both 403 behind proxy — frames-only workflow held up);
+      craft lives in facilitatorNote; Hindi drafts machine-drafted, flagged.
+- [x] **Group-activity seam** (`group:true` in activities.js, content-team
+      editable): category card gets a Group pill and routes STRAIGHT to the
+      record screen; child picker guarded; "Whole group" bar replaces child
+      bar; handleSave writes `{group:true, values}` — no researchId/profileId;
+      display name "Group"; CSV Research ID column = `GROUP`; video evidence
+      control not rendered and commit skipped (per-child consent can't cover
+      an unidentified group — fails closed, DPDP).
+- [x] **Demo videos wired + compressed**: 87→23 MB (solo), 19→2.8, 18→2.0,
+      6→1.1 MB (640p CRF 30/31). Filenames demo-snddir-*.mp4, gitignored,
+      build-copied by step 3b.
+- [x] **Tests: SUITE 8 (group seam), 40/40.** Full `./scripts/build.sh` green
+      in sandbox (school-ID guard, parse, copy, cap sync, byte-compare).
 
 ## Done 2026-07-13 (Direction command board, `feat/sop-content`)
 - [x] **Direction category restructured** (SOP video #1 received): `Basic
