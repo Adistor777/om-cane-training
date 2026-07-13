@@ -162,6 +162,21 @@ function bootApp(seed){
   const nr = JSON.parse(w.localStorage.getItem('rec_actX'))[0];
   ok(nr.teacherId === tid2 && UUID_RE.test(nr.id) && nr.schemaVersion === SCHEMA_VERSION, 'first record on fresh install fully stamped');
 
+  /* ---- SUITE 8: group activities (group:true) --------------------------- */
+  console.log('\nSUITE 8 — group activities save child-free records');
+  // A group activity must exist in activities.js (Counting Steps — Group).
+  // NOTE: const ACTIVITY_DATA never lands on window in jsdom (same as Store),
+  // so resolve through findActivity — a function declaration, which does.
+  const groupAct = w.findActivity('snddir-steps-group');
+  ok(!!groupAct && groupAct.group === true, 'activities.js defines the group:true Counting Steps — Group activity');
+  await w.saveRecord(groupAct.id, { group: true, values: { 'Did the group get it?': 'Got it' } });
+  const gr = JSON.parse(w.localStorage.getItem('rec_' + groupAct.id))[0];
+  ok(gr.group === true && !gr.researchId && !gr.profileId, 'group record carries group:true and no child identifiers');
+  ok(gr.teacherId === tid2 && UUID_RE.test(gr.id) && gr.schemaVersion === SCHEMA_VERSION, 'group record fully stamped by the envelope chokepoint');
+  ok(w.recordDisplayName(gr) === 'Group', 'group record displays as "Group", never a child name');
+  const grow = w.gatherAllRecords().find(r => r.activity === groupAct.name);
+  ok(!!grow && grow.researchId === 'GROUP', 'CSV row labels group records GROUP in the Research ID column');
+
   console.log(`\n========== ${pass} passed, ${fail} failed ==========`);
   process.exit(fail ? 1 : 0);
 })().catch(e=>{ console.error('HARNESS ERROR:', e); process.exit(2); });

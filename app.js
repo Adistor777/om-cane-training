@@ -667,7 +667,9 @@ function gatherAllRecords(){
       rows.push({ category: meta.category, activity: meta.activity,
         // Pseudonym is the primary identifier in every export. Resolve from the
         // record, then the linked profile; never synthesise from the name.
-        researchId: r.researchId || (p?p.researchId:'') || '',
+        // Group records have no child — the row says GROUP so researchers can
+        // tell a whole-group score from a missing id at a glance.
+        researchId: r.group ? 'GROUP' : (r.researchId || (p?p.researchId:'') || ''),
         student: r.student || (p?p.name:''),
         // Canonical ISO timestamp when present (sortable, locale-free);
         // legacy display string only for old records that had no safe ISO.
@@ -1318,9 +1320,14 @@ function showCategory(ci, dir){
     const tag = act.withCane
       ? '<span class="tag cane">With cane</span>'
       : '<span class="tag neutral">Without cane</span>';
-    return `<button class="card activity grouped" onclick="showChildPicker(${ci},${ai},'fwd')">
+    // GROUP activities (group:true in activities.js) are scored ONCE for the
+    // whole group — no child is picked, so the card goes STRAIGHT to the
+    // record screen. The pill tells the teacher why no face grid appears.
+    const groupTag = act.group ? '<span class="tag neutral">Group</span>' : '';
+    const go = act.group ? `showActivity(${ci},${ai},{dir:'fwd'})` : `showChildPicker(${ci},${ai},'fwd')`;
+    return `<button class="card activity grouped" onclick="${go}">
       <h2>${esc(act.name)}</h2>
-      <div class="meta">${tag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</div>
+      <div class="meta">${tag}${groupTag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</div>
     </button>`;
   }).join('');
   const lede = cat.description ? esc(cat.description) : 'Pick an activity to read the steps and record a result.';
@@ -1801,6 +1808,9 @@ function showChildPicker(catIndex, actIndex, dir, opts){
   if(!cat){ showActivityList('back'); return; }
   const act = cat.activities[actIndex];
   if(!act){ showCategory(catIndex,'back'); return; }
+  // Group activities never pick a child — anything that lands here by an old
+  // path is forwarded to the record screen, same as the category card.
+  if(act.group){ showActivity(catIndex, actIndex, { dir: dir || 'fwd' }); return; }
   state = { category:catIndex, activity:actIndex };
   crumbEl.textContent = act.name;
   backBtn.style.display = 'flex';
@@ -2171,8 +2181,14 @@ function showActivity(catIndex, actIndex, opts){
   const resultLabels = act.dataFields.filter(f=>f.type==='result'||f.type==='mastery').map(f=>f.label);
   const records = loadRecords(act.id);
   const recHtml = records.length ? records.map(r=>renderRecord(r, resultLabels, act.id)).join('') : '<p class="empty">No results logged yet — run the activity, then record below.</p>';
-  const activeChild = getActiveProfile();
-  const childBar = activeChild
+  // GROUP mode: one result for the whole group, no child selected. The bar
+  // states that plainly so the teacher isn't hunting for a face grid. Any
+  // previously active child is irrelevant here and deliberately not shown.
+  const isGroup = !!act.group;
+  const activeChild = isGroup ? null : getActiveProfile();
+  const childBar = isGroup
+    ? `<div class="activechild"><span class="avatar">${ICON.user}</span><span class="who">Whole group<small>One result for the group — no child selection</small></span></div>`
+    : activeChild
     ? `<div class="activechild">${avatarFor(activeChild,'avatar')}<span class="who">${esc(activeChild.name)}<small>${childSub(activeChild) || 'Active child'}</small></span><button type="button" class="swap" onclick="showHub('back')">Change</button></div>`
     : `<div class="activechild"><span class="avatar">${ICON.user}</span><span class="who">No child selected<small>Pick or add a child before recording</small></span><button type="button" class="swap" onclick="showHub('back')">Choose</button></div>`;
   // Reset any video staged from a previous record on this screen.
@@ -2191,7 +2207,7 @@ function showActivity(catIndex, actIndex, opts){
     ${buildCommandBoard(act)}
     <div class="panel primary" id="formPanel">
       <h2 class="panel-title">${ICON.edit} Record a result</h2>
-      <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${fields}${videoUploadMarkup()}<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button></fieldset></form>
+      <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${fields}${isGroup ? '' : videoUploadMarkup()}<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button></fieldset></form>
     </div>
     <div class="panel quiet"><h2 class="panel-title">${ICON.list} Past results</h2><div id="recordList">${recHtml}</div></div>
   `, opts.dir || 'fwd', false, { skipLedeFocus: !!opts.focusForm });
@@ -2344,11 +2360,16 @@ function pickSeg(groupId, value, btn){
 async function handleSave(activityId){
   const cat = ACTIVITY_DATA[state.category];
   const act = cat.activities[state.activity];
-  const child = getActiveProfile();
-  if(!child){ toast('Choose or add a child first.'); return; }
+  // GROUP activities save ONE record for the whole group: no child, no
+  // researchId, no video (video consent is per-child and a group clip can't be
+  // verified against unidentified children — fail closed, DPDP). The record
+  // carries group:true so display and CSV can label it honestly.
+  const isGroup = !!act.group;
+  const child = isGroup ? null : getActiveProfile();
+  if(!isGroup && !child){ toast('Choose or add a child first.'); return; }
   // PSEUDONYM, not name, goes on the record. profileId is the local device link;
   // researchId is the portable pseudonym that survives export and (future) sync.
-  const researchId = child.researchId;
+  const researchId = isGroup ? '' : child.researchId;
   const btn = document.getElementById('saveBtn');
   if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
   const values = {};
@@ -2362,13 +2383,15 @@ async function handleSave(activityId){
   // Content only — id / schemaVersion / teacherId / whenISO are stamped
   // inside saveRecord (the envelope chokepoint).
   // Drop any staged clip if consent isn't on file, and tell the teacher why.
-  if(pendingVideo && !child.videoConsent){
+  // Group saves never have a clip (the control isn't rendered) — clear any
+  // stale stage defensively and skip the commit entirely.
+  if(pendingVideo && (isGroup || !child.videoConsent)){
     pendingVideo = null;
-    toast('Video not saved — no guardian video-consent for this child.');
+    if(!isGroup) toast('Video not saved — no guardian video-consent for this child.');
   }
   const hadClip = !!pendingVideo;   // remember before commit clears/consumes it
-  const videoMeta = await commitPendingVideo(researchId);
-  const rec = { researchId, profileId: child.id, values };
+  const videoMeta = isGroup ? null : await commitPendingVideo(researchId);
+  const rec = isGroup ? { group: true, values } : { researchId, profileId: child.id, values };
   if(videoMeta){ rec.video = videoMeta.filename; }
   const ok = await saveRecord(activityId, rec);
   if(!ok){
@@ -2396,6 +2419,7 @@ function fmtWhen(r){
 // human-readable. Off-device (CSV/sync) this resolution never happens, so the
 // name never leaves. Fallback order: profile name → researchId → legacy student.
 function recordDisplayName(r){
+  if(r.group) return 'Group';
   const p = r.profileId ? profileById(r.profileId) : null;
   if(p && p.name) return p.name;
   return r.researchId || r.student || '—';

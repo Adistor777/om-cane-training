@@ -205,44 +205,135 @@ const ACTIVITY_DATA = [
   /* ===== CATEGORY 3 ============================================ */
   {
     category: "Sound + Direction",
-    description: "Near/Far of sound, simple to narrative, and the same concept repeated with the cane (comparative step count).",
+    description: "Judging sound distance — near or far — by ear, then with the cane, then counting steps as a group and one child at a time.",
+    /* Restructured 2026-07-13 from the four SOP demo videos (#2). Old ids
+       snddir-clap / snddir-cane-count retired — pre-pilot, orphaned test
+       records accepted knowingly (same call as the Direction restructure).
+       GROUP NOTE: `group: true` below marks a whole-group activity — the app
+       skips the child picker and saves ONE result for the group. Copy that
+       line onto any activity that is scored as a group, delete it for
+       per-child scoring. */
+    help: [
+      "Start with Near-Far — the child judges sound distance by ear alone.",
+      "Repeat with the cane — the child points to the sound and touches it.",
+      "Counting Steps: run the Group drill first (one shared result — no child is selected), then score each child in Individual."
+    ],
+    helpVideo: "demo-snddir-nearfar.mp4",
     activities: [
       {
-        id: "snddir-clap",
-        name: "Clapping Activity",
+        id: "snddir-nearfar",
+        name: "Near-Far",
         withCane: false,
+        soundboard: true,
         sop: [
-          "Facilitator claps from a position.",
-          "Child identifies near vs far and direction.",
-          "Progress from simple cues to a short narrative."
+          "Stand the child in open space, facing you.",
+          "Play a sound close to the child and ask — near or far?",
+          "Move a few steps away and play the same sound again.",
+          "Mix near and far in a random order."
         ],
-        facilitatorNote: "",
+        facilitatorNote: "Keep the SAME sound all round — the child is judging distance, not identity. Leave a clear silence between plays. A child who turns toward the sound before answering is using their ears, not guessing. Score first answers.",
+        // DRAFT translation (machine-drafted 2026-07-13) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        sopTranslations: {
+          hi: [
+            "बच्चे को खुली जगह में, अपनी ओर मुँह करके खड़ा करें।",
+            "बच्चे के पास आवाज़ बजाएँ और पूछें — पास या दूर?",
+            "कुछ कदम दूर जाकर वही आवाज़ फिर बजाएँ।",
+            "पास और दूर को बिना क्रम के मिलाकर दोहराएँ।"
+          ]
+        },
         audioFile: "",
-        videoFile: "",
+        videoFile: "demo-snddir-nearfar.mp4",
         dataFields: [
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
+          { id: "result", label: "Did the child get it?", type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
         ]
       },
       {
-        id: "snddir-cane-count",
-        name: "Touch Sound with Cane & Count Steps",
+        id: "snddir-nearfar-cane",
+        name: "Near-Far with Cane",
         withCane: true,
         soundboard: true,
         sop: [
-          "Place a sound source out of arm's reach.",
-          "Child uses the cane to travel toward it.",
-          "Count the number of steps taken.",
-          "Compare with the without-cane version of this task."
+          "Give the child their cane and stand them in open space.",
+          "Play a sound — the child says near or far.",
+          "The child points to the sound with the cane.",
+          "If it is within reach, the child touches the source with the cane tip."
         ],
-        facilitatorNote: "This is the comparative (with-cane) version. Record step count to compare against the without-cane attempt.",
+        facilitatorNote: "The cane is the pointer. Watch whether the child orients the tip BEFORE answering or only after — that order tells you if the ears are leading. A right answer with a wrong touch is 'With help', not 'Got it'.",
+        // DRAFT translation (machine-drafted 2026-07-13) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        sopTranslations: {
+          hi: [
+            "बच्चे को उसकी छड़ी दें और खुली जगह में खड़ा करें।",
+            "आवाज़ बजाएँ — बच्चा बताए, पास या दूर।",
+            "बच्चा छड़ी से आवाज़ की ओर इशारा करे।",
+            "अगर आवाज़ पहुँच में हो, तो बच्चा छड़ी की नोक से स्रोत को छुए।"
+          ]
+        },
         audioFile: "",
-        videoFile: "",
+        videoFile: "demo-snddir-nearfar-cane.mp4",
         dataFields: [
-          { id: "steps", label: "Number of steps", type: "count" },
-          { id: "reached", label: "Reached the source", type: "checkbox" },
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
+          { id: "result", label: "Did the child get it?", type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
+        ]
+      },
+      {
+        id: "snddir-steps-group",
+        name: "Counting Steps — Group",
+        withCane: false,
+        group: true,
+        sop: [
+          "Seat the children in a row and settle the room to quiet.",
+          "One person walks a short distance with clear, even steps.",
+          "The group listens and counts the steps together.",
+          "Ask the group for the number, then walk a different count and repeat."
+        ],
+        facilitatorNote: "Whole-group drill — the app saves ONE result for the group; no child is selected. Listen for who counts confidently and who echoes the others — those are the children to watch in the Individual drill. Even, audible steps matter more than speed.",
+        // DRAFT translation (machine-drafted 2026-07-13) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        sopTranslations: {
+          hi: [
+            "बच्चों को एक पंक्ति में बिठाएँ और कमरे में शांति करवाएँ।",
+            "एक व्यक्ति साफ़, बराबर कदमों से थोड़ी दूरी चले।",
+            "पूरा समूह सुनकर साथ में कदम गिने।",
+            "समूह से संख्या पूछें, फिर अलग संख्या के कदम चलकर दोहराएँ।"
+          ]
+        },
+        audioFile: "",
+        videoFile: "demo-snddir-steps-group.mp4",
+        dataFields: [
+          { id: "result", label: "Did the group get it?", type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
+        ]
+      },
+      {
+        id: "snddir-steps-solo",
+        name: "Counting Steps — Individual",
+        withCane: false,
+        sop: [
+          "Mark a start point and a destination the child knows.",
+          "The child walks to it, counting every step aloud.",
+          "Record the number of steps.",
+          "Repeat the same path and compare the counts."
+        ],
+        facilitatorNote: "The step count is a measuring tool, not a score — what matters is whether the count stays consistent across repeats and whether the child can recall it afterwards. Even steps first; speed never.",
+        // DRAFT translation (machine-drafted 2026-07-13) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        sopTranslations: {
+          hi: [
+            "एक शुरुआती बिंदु और बच्चे की जानी-पहचानी मंज़िल तय करें।",
+            "बच्चा हर कदम ज़ोर से गिनते हुए वहाँ तक चले।",
+            "कदमों की संख्या दर्ज करें।",
+            "वही रास्ता दोहराएँ और दोनों गिनतियों की तुलना करें।"
+          ]
+        },
+        audioFile: "",
+        videoFile: "demo-snddir-steps-solo.mp4",
+        dataFields: [
+          { id: "steps",  label: "Number of steps",       type: "count" },
+          { id: "result", label: "Did the child get it?", type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
         ]
       }
     ]
