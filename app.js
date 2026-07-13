@@ -1304,9 +1304,34 @@ function showCategory(ci, dir){
     </button>`;
   }).join('');
   const lede = cat.description ? esc(cat.description) : 'Pick an activity to read the steps and record a result.';
+  // Category-level ? — same headless-sheet pattern as the activity screens.
+  // Renders only when the category defines `help` in activities.js (guidance
+  // lines + optional demo video), so categories opt in content-side.
+  const hasHelp = Array.isArray(cat.help) && cat.help.length;
+  const helpBtn = hasHelp
+    ? `<button type="button" class="help-btn" aria-label="About ${esc(cat.category)} — what to pick and why"
+        aria-expanded="false" onclick="toggleRefSheet(this,'catRefSheet')">?</button>`
+    : '';
+  const helpVideo = hasHelp && cat.helpVideo
+    ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(cat.helpVideo)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
+    : '';
+  const helpSheet = hasHelp
+    ? `<details class="sop sop-headless" id="catRefSheet">
+        <summary class="sop-hidden-summary" tabindex="-1" aria-hidden="true"></summary>
+        <div class="sop-body"><div class="sop-inner">
+          ${helpVideo}
+          <h2 class="section-label">How to use this category</h2>
+          <ol class="sop-list">${cat.help.map(h=>`<li>${esc(h)}</li>`).join('')}</ol>
+        </div></div>
+      </details>`
+    : '';
   paint(`<section class="cat-group">
     <div class="cat-head"><span class="cat-ic" style="background:${col}">${catIcon(ci)}</span><span class="cat-name" style="color:${pal.deep}">${esc(cat.category)}</span></div>
-    <h1 class="lede" style="margin-top:6px">${esc(cat.category)}<small>${lede}</small></h1>
+    <div class="lede-row">
+      <h1 class="lede" style="margin-top:6px">${esc(cat.category)}<small>${lede}</small></h1>
+      ${helpBtn}
+    </div>
+    ${helpSheet}
     <div class="cat-cards">${cards}</div>
   </section>`, dir || 'fwd', true);
 }

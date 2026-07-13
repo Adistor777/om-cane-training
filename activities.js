@@ -64,10 +64,19 @@ const ACTIVITY_DATA = [
   {
     category: "Direction",
     description: "Following spoken direction commands — body directions first, compass directions after.",
+    // Category-level ? sheet (shown on the Basic/Advanced list screen).
+    // `help` = short guidance lines; `helpVideo` = optional demo filename.
+    // Any category can have these — copy the pattern.
+    help: [
+      "Start with Basic — body directions (left, right, forward…) the child hears and moves to.",
+      "Move to Advanced — compass directions — once Basic is solid.",
+      "Both levels speak the commands aloud. Open an activity for the full steps and the demo."
+    ],
+    helpVideo: "demo-direction-basic.mp4",
     activities: [
       {
         id: "dir-basic-commands",
-        name: "Basic Commands",
+        name: "Basic",
         withCane: false,
         commandBoard: true,
         commands: [
@@ -107,7 +116,7 @@ const ACTIVITY_DATA = [
       },
       {
         id: "dir-advanced-commands",
-        name: "Advanced Commands",
+        name: "Advanced",
         withCane: false,
         commandBoard: true,
         commands: [

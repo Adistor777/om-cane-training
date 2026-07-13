@@ -44,7 +44,10 @@ const path = require('path');
 const LANG_CODE   = 'en';      // filename suffix ({id}_en.mp3) — the app expects exactly this
 const SARVAM_LANG = 'en-IN';   // clear Indian English
 const MODEL    = 'bulbul:v3';
-const SPEAKER  = 'shubh';        // keep the SAME voice as SOP narration — one familiar voice everywhere
+const SPEAKER  = 'priya';        // warm female v3 voice — child-facing cues need welcoming, not default
+                                 // (shubh, the v3 default, tested flat/unwelcoming for kids).
+                                 // Other v3 female options to audition: neha, ritu, kavya, shreya.
+                                 // SOP narration (generate-audio.js) is teacher-facing and keeps its own voice.
 const PACE     = 0.9;            // slightly slower than narration: these are action cues for children
 const FORMAT   = 'mp3';
 const SAMPLE_RATE = 24000;
