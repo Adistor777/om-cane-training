@@ -273,17 +273,37 @@ function isLoggedIn(){ return Store.getString(LOGGED_IN_KEY, '') === '1'; }
    any non-empty password. So the SCREEN and FLOW are real and final — only the
    verdict is stubbed. Returns the matched teacher, or null.
 
-   THE SWAP (when Supabase lands): replace the body with a call to
-   supabase.auth.signInWithPassword({ email/loginId, password }); on success,
-   resolve loginId → teacher and return it. Nothing else in the login UI changes
-   — this signature (school, loginId, password) → teacher|null is the contract. */
+   THE SWAP (landed on feat/cloud-sync, behind CLOUD_SYNC): with the flag ON the
+   verdict comes from supabase.auth.signInWithPassword via Cloud.signIn() — the
+   server holds the hashed password and decides. On success the loginId is
+   resolved to the local roster teacher, same contract as before:
+   (school, loginId, password) → teacher|null. Nothing else in the login UI
+   changes.
+
+   PILOT_LOCAL_AUTH — the fallback, scoped deliberately narrowly:
+   • CLOUD_SYNC off            → stub verdict (offline pilot, unchanged).
+   • Cloud says WRONG PASSWORD → null. The fallback NEVER overrides a real
+     server rejection, or cloud auth would be decorative.
+   • Cloud UNREACHABLE (dead network, timeout) → stub verdict IF
+     PILOT_LOCAL_AUTH is true, so a field session in a no-signal school isn't
+     bricked by connectivity. NOTE: a fallback login has no cloud session, so
+     NEW-child enrolment will still refuse until a real online sign-in happens.
+     Set PILOT_LOCAL_AUTH false to require server auth absolutely. */
+const PILOT_LOCAL_AUTH = true;
 async function verifyCredentials(school, loginId, password){
   const id = (loginId || '').trim().toLowerCase();
   const pw = (password || '');
   if(!id || !pw) return null;                 // both fields required
   const t = (school.teachers || []).find(x => (x.loginId || '').toLowerCase() === id);
   if(!t) return null;                         // unknown login ID for this school
-  // STUB VERDICT: any non-empty password passes. Replace with server check.
+  if(Cloud.enabled()){
+    const res = await Cloud.signIn(id, pw);  // <loginId>@domain unless a full email was typed
+    if(res.ok) return t;                      // server-verified
+    if(!res.offline) return null;             // reached the server, rejected — final
+    if(!PILOT_LOCAL_AUTH) return null;        // unreachable + no fallback allowed
+    // Unreachable + fallback: fall through to the stub verdict below.
+  }
+  // STUB VERDICT (pilot / offline fallback): any non-empty password passes.
   return t;
 }
 
@@ -1570,12 +1590,45 @@ async function handleProfileSave(existingId){
   if(consentChecked && !consentRel){ toast('Pick the guardian\u2019s relation to the child.'); return; }
   const btn = document.getElementById('saveProfileBtn');
   if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
+  // >>> CLOUD ENROLMENT (Architecture A) — server-assigned child ID. <<<
+  // With CLOUD_SYNC on, a NEW child is enrolled through the enrol_child() RPC:
+  // the SERVER mints research_id and creates the children row (school stamped
+  // from the signed-in teacher's JWT), so a second device can later join on the
+  // same ID. Online-only BY DESIGN (R&D decision locked 2026-07-03): one moment
+  // of connectivity per child, at enrolment; assessments stay offline. EDITS to
+  // an existing child stay local — their researchId is preserved below.
+  // newResearchId() is the LEGACY/MIGRATION path only: flag OFF, or a pre-cloud
+  // profile that never got an ID.
+  let cloudResearchId = '';
+  if(Cloud.enabled() && !existingId){
+    const res = await Cloud.enrolChild({
+      name,
+      dob:    (document.getElementById('p_dob').value    || '').trim(),
+      height: (document.getElementById('p_height').value || '').trim(),
+      weight: (document.getElementById('p_weight').value || '').trim(),
+      hand: document.getElementById('p_hand').dataset.value || '',
+      filledBy: readFilledBy(),
+      consent: consentChecked,
+      consentBy: consentBy,
+      consentRelation: consentRel,
+      consentMethod: consentChecked ? ((document.getElementById('p_consentmethod')||{}).value || 'Signed paper form') : ''
+    });
+    if(!res.ok){
+      if(btn) btn.disabled = false;
+      toast(res.offline
+        ? 'No internet — a new child can only be enrolled online (their ID comes from the server). Connect and try again. Existing children keep working offline.'
+        : 'Could not enrol this child: ' + res.error + '. Make sure you signed in while online, then try again.');
+      return;
+    }
+    cloudResearchId = res.researchId;
+  }
   const profile = {
     id: existingId || newProfileId(),
     // Pseudonym minted ONCE at enrolment and preserved across edits. Records key
     // off this, not the name below. Preserving on edit is load-bearing: re-minting
     // would orphan every record already linked to the old researchId.
-    researchId: (existingId ? (profileById(existingId)||{}).researchId : '') || newResearchId(),
+    // Cloud path: cloudResearchId (server-minted, above) wins for new children.
+    researchId: (existingId ? (profileById(existingId)||{}).researchId : '') || cloudResearchId || newResearchId(),
     schemaVersion: SCHEMA_VERSION,
     name,
     dob: (document.getElementById('p_dob').value || '').trim(),

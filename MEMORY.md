@@ -40,7 +40,8 @@ Lives in `~/Desktop/om-app` on an M5 MacBook Air.
 zero behavior change, merged + emulator-verified): `index.html` (markup shell,
 87 lines) · `styles.css` (look; design guardrails at top of file) · `store.js`
 (storage seam ONLY — the cloud swap point) · `app.js` (rendering/nav/
-behaviour). Load order: activities.js → store.js → app.js.
+behaviour). Load order: activities.js → supabase.js (vendored UMD) →
+store.js → app.js.
 Build with **`./scripts/build.sh`** — ID guard + JS parse + www copy +
 cap sync + built-asset verify in one command.
 
@@ -86,14 +87,27 @@ Real teacher names still pending from Mansi — placeholder teachers for now.
   consent code confirmed on `main`, debug APK installs on emulator. Emulator
   video-picker test parked for a real device (picker returns a `content://` URI —
   watch `commitPendingVideo` resolution).
-- **NEXT (code, branch `feat/cloud-sync`, behind a `CLOUD_SYNC` flag, default
-  OFF so offline pilot is untouched):** vendor `supabase-js` LOCALLY (no CDN —
-  must boot offline; `<script src="supabase.js">` BEFORE store.js in
-  index.html; add to build.sh copy list); init client; wire `enrol_child()` at
-  Save-child (`upsertProfile`, app.js ~L351, online-only, block NEW enrolment
-  offline, keep `newResearchId()` as legacy/migration only); swap
-  `verifyCredentials()` (app.js ~L280) to `signInWithPassword`, keep stub as
-  `PILOT_LOCAL_AUTH` fallback.
+- **CODE WIRING DONE 2026-07-06 pm (commits `9b0a7a0` + `d68f429`, MERGED to
+  main 2026-07-13, flag OFF → offline pilot byte-identical, tests 35/35):**
+  vendored `@supabase/supabase-js` 2.110.0 UMD as root `supabase.js` (no CDN;
+  loaded before store.js; in build.sh copy + verify). `Cloud` seam at the end
+  of store.js — LAZY init (flag-OFF builds never touch supabase), `signIn()`
+  maps loginId → `<id>@test.local` via `CLOUD_AUTH_DOMAIN` (full typed emails
+  pass through, so real accounts need no code change), `enrolChild()` wraps the
+  RPC (numeric/date null-coercion; returns `{ok, researchId|error, offline}` —
+  never throws). Save-child: NEW child + flag ON → server mints research_id;
+  offline → blocked with teacher message; edits stay local; `newResearchId()`
+  = legacy/migration only. `verifyCredentials()` → `signInWithPassword`;
+  `PILOT_LOCAL_AUTH=true` fallback fires ONLY on unreachable-server (never on
+  a rejected password — cloud auth is authoritative when it answers); a
+  fallback login has no cloud session so enrolment still refuses.
+- **REMAINING before merge (TRACKER "NEXT"):** Mac `./scripts/build.sh` (cloud
+  sandbox couldn't run `cap sync` over the mount) + push; run
+  `supabase/pilot-dashboard-setup.sql` in the dashboard (Step 3a = create
+  `saksham01@test.local` in Auth UI, auto-confirm); real-device verify with
+  `CLOUD_SYNC=true` (wrong-password-fails, server-minted ID lands in
+  `children`, offline-block, cross-school RLS, parked video-picker test);
+  merge → main; flag back to false for pilot builds.
 
 ## Current state (committed on `feat/soundboard`, pushed, NOT yet merged to main)
 - **Sound Library media player (this session) — built, verified, emulator-tested,

@@ -2,9 +2,32 @@
 
 _Last updated: 2026-07-13_
 
-## Done this session (2026-07-13 — Direction command board, `feat/sop-content`, UNMERGED)
-NOTE: this branch is cut from `main`; the cloud-sync wrap lives on
-`feat/cloud-sync` (its TRACKER block will collide here on merge — keep both).
+## MERGED STATE (2026-07-13) — both tracks now on `main`
+`feat/sop-content` (Direction end-to-end) and `feat/cloud-sync` (cloud wiring,
+flag OFF → inert) are merged. ONE unified NEXT list below; session logs follow.
+
+## NEXT — one list, in order
+- [ ] **Aditya, Mac (10 min):** English narration —
+      `node scripts/generate-audio.js --only dir-basic-commands` (+ advanced;
+      plain run for ALL activities before the next school demo). Then
+      `./scripts/build.sh`, `cd android && ./gradlew installDebug`.
+- [ ] **Aditya:** push everything —
+      `git push origin main feat/sop-content feat/cloud-sync`
+      (main's push is what refreshes project-knowledge sync).
+- [ ] **Cloud device test** (when the real device is handy): flip
+      `CLOUD_SYNC=true`, build, install. Matrix: wrong password online FAILS;
+      new child online → `OM-XXXX-XXXX` in `children`; airplane mode → new
+      child blocked, edit works; cross-school RLS (second user, different
+      school_id, sees none); parked video-picker test (`content://` URI →
+      `commitPendingVideo`). Flag back to false after.
+- [ ] **Videos #2 and #3** (next chats): per-activity workflow — deduce SOP
+      from video, simplify to ≤4 steps, wire demo file, mastery+teacherNotes.
+- [ ] **Content team:** verify Direction Hindi SOP drafts; deliver ta/bn text
+      (paste into sopTranslations → run generator — no code).
+- [ ] **Consent check** before any APK leaves the team: bundled photos of the
+      demo children (faces/) need guardian consent on file.
+
+## Done 2026-07-13 (Direction command board, `feat/sop-content`)
 - [x] **Direction category restructured** (SOP video #1 received): `Basic
       Commands` (left/right/forward/backward/jump/clap/stop/turn-around) +
       `Advanced Commands` (N/S/E/W; intercardinals as commented adds).
@@ -54,18 +77,37 @@ NOTE: this branch is cut from `main`; the cloud-sync wrap lives on
       helpVideo in activities.js — any category can opt in) (`ce01be1`).
 - [x] Both audio generators read SARVAM_API_KEY from .env (`82548fd`).
 
-## NEXT (sop-content track)
-- [ ] **Aditya, Mac:** generate ENGLISH narration for the two Direction
-      activities (`node scripts/generate-audio.js --only dir-basic-commands`,
-      same for advanced), then all activities before the next school demo
-      (plain run, no --only). Build + install after.
-- [ ] **Videos #2 and #3** (next chats): same per-activity workflow — deduce
-      SOP from video, wire demo file, adjust dataFields.
-- [ ] Push `feat/sop-content`; merge once the Direction screens are verified
-      (merge unlocks project-knowledge sync too).
-- [ ] **Content team:** verify Direction Hindi SOP drafts; deliver ta/bn text
-      (paste into sopTranslations → run generator — no code).
-- [ ] (Parallel track, unchanged) `feat/cloud-sync` device test + merge.
+## Done 2026-07-06 pm (cloud wiring, `feat/cloud-sync`)
+- [x] **Code wiring complete, behind `CLOUD_SYNC` flag (default OFF).**
+      Flag OFF = byte-identical offline pilot; tests 35/35. Commits `9b0a7a0`
+      (wiring) + `d68f429` (dashboard SQL), on `feat/cloud-sync`.
+      - Vendored `@supabase/supabase-js` 2.110.0 UMD as root `supabase.js`
+        (NO CDN); `<script>` before store.js; in build.sh copy + verify lists.
+      - `Cloud` seam appended to store.js (lazy init so flag-OFF builds never
+        touch it): `signIn()` maps loginId → `<id>@test.local`
+        (`CLOUD_AUTH_DOMAIN`; a full typed email passes through), `enrolChild()`
+        wraps the `enrol_child()` RPC with numeric/date null-coercion; all
+        errors return `{ok:false, offline, error}` — nothing throws.
+      - Save-child: NEW child + flag ON → RPC mints `research_id` server-side;
+        offline → blocked with a teacher-facing message; EDITS stay local;
+        `newResearchId()` demoted to legacy/migration path only.
+      - `verifyCredentials()` → `signInWithPassword` behind the flag.
+        `PILOT_LOCAL_AUTH=true` fallback fires ONLY when the server is
+        UNREACHABLE — a rejected password is always final. A fallback login has
+        no cloud session, so enrolment still refuses until a real online
+        sign-in.
+- [x] **`supabase/pilot-dashboard-setup.sql`** — the ~10-min dashboard prep as
+      runnable sections (school re-seed insert-first/FK-safe, private `videos`
+      bucket, test-teacher provisioning, verification query). Step 3a (create
+      auth user) is dashboard UI, rest is SQL.
+- [x] Stale `.git/index.lock` from a sandboxed git run cleared — repo healthy.
+
+- [x] Dashboard prep DONE 2026-07-06 (driven via browser, each step verified):
+      schools re-seeded to the 3 `sch_*` rows; `videos` bucket private
+      (`public=f`); `saksham01@test.local` created (Aditya holds the password),
+      `app_metadata.school_id=sch_saksham_noida`, linked ACTIVE teachers row.
+      Verify query returned the expected single row. Cloud path is testable —
+      device-test matrix lives in NEXT above.
 
 ## Done earlier (2026-07-06 — workflow hardening + file split)
 - [x] **`scripts/build.sh` — the ONE build command.** Replaces the remembered
@@ -90,27 +132,6 @@ NOTE: this branch is cut from `main`; the cloud-sync wrap lives on
 - [x] Leftover MEMORY/TRACKER wrap-up from 07-03 committed; all work pushed
       (`main` = `ef4eae1` + wrap-up).
 
-## NEXT SESSION — FIRST tasks (cloud wiring; file refs updated post-split)
-- [ ] **Dashboard (Aditya, ~10 min, SQL already drafted in chat):**
-      (1) Table Editor: schools/teachers/children/records present, 3 school rows;
-      (2) re-seed `schools` to `sch_*` IDs (delete+insert);
-      (3) Storage: create PRIVATE bucket `videos`;
-      (4) Auth: add `saksham01@test.local` (auto-confirm) + SQL to set
-      `raw_app_meta_data.school_id = 'sch_saksham_noida'` and insert the linked
-      `teachers` row. Without this, enrol_child + RLS can't be tested.
-- [ ] **Code wiring (branch `feat/cloud-sync`, behind `CLOUD_SYNC` flag,
-      default OFF so the offline pilot is untouched):**
-      vendor `supabase-js` locally (NO CDN — must boot offline;
-      `<script src="supabase.js">` BEFORE store.js in index.html; add to
-      build.sh copy list); init client with URL + publishable key;
-      wire `enrol_child()` RPC into Save-child (`upsertProfile`, app.js ~L351 —
-      online-only, block NEW enrolment offline with a clear message,
-      `newResearchId()` stays as legacy/migration path only);
-      swap `verifyCredentials()` (app.js ~L280) to `signInWithPassword`,
-      keep the stub as `PILOT_LOCAL_AUTH` fallback.
-- [ ] **Verify on a real Android device** (emulator video-picker test parked —
-      picker hands a `content://` URI; watch `commitPendingVideo` resolution).
-
 ## R&D DECISIONS — locked 2026-07-03
 1. **Architecture A** — server-assigned child ID at enrolment (online-only
    enrolment, one moment of connectivity per child; assessments stay offline).
@@ -121,13 +142,14 @@ NOTE: this branch is cut from `main`; the cloud-sync wrap lives on
 
 ## Production roadmap (ordered by rework risk)
 - [x] **1. R&D email** — sent + answered (decisions above).
-- [ ] **2. Cross-device child ID** — design done (`enrol_child()` RPC in
-      `supabase/schema.sql`, deployed). Remaining: dashboard steps + app wiring
-      (next session, above).
+- [ ] **2. Cross-device child ID** — app wiring DONE 2026-07-06
+      (`feat/cloud-sync`, flag OFF). Remaining: dashboard steps + device verify
+      + merge (NEXT, above).
 - [x] **3. Video consent gate** — DONE 2026-07-03 (verifiable envelope,
       audit-honest withdrawal, erasure prompt, F9 file-level deletion,
       consent-evidence photo + serial).
-- [ ] **4. Supabase auth swap** — next session (see wiring task).
+- [ ] **4. Supabase auth swap** — code DONE 2026-07-06 (`feat/cloud-sync`,
+      flag OFF; unreachable-only local fallback). Remaining: device verify.
 - [ ] **5. Uploader + cloud storage** — bucket `videos` (private), path
       `{school_id}/{research_id}_{ts}.{ext}`. Must re-check `videoConsent`
       before upload; erasure honoured server-side (delete-everywhere);
