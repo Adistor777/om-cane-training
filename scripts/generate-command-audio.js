@@ -64,6 +64,16 @@ const ONLY    = onlyIdx !== -1 ? args[onlyIdx + 1] : null;
 
 function fail(msg){ console.error(`\nFAILED: ${msg}\n`); process.exit(1); }
 
+/* ---- .env fallback: the key lives in the repo's gitignored .env (the app
+   never sees it; these scripts run only on the Mac). Shell env still wins. */
+if (!process.env.SARVAM_API_KEY) {
+  try {
+    const env = fs.readFileSync(path.join(ROOT, '.env'), 'utf8');
+    const m = env.match(/^\s*(?:export\s+)?SARVAM_API_KEY\s*=\s*["']?([^"'\r\n]+)["']?\s*$/m);
+    if (m) process.env.SARVAM_API_KEY = m[1].trim();
+  } catch (e) { /* no .env — the key check below reports it */ }
+}
+
 /* ---- LOAD activities.js (execute, don't scrape — same as the SOP script) --- */
 function loadActivityData(){
   let src;
