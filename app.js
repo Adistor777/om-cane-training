@@ -1968,39 +1968,34 @@ const SB = {
 function buildCommandBoard(act){
   if(!act || !act.commandBoard || !Array.isArray(act.commands) || !act.commands.length) return '';
   CB.cmds = act.commands; CB.last = -1;
-  const lang = getAudioLang();
-  const langName = (AUDIO_LANGS.find(l=>l.code===lang)||{}).label || lang;
   const pads = act.commands.map((c,i)=>{
-    const spoken = (c.speak && c.speak[lang]) || '';
     return `<button type="button" class="cmd-pad" data-idx="${i}" aria-pressed="false"
       aria-label="Speak command: ${esc(c.label)}" onclick="CB.play(${i})">
       <span class="cmd-label">${esc(c.label)}</span>
-      ${spoken ? `<span class="cmd-spoken" aria-hidden="true">${esc(spoken)}</span>` : ''}
     </button>`;
   }).join('');
   return `
     <div class="panel" id="commandBoardPanel">
       <h2 class="panel-title">${ICON.audio} Command board</h2>
-      <p class="cmd-hint">Tap a command — the app speaks it (${esc(langName)} — change under ?). One command at a time; wait for the movement to finish. Use Surprise me once the child expects a pattern.</p>
+      <p class="cmd-hint">Tap a command — the app speaks it. One command at a time; wait for the movement to finish. Use Surprise me once the child expects a pattern.</p>
       <div class="cmd-grid">${pads}</div>
       <button type="button" class="cmd-surprise" onclick="CB.surprise()">${ICON.sbShuffle} Surprise me</button>
       <span class="visually-hidden" aria-live="assertive" id="cmdLive"></span>
     </div>`;
 }
-/* One Audio element; missing file falls back hi → then tells the teacher to
-   generate it (the pad still flashes, so the drill can continue by voice). */
+/* One Audio element. Commands are English-only by design (audioLang is for
+   SOP narration, not cues); missing file → teacher toast, and the pad still
+   flashes so the drill can continue by voice. */
 const CB = {
   audio:null, cmds:[], last:-1, _timer:null,
-  play(i, langOverride){
+  play(i){
     const c = CB.cmds[i]; if(!c) return;
-    const lang = langOverride || getAudioLang();
     if(!CB.audio) CB.audio = new Audio();
     const a = CB.audio;
     a.onerror = null;
     try{ a.pause(); }catch(e){}
-    a.src = `audio/commands/${c.id}_${lang}.mp3`;
+    a.src = `audio/commands/${c.id}_en.mp3`;
     a.onerror = ()=>{
-      if(lang !== 'hi'){ CB.play(i, 'hi'); return; }   // fall back to Hindi
       toast(`Audio for “${c.label}” isn’t generated yet — run generate-command-audio.js, then rebuild.`);
     };
     const p = a.play(); if(p && p.catch) p.catch(()=>{});

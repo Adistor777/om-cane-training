@@ -5,22 +5,24 @@
 
    Sibling of generate-audio.js (read that header for full setup). This one
    reads the `commands` lists from activities.js (activities that have
-   commandBoard:true) and writes ONE short mp3 per (command x language) into
-   ./audio/commands/. The app derives the path from the command id + selected
-   language:
+   commandBoard:true) and writes ONE short ENGLISH mp3 per command into
+   ./audio/commands/. Commands are English-only BY DESIGN — multilingual
+   Sarvam audio is for SOP narration (sopTranslations + generate-audio.js),
+   not for cues. The app derives the path from the command id:
 
-       audio/commands/left_hi.mp3        <- { id:"left", speak:{ hi:"बाएँ" } }
+       audio/commands/left_en.mp3        <- { id:"left", label:"Left" }
 
    That derived-path convention is the contract with app.js (CB.play()) —
    change it in BOTH places or neither.
 
+   What is spoken: the command's `label`, unless the command has an optional
+   speak: "..." override (for pronunciation fixes, e.g. speak:"Turn a-round").
+
    Same rules as the SOP generator:
    - runs ON YOUR MAC, never bundled into the app
-   - SARVAM_API_KEY comes from the shell, never from code
-   - a language with empty speak text is skipped cleanly (the content team
-     fills translations at their own pace)
+   - SARVAM_API_KEY comes from the shell or the repo's gitignored .env
    - commands sharing an id across activities are generated ONCE (they should
-     have identical speak text — you get a warning if they don't)
+     have identical text — you get a warning if they don't)
 
    USAGE
      node scripts/generate-command-audio.js --dry-run     # preview, no calls
@@ -39,11 +41,8 @@ const fs = require('fs');
 const path = require('path');
 
 /* ---- CONFIG — matches generate-audio.js where it matters ------------------ */
-const LANGUAGES = {
-  hi: 'hi-IN',   // Hindi
-  ta: 'ta-IN',   // Tamil
-  bn: 'bn-IN',   // Bengali
-};
+const LANG_CODE   = 'en';      // filename suffix ({id}_en.mp3) — the app expects exactly this
+const SARVAM_LANG = 'en-IN';   // clear Indian English
 const MODEL    = 'bulbul:v3';
 const SPEAKER  = 'shubh';        // keep the SAME voice as SOP narration — one familiar voice everywhere
 const PACE     = 0.9;            // slightly slower than narration: these are action cues for children
@@ -88,6 +87,7 @@ function loadActivityData(){
 }
 
 /* ---- COLLECT commands, deduped by id --------------------------------------- */
+function commandText(c){ return String((c.speak || c.label || c.id)).trim(); }
 function collectCommands(data){
   const byId = new Map();
   data.forEach(cat => (cat.activities || []).forEach(act => {
@@ -97,14 +97,10 @@ function collectCommands(data){
       const prev = byId.get(c.id);
       if (prev){
         // Same id must mean same cue. Warn on drift; first definition wins.
-        Object.keys(LANGUAGES).forEach(l => {
-          const a = (prev.speak && prev.speak[l]) || '';
-          const b = (c.speak && c.speak[l]) || '';
-          if (a && b && a !== b) console.warn(`  ! command "${c.id}" has different ${l} text in two activities — using "${a}"`);
-        });
+        if (commandText(prev) !== commandText(c)) console.warn(`  ! command "${c.id}" has different text in two activities — using "${commandText(prev)}"`);
         return;
       }
-      byId.set(c.id, { id: c.id, label: c.label || c.id, speak: c.speak || {} });
+      byId.set(c.id, { id: c.id, label: c.label || c.id, text: commandText(c) });
     });
   }));
   return [...byId.values()];
@@ -154,32 +150,29 @@ async function main(){
 
   if (!DRY_RUN) fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  const langEntries = Object.entries(LANGUAGES);
   let made = 0, skipped = 0, failed = 0;
 
-  console.log(`\n${DRY_RUN ? '[DRY RUN] ' : ''}Generating command audio`);
+  console.log(`\n${DRY_RUN ? '[DRY RUN] ' : ''}Generating command audio (English, ${SARVAM_LANG})`);
   console.log(`  model=${MODEL}  speaker=${SPEAKER}  pace=${PACE}  format=${FORMAT}`);
   console.log(`  commands=${commands.length}${ONLY ? ` (--only ${ONLY})` : ''}\n`);
 
   for (const cmd of commands){
-    for (const [appCode, sarvamCode] of langEntries){
-      const text = (cmd.speak[appCode] || '').trim();
-      const outPath = path.join(OUT_DIR, `${cmd.id}_${appCode}.mp3`);
-      const rel = path.relative(ROOT, outPath);
+    const text = cmd.text;
+    const outPath = path.join(OUT_DIR, `${cmd.id}_${LANG_CODE}.mp3`);
+    const rel = path.relative(ROOT, outPath);
 
-      if (!text){ console.log(`  · skip   ${rel}  (no ${appCode} text yet)`); skipped++; continue; }
-      if (!FORCE && fs.existsSync(outPath)){ console.log(`  · skip   ${rel}  (exists; --force to redo)`); skipped++; continue; }
-      if (DRY_RUN){ console.log(`  → would  ${rel}  "${text}"`); made++; continue; }
+    if (!text){ console.log(`  · skip   ${rel}  (empty text)`); skipped++; continue; }
+    if (!FORCE && fs.existsSync(outPath)){ console.log(`  · skip   ${rel}  (exists; --force to redo)`); skipped++; continue; }
+    if (DRY_RUN){ console.log(`  → would  ${rel}  "${text}"`); made++; continue; }
 
-      try {
-        const buf = await synthesize(text, sarvamCode);
-        fs.writeFileSync(outPath, buf);
-        console.log(`  ✓ wrote  ${rel}  "${text}"  (${(buf.length/1024).toFixed(0)} KB)`);
-        made++;
-      } catch (e) {
-        console.error(`  ✗ FAIL   ${rel}  ${e.message}`);
-        failed++;
-      }
+    try {
+      const buf = await synthesize(text, SARVAM_LANG);
+      fs.writeFileSync(outPath, buf);
+      console.log(`  ✓ wrote  ${rel}  "${text}"  (${(buf.length/1024).toFixed(0)} KB)`);
+      made++;
+    } catch (e) {
+      console.error(`  ✗ FAIL   ${rel}  ${e.message}`);
+      failed++;
     }
   }
 

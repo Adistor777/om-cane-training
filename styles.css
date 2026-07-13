@@ -351,12 +351,10 @@
     border:1px solid var(--line); border-radius:var(--r-sm); padding:14px 12px; min-height:68px;
     cursor:pointer; transition:border-color .15s, background .15s, color .15s, box-shadow .15s, transform .08s; }
   .cmd-pad .cmd-label{ font-weight:600; font-size:var(--t-body); letter-spacing:-.005em; }
-  .cmd-pad .cmd-spoken{ font-size:var(--t-bodysm); color:var(--ink-faint); transition:color .15s; }
   @media (hover:hover){ .cmd-pad:hover{ border-color:var(--cat-line); box-shadow:var(--shadow-rest); } }
   .cmd-pad:active{ transform:scale(.98); }
   .cmd-pad:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
   .cmd-pad[aria-pressed="true"], .cmd-pad.is-speaking{ background:var(--cat); color:#fff; border-color:var(--cat); }
-  .cmd-pad[aria-pressed="true"] .cmd-spoken, .cmd-pad.is-speaking .cmd-spoken{ color:rgba(255,255,255,.85); }
   .cmd-surprise{ display:flex; align-items:center; justify-content:center; gap:9px; width:100%;
     margin-top:var(--s3); font:inherit; font-weight:600; font-size:var(--t-bodysm); color:var(--cat-deep);
     background:var(--cat-soft); border:1px solid var(--cat-line); border-radius:var(--r-sm);

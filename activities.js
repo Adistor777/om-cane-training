@@ -48,16 +48,18 @@ const ACTIVITY_DATA = [
      concepts — the advanced stage in curricula like TAPS).
 
      Both activities show a COMMAND BOARD: big buttons that SPEAK the
-     command aloud (Sarvam-generated audio), so every child hears the
-     exact same cue every time. To change the commands, edit the
-     `commands` list below — same no-code rules as everything else:
+     command aloud in clear Indian English (Sarvam-generated audio), so
+     every child hears the exact same cue every time. To change the
+     commands, edit the `commands` list below — same no-code rules as
+     everything else:
        id     short unique code, no spaces (also the audio filename:
-              audio/commands/{id}_{lang}.mp3 — regenerate audio after
+              audio/commands/{id}_en.mp3 — regenerate audio after
               adding one: node scripts/generate-command-audio.js)
-       label  what the TEACHER sees on the button (English)
-       speak  what the app SAYS, per language (hi/ta/bn). Leave a
-              language "" until its translation is ready — the audio
-              generator skips empty ones.
+       label  the button text AND what the app says. To make the app
+              say something different from the label, add
+              speak: "..." on that line.
+     (SOP narration is the multilingual part — see sopTranslations
+      below each activity, spoken by generate-audio.js.)
      ============================================================== */
   {
     category: "Direction",
@@ -69,14 +71,14 @@ const ACTIVITY_DATA = [
         withCane: false,
         commandBoard: true,
         commands: [
-          { id: "left",       label: "Left",        speak: { hi: "बाएँ",       ta: "", bn: "" } },
-          { id: "right",      label: "Right",       speak: { hi: "दाएँ",       ta: "", bn: "" } },
-          { id: "forward",    label: "Forward",     speak: { hi: "आगे",        ta: "", bn: "" } },
-          { id: "backward",   label: "Backward",    speak: { hi: "पीछे",       ta: "", bn: "" } },
-          { id: "jump",       label: "Jump",        speak: { hi: "कूदो",       ta: "", bn: "" } },
-          { id: "clap",       label: "Clap",        speak: { hi: "ताली बजाओ",  ta: "", bn: "" } },
-          { id: "stop",       label: "Stop",        speak: { hi: "रुको",       ta: "", bn: "" } },
-          { id: "turnaround", label: "Turn around", speak: { hi: "पीछे मुड़ो",  ta: "", bn: "" } }
+          { id: "left",       label: "Left" },
+          { id: "right",      label: "Right" },
+          { id: "forward",    label: "Forward" },
+          { id: "backward",   label: "Backward" },
+          { id: "jump",       label: "Jump" },
+          { id: "clap",       label: "Clap" },
+          { id: "stop",       label: "Stop" },
+          { id: "turnaround", label: "Turn around" }
         ],
         sop: [
           "Space the children out with an arm's length between them, all facing you.",
@@ -87,6 +89,19 @@ const ACTIVITY_DATA = [
           "For the child being assessed, count each command they perform correctly on the first cue."
         ],
         facilitatorNote: "Run it as a group drill (see the demo video) but score one child per session. Keep cues crisp and leave a clear pause after each — a child responding to the rhythm is not yet responding to the direction.",
+        // DRAFT translation (machine-drafted 2026-07-13) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1
+        // with `sop` above, as required by generate-audio.js.
+        sopTranslations: {
+          hi: [
+            "बच्चों को एक-दूसरे से एक हाथ की दूरी पर खड़ा करें, सब आपकी ओर मुँह करके।",
+            "दिशा वाली कविता से शुरुआत करें ताकि समूह लय में आ जाए।",
+            "कोई कमांड बटन दबाएँ — ऐप निर्देश बोलेगा। एक बार में केवल एक ही कमांड दें।",
+            "अगली कमांड से पहले हर बच्चे के मूवमेंट पूरा करने की प्रतीक्षा करें।",
+            "पहले एक तय क्रम में शुरू करें (बाएँ, दाएँ, आगे, पीछे), फिर क्रम बदलें — Surprise me का उपयोग करें ताकि बच्चा अगली कमांड का अनुमान न लगा सके।",
+            "जिस बच्चे का आकलन हो रहा है, गिनें कि उसने पहली बार में कितनी कमांड सही ढंग से कीं।"
+          ]
+        },
         audioFile: "",
         videoFile: "demo-direction-basic.mp4",
         dataFields: [
@@ -102,12 +117,12 @@ const ACTIVITY_DATA = [
         withCane: false,
         commandBoard: true,
         commands: [
-          { id: "north", label: "North", speak: { hi: "उत्तर",  ta: "", bn: "" } },
-          { id: "south", label: "South", speak: { hi: "दक्षिण", ta: "", bn: "" } },
-          { id: "east",  label: "East",  speak: { hi: "पूर्व",  ta: "", bn: "" } },
-          { id: "west",  label: "West",  speak: { hi: "पश्चिम", ta: "", bn: "" } }
+          { id: "north", label: "North" },
+          { id: "south", label: "South" },
+          { id: "east",  label: "East" },
+          { id: "west",  label: "West" }
           // Intercardinals when the child is ready — copy a line, e.g.:
-          // { id: "northeast", label: "North-East", speak: { hi: "उत्तर-पूर्व", ta: "", bn: "" } },
+          // { id: "northeast", label: "North-East" },
         ],
         sop: [
           "Anchor the room first: agree with the child where North is, using a fixed landmark they can touch or hear (the door, the window with traffic sounds).",
@@ -117,6 +132,17 @@ const ACTIVITY_DATA = [
           "Count correct responses; note whether they re-anchor by themselves after being turned."
         ],
         facilitatorNote: "Cardinal directions do not move when the body turns — a child who answers by rote from the starting position hasn't got the concept yet. Re-anchor with the landmark (or warmth of sun through the window) whenever the child is lost.",
+        // DRAFT translation (machine-drafted 2026-07-13) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        sopTranslations: {
+          hi: [
+            "पहले कमरे की दिशा तय करें: बच्चे के साथ मिलकर तय करें कि उत्तर किधर है — कोई स्थिर पहचान चुनें जिसे वह छू या सुन सके (दरवाज़ा, या ट्रैफ़िक की आवाज़ वाली खिड़की)।",
+            "शुरुआत में बच्चे को उत्तर की ओर मुँह करके खड़ा करें।",
+            "कोई दिशा कमांड दबाएँ — बच्चा उस दिशा की ओर मुड़े (या इशारा करे, या कदम बढ़ाए)।",
+            "कुछ राउंड के बाद बच्चे को घुमाकर नई स्थिति में खड़ा करें और दोहराएँ — दिशाएँ कमरे से जुड़ी रहनी चाहिए, शरीर से नहीं। यही अवधारणा परखी जा रही है।",
+            "सही उत्तर गिनें; यह भी नोट करें कि घुमाए जाने के बाद बच्चा खुद दिशा फिर से पहचान पाता है या नहीं।"
+          ]
+        },
         audioFile: "",
         videoFile: "",
         dataFields: [
