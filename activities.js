@@ -40,46 +40,90 @@
 
 const ACTIVITY_DATA = [
 
-  /* ===== CATEGORY 1 ============================================ */
+  /* ===== CATEGORY 1 ============================================
+     Direction — two levels, matching how O&M actually teaches this:
+     children master directions on their OWN BODY first (left/right/
+     forward/backward — "egocentric" concepts), and only then fixed
+     COMPASS directions that don't move when the body turns (cardinal
+     concepts — the advanced stage in curricula like TAPS).
+
+     Both activities show a COMMAND BOARD: big buttons that SPEAK the
+     command aloud (Sarvam-generated audio), so every child hears the
+     exact same cue every time. To change the commands, edit the
+     `commands` list below — same no-code rules as everything else:
+       id     short unique code, no spaces (also the audio filename:
+              audio/commands/{id}_{lang}.mp3 — regenerate audio after
+              adding one: node scripts/generate-command-audio.js)
+       label  what the TEACHER sees on the button (English)
+       speak  what the app SAYS, per language (hi/ta/bn). Leave a
+              language "" until its translation is ready — the audio
+              generator skips empty ones.
+     ============================================================== */
   {
     category: "Direction",
-    description: "Left-Right and Front-Back orientation.",
+    description: "Following spoken direction commands — body directions first, compass directions after.",
     activities: [
       {
-        id: "dir-leftright",
-        name: "Left-Right (Rhyme)",
+        id: "dir-basic-commands",
+        name: "Basic Commands",
         withCane: false,
-        sop: [
-          "Sit or stand facing the child.",
-          "Use the rhyme to cue left and right.",
-          "Ask: \"On which shoulder is my hand?\" — Left or Right?",
-          "Repeat, varying which shoulder you touch."
+        commandBoard: true,
+        commands: [
+          { id: "left",       label: "Left",        speak: { hi: "बाएँ",       ta: "", bn: "" } },
+          { id: "right",      label: "Right",       speak: { hi: "दाएँ",       ta: "", bn: "" } },
+          { id: "forward",    label: "Forward",     speak: { hi: "आगे",        ta: "", bn: "" } },
+          { id: "backward",   label: "Backward",    speak: { hi: "पीछे",       ta: "", bn: "" } },
+          { id: "jump",       label: "Jump",        speak: { hi: "कूदो",       ta: "", bn: "" } },
+          { id: "clap",       label: "Clap",        speak: { hi: "ताली बजाओ",  ta: "", bn: "" } },
+          { id: "stop",       label: "Stop",        speak: { hi: "रुको",       ta: "", bn: "" } },
+          { id: "turnaround", label: "Turn around", speak: { hi: "पीछे मुड़ो",  ta: "", bn: "" } }
         ],
-        facilitatorNote: "",
+        sop: [
+          "Space the children out with an arm's length between them, all facing you.",
+          "Warm up with the direction rhyme so the group settles into the rhythm.",
+          "Tap a command button — the app speaks the cue. Give ONE command at a time.",
+          "Wait for every child to finish the movement before the next command.",
+          "Start in a fixed order (left, right, forward, backward), then mix — use Surprise me so the child cannot predict the next command.",
+          "For the child being assessed, count each command they perform correctly on the first cue."
+        ],
+        facilitatorNote: "Run it as a group drill (see the demo video) but score one child per session. Keep cues crisp and leave a clear pause after each — a child responding to the rhythm is not yet responding to the direction.",
         audioFile: "",
-        videoFile: "",
+        videoFile: "demo-direction-basic.mp4",
         dataFields: [
+          { id: "given",   label: "Commands given",    type: "count" },
           { id: "correct", label: "Correct responses", type: "count" },
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
+          { id: "result",  label: "Overall",           type: "result" },
+          { id: "notes",   label: "Notes",             type: "notes" }
         ]
       },
       {
-        id: "dir-frontback",
-        name: "Front-Back",
+        id: "dir-advanced-commands",
+        name: "Advanced Commands",
         withCane: false,
-        sop: [
-          "Stand facing the child.",
-          "Cue 'front' and 'back' positions.",
-          "Ask the child to identify front vs back."
+        commandBoard: true,
+        commands: [
+          { id: "north", label: "North", speak: { hi: "उत्तर",  ta: "", bn: "" } },
+          { id: "south", label: "South", speak: { hi: "दक्षिण", ta: "", bn: "" } },
+          { id: "east",  label: "East",  speak: { hi: "पूर्व",  ta: "", bn: "" } },
+          { id: "west",  label: "West",  speak: { hi: "पश्चिम", ta: "", bn: "" } }
+          // Intercardinals when the child is ready — copy a line, e.g.:
+          // { id: "northeast", label: "North-East", speak: { hi: "उत्तर-पूर्व", ta: "", bn: "" } },
         ],
-        facilitatorNote: "",
+        sop: [
+          "Anchor the room first: agree with the child where North is, using a fixed landmark they can touch or hear (the door, the window with traffic sounds).",
+          "Have the child stand facing North to start.",
+          "Tap a compass command — the child turns to face (or points to, or steps toward) that direction.",
+          "After a few rounds, physically turn the child to a NEW starting position and repeat — the directions must stay anchored to the room, not to their body. This is the concept being tested.",
+          "Count correct responses; note whether they re-anchor by themselves after being turned."
+        ],
+        facilitatorNote: "Cardinal directions do not move when the body turns — a child who answers by rote from the starting position hasn't got the concept yet. Re-anchor with the landmark (or warmth of sun through the window) whenever the child is lost.",
         audioFile: "",
         videoFile: "",
         dataFields: [
+          { id: "given",   label: "Commands given",    type: "count" },
           { id: "correct", label: "Correct responses", type: "count" },
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
+          { id: "result",  label: "Overall",           type: "result" },
+          { id: "notes",   label: "Notes",             type: "notes" }
         ]
       }
     ]

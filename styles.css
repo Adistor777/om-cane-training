@@ -337,6 +337,38 @@
     .sb-eq i{ animation:none; height:10px; }
     .sb-pad:active, .sb-tbtn:active{ transform:none; }
   }
+
+  /* ---- COMMAND BOARD (Direction activities) --------------------------------
+     Sibling of the Sound Library, tuned for the drill it serves: pads are
+     TALLER (the teacher taps while watching the children, not the screen) and
+     carry the spoken text under the English label so the teacher always knows
+     exactly what the child will hear. Accent only on the speaking pad —
+     same single-accent discipline as the sb pads. */
+  .cmd-hint{ margin:-6px 0 var(--s3); font-size:var(--t-bodysm); color:var(--ink-faint); }
+  .cmd-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .cmd-pad{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    text-align:center; font:inherit; color:var(--ink); background:#fff;
+    border:1px solid var(--line); border-radius:var(--r-sm); padding:14px 12px; min-height:68px;
+    cursor:pointer; transition:border-color .15s, background .15s, color .15s, box-shadow .15s, transform .08s; }
+  .cmd-pad .cmd-label{ font-weight:600; font-size:var(--t-body); letter-spacing:-.005em; }
+  .cmd-pad .cmd-spoken{ font-size:var(--t-bodysm); color:var(--ink-faint); transition:color .15s; }
+  @media (hover:hover){ .cmd-pad:hover{ border-color:var(--cat-line); box-shadow:var(--shadow-rest); } }
+  .cmd-pad:active{ transform:scale(.98); }
+  .cmd-pad:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .cmd-pad[aria-pressed="true"], .cmd-pad.is-speaking{ background:var(--cat); color:#fff; border-color:var(--cat); }
+  .cmd-pad[aria-pressed="true"] .cmd-spoken, .cmd-pad.is-speaking .cmd-spoken{ color:rgba(255,255,255,.85); }
+  .cmd-surprise{ display:flex; align-items:center; justify-content:center; gap:9px; width:100%;
+    margin-top:var(--s3); font:inherit; font-weight:600; font-size:var(--t-bodysm); color:var(--cat-deep);
+    background:var(--cat-soft); border:1px solid var(--cat-line); border-radius:var(--r-sm);
+    padding:13px 15px; min-height:48px; cursor:pointer;
+    transition:background .15s, border-color .15s, transform .08s; }
+  .cmd-surprise svg{ width:16px; height:16px; }
+  @media (hover:hover){ .cmd-surprise:hover{ border-color:var(--cat); } }
+  .cmd-surprise:active{ transform:scale(.99); }
+  .cmd-surprise:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  @media (prefers-reduced-motion:reduce){
+    .cmd-pad:active, .cmd-surprise:active{ transform:none; }
+  }
   fieldset{ border:none; margin:0; padding:0; }
   .field{ margin-bottom:var(--s3); }
   .field > label{ display:block; font-weight:600; margin-bottom:10px; font-size:var(--t-bodysm); color:var(--ink); letter-spacing:-.005em; }

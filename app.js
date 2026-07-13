@@ -1950,15 +1950,101 @@ const SB = {
     SB.audio = null; SB.idx = -1; SB.playing = false; SB.shuffle = false; SB.repeat = 'off';
   }
 };
+
+/* ---------------------------------------------------------------------------
+   COMMAND BOARD — rendered on activities with commandBoard:true (Direction).
+   Big buttons that SPEAK a movement command (left / right / jump / north …)
+   from bundled Sarvam-generated mp3s: audio/commands/{id}_{lang}.mp3.
+   Offline, same as all media. Why buttons and not the teacher's voice: every
+   child hears the identical cue at identical loudness every time — the
+   assessment measures the CHILD's response, not the teacher's delivery.
+
+   The command list lives on the activity in activities.js (content-team
+   owned). Language follows the same audioLang the SOP narration uses — one
+   language choice everywhere. "Surprise me" plays a random command (never the
+   same one twice in a row) so the child can't predict the sequence — the same
+   reason the Sound Library has shuffle.
+   --------------------------------------------------------------------------- */
+function buildCommandBoard(act){
+  if(!act || !act.commandBoard || !Array.isArray(act.commands) || !act.commands.length) return '';
+  CB.cmds = act.commands; CB.last = -1;
+  const lang = getAudioLang();
+  const langName = (AUDIO_LANGS.find(l=>l.code===lang)||{}).label || lang;
+  const pads = act.commands.map((c,i)=>{
+    const spoken = (c.speak && c.speak[lang]) || '';
+    return `<button type="button" class="cmd-pad" data-idx="${i}" aria-pressed="false"
+      aria-label="Speak command: ${esc(c.label)}" onclick="CB.play(${i})">
+      <span class="cmd-label">${esc(c.label)}</span>
+      ${spoken ? `<span class="cmd-spoken" aria-hidden="true">${esc(spoken)}</span>` : ''}
+    </button>`;
+  }).join('');
+  return `
+    <div class="panel" id="commandBoardPanel">
+      <h2 class="panel-title">${ICON.audio} Command board</h2>
+      <p class="cmd-hint">Tap a command — the app speaks it (${esc(langName)} — change under ?). One command at a time; wait for the movement to finish. Use Surprise me once the child expects a pattern.</p>
+      <div class="cmd-grid">${pads}</div>
+      <button type="button" class="cmd-surprise" onclick="CB.surprise()">${ICON.sbShuffle} Surprise me</button>
+      <span class="visually-hidden" aria-live="assertive" id="cmdLive"></span>
+    </div>`;
+}
+/* One Audio element; missing file falls back hi → then tells the teacher to
+   generate it (the pad still flashes, so the drill can continue by voice). */
+const CB = {
+  audio:null, cmds:[], last:-1, _timer:null,
+  play(i, langOverride){
+    const c = CB.cmds[i]; if(!c) return;
+    const lang = langOverride || getAudioLang();
+    if(!CB.audio) CB.audio = new Audio();
+    const a = CB.audio;
+    a.onerror = null;
+    try{ a.pause(); }catch(e){}
+    a.src = `audio/commands/${c.id}_${lang}.mp3`;
+    a.onerror = ()=>{
+      if(lang !== 'hi'){ CB.play(i, 'hi'); return; }   // fall back to Hindi
+      toast(`Audio for “${c.label}” isn’t generated yet — run generate-command-audio.js, then rebuild.`);
+    };
+    const p = a.play(); if(p && p.catch) p.catch(()=>{});
+    if(navigator.vibrate) navigator.vibrate(20);
+    CB.last = i;
+    CB._flash(i, c.label);
+  },
+  surprise(){
+    if(!CB.cmds.length) return;
+    let n;
+    if(CB.cmds.length === 1){ n = 0; }
+    else { do { n = Math.floor(Math.random()*CB.cmds.length); } while(n === CB.last); }
+    CB.play(n);
+  },
+  _flash(i, label){
+    document.querySelectorAll('#commandBoardPanel .cmd-pad').forEach(p=>{
+      p.setAttribute('aria-pressed', String(Number(p.dataset.idx)===i));
+      p.classList.toggle('is-speaking', Number(p.dataset.idx)===i);
+    });
+    const live = document.getElementById('cmdLive'); if(live) live.textContent = label;
+    clearTimeout(CB._timer);
+    CB._timer = setTimeout(()=>{
+      document.querySelectorAll('#commandBoardPanel .cmd-pad.is-speaking').forEach(p=>{
+        p.classList.remove('is-speaking'); p.setAttribute('aria-pressed','false');
+      });
+    }, 1600);
+  },
+  // Stop and fully reset when navigating between screens (no cross-screen audio).
+  reset(){
+    clearTimeout(CB._timer); CB._timer = null;
+    if(CB.audio){ try{ CB.audio.pause(); }catch(e){} CB.audio.onerror = null; }
+    CB.audio = null; CB.cmds = []; CB.last = -1;
+  }
+};
 function showActivity(catIndex, actIndex, opts){
   opts = opts || {};
   if(typeof SB !== 'undefined') SB.reset();
+  if(typeof CB !== 'undefined') CB.reset();
   const cat = ACTIVITY_DATA[catIndex];
   const act = cat.activities[actIndex];
   state = { category:catIndex, activity:actIndex };
   crumbEl.textContent = cat.category;
   backBtn.style.display = 'flex';
-  backBtn.onclick = ()=>{ if(typeof SB !== 'undefined') SB.reset(); showCategory(catIndex,'back'); };
+  backBtn.onclick = ()=>{ if(typeof SB !== 'undefined') SB.reset(); if(typeof CB !== 'undefined') CB.reset(); showCategory(catIndex,'back'); };
   homeDot.innerHTML = catIcon(catIndex);
   themeFor(catIndex);
   const audioHtml = buildAudioHtml(act);
@@ -1983,6 +2069,7 @@ function showActivity(catIndex, actIndex, opts){
     ${refSheet}
     ${childBar}
     ${buildSoundboard(act)}
+    ${buildCommandBoard(act)}
     <div class="panel primary" id="formPanel">
       <h2 class="panel-title">${ICON.edit} Record a result</h2>
       <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${fields}${videoUploadMarkup()}<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button></fieldset></form>
