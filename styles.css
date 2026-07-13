@@ -367,6 +367,25 @@
   @media (prefers-reduced-motion:reduce){
     .cmd-pad:active, .cmd-surprise:active{ transform:none; }
   }
+
+  /* ---- TEACHER'S NOTES (progressive disclosure on the record form) ---------
+     The score is the required tap; the note is optional and folded. Quiet
+     until opened — it must never compete with the mastery buttons above it. */
+  .tnotes{ margin-bottom:var(--s3); border:1px solid var(--line); border-radius:var(--r-sm); background:#fff; }
+  .tnotes summary{ display:flex; align-items:center; gap:9px; padding:13px 15px; cursor:pointer;
+    list-style:none; font-weight:600; font-size:var(--t-bodysm); color:var(--ink-soft);
+    border-radius:var(--r-sm); transition:color .15s; }
+  .tnotes summary::-webkit-details-marker{ display:none; }
+  .tnotes summary svg{ width:15px; height:15px; flex:0 0 auto; color:var(--ink-faint); }
+  .tnotes .tnotes-opt{ margin-left:auto; font-weight:500; color:var(--ink-faint); }
+  @media (hover:hover){ .tnotes summary:hover{ color:var(--ink); } }
+  .tnotes summary:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .tnotes[open] summary{ color:var(--ink); border-bottom:1px solid var(--line-soft);
+    border-bottom-left-radius:0; border-bottom-right-radius:0; }
+  .tnotes textarea{ display:block; width:100%; min-height:88px; resize:vertical;
+    border:none; background:transparent; padding:13px 15px; font:inherit; color:var(--ink); }
+  .tnotes textarea:focus{ outline:none; }
+  .tnotes:focus-within{ border-color:var(--cat-line); box-shadow:var(--ring-active); }
   fieldset{ border:none; margin:0; padding:0; }
   .field{ margin-bottom:var(--s3); }
   .field > label{ display:block; font-weight:600; margin-bottom:10px; font-size:var(--t-bodysm); color:var(--ink); letter-spacing:-.005em; }

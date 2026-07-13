@@ -15,3 +15,6 @@ audio/
 
 # Soundboard audio (bundled locally + synced to www, like audio/)
 sounds/
+
+# Children's photos bundled locally for demo profiles — NEVER in the repo
+faces/

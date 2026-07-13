@@ -81,34 +81,28 @@ const ACTIVITY_DATA = [
           { id: "turnaround", label: "Turn around" }
         ],
         sop: [
-          "Space the children out with an arm's length between them, all facing you.",
-          "Warm up with the direction rhyme so the group settles into the rhythm.",
-          "Tap a command button — the app speaks the cue. Give ONE command at a time.",
-          "Wait for every child to finish the movement before the next command.",
-          "Start in a fixed order (left, right, forward, backward), then mix — use Surprise me so the child cannot predict the next command.",
-          "For the child being assessed, count each command they perform correctly on the first cue."
+          "Stand the children in a line facing you, an arm's length apart.",
+          "Warm up with the direction rhyme.",
+          "Tap a command — one at a time. Wait for everyone to finish the move.",
+          "Once they're settled, mix the order — use Surprise me."
         ],
-        facilitatorNote: "Run it as a group drill (see the demo video) but score one child per session. Keep cues crisp and leave a clear pause after each — a child responding to the rhythm is not yet responding to the direction.",
+        facilitatorNote: "Group drill (see the demo video), but score ONE child per session. Start in a fixed order — left, right, forward, backward — before mixing. Keep cues crisp with a clear pause after each: a child following the rhythm is not yet following the direction. Watch for first-cue responses; that's what 'Got it' means.",
         // DRAFT translation (machine-drafted 2026-07-13) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1
         // with `sop` above, as required by generate-audio.js.
         sopTranslations: {
           hi: [
-            "बच्चों को एक-दूसरे से एक हाथ की दूरी पर खड़ा करें, सब आपकी ओर मुँह करके।",
-            "दिशा वाली कविता से शुरुआत करें ताकि समूह लय में आ जाए।",
-            "कोई कमांड बटन दबाएँ — ऐप निर्देश बोलेगा। एक बार में केवल एक ही कमांड दें।",
-            "अगली कमांड से पहले हर बच्चे के मूवमेंट पूरा करने की प्रतीक्षा करें।",
-            "पहले एक तय क्रम में शुरू करें (बाएँ, दाएँ, आगे, पीछे), फिर क्रम बदलें — Surprise me का उपयोग करें ताकि बच्चा अगली कमांड का अनुमान न लगा सके।",
-            "जिस बच्चे का आकलन हो रहा है, गिनें कि उसने पहली बार में कितनी कमांड सही ढंग से कीं।"
+            "बच्चों को एक हाथ की दूरी पर, आपकी ओर मुँह करके एक पंक्ति में खड़ा करें।",
+            "दिशा वाली कविता से वार्म-अप करें।",
+            "एक कमांड दबाएँ — एक बार में एक। सबके मूवमेंट पूरा करने की प्रतीक्षा करें।",
+            "जब बच्चे सहज हो जाएँ तो क्रम बदलें — Surprise me का उपयोग करें।"
           ]
         },
         audioFile: "",
         videoFile: "demo-direction-basic.mp4",
         dataFields: [
-          { id: "given",   label: "Commands given",    type: "count" },
-          { id: "correct", label: "Correct responses", type: "count" },
-          { id: "result",  label: "Overall",           type: "result" },
-          { id: "notes",   label: "Notes",             type: "notes" }
+          { id: "result", label: "Did the child get it?", type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
         ]
       },
       {
@@ -125,22 +119,20 @@ const ACTIVITY_DATA = [
           // { id: "northeast", label: "North-East" },
         ],
         sop: [
-          "Anchor the room first: agree with the child where North is, using a fixed landmark they can touch or hear (the door, the window with traffic sounds).",
-          "Have the child stand facing North to start.",
-          "Tap a compass command — the child turns to face (or points to, or steps toward) that direction.",
-          "After a few rounds, physically turn the child to a NEW starting position and repeat — the directions must stay anchored to the room, not to their body. This is the concept being tested.",
-          "Count correct responses; note whether they re-anchor by themselves after being turned."
+          "Agree with the child where North is — pick a landmark they can touch or hear.",
+          "The child starts facing North.",
+          "Tap a compass command — the child turns to face it.",
+          "Turn the child to a new position and repeat."
         ],
-        facilitatorNote: "Cardinal directions do not move when the body turns — a child who answers by rote from the starting position hasn't got the concept yet. Re-anchor with the landmark (or warmth of sun through the window) whenever the child is lost.",
+        facilitatorNote: "The concept under test: compass directions stay with the ROOM, not the body. A child answering by rote from the start position hasn't got it yet. Re-anchor with the landmark (the door, the window with traffic sounds, the warmth of the sun) whenever they're lost — and note whether they re-anchor by themselves after being turned.",
         // DRAFT translation (machine-drafted 2026-07-13) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
         sopTranslations: {
           hi: [
-            "पहले कमरे की दिशा तय करें: बच्चे के साथ मिलकर तय करें कि उत्तर किधर है — कोई स्थिर पहचान चुनें जिसे वह छू या सुन सके (दरवाज़ा, या ट्रैफ़िक की आवाज़ वाली खिड़की)।",
-            "शुरुआत में बच्चे को उत्तर की ओर मुँह करके खड़ा करें।",
-            "कोई दिशा कमांड दबाएँ — बच्चा उस दिशा की ओर मुड़े (या इशारा करे, या कदम बढ़ाए)।",
-            "कुछ राउंड के बाद बच्चे को घुमाकर नई स्थिति में खड़ा करें और दोहराएँ — दिशाएँ कमरे से जुड़ी रहनी चाहिए, शरीर से नहीं। यही अवधारणा परखी जा रही है।",
-            "सही उत्तर गिनें; यह भी नोट करें कि घुमाए जाने के बाद बच्चा खुद दिशा फिर से पहचान पाता है या नहीं।"
+            "बच्चे के साथ तय करें कि उत्तर किधर है — कोई ऐसा लैंडमार्क चुनें जिसे वह छू या सुन सके।",
+            "बच्चा उत्तर की ओर मुँह करके शुरू करे।",
+            "कोई कंपास कमांड दबाएँ — बच्चा उस दिशा की ओर मुड़े।",
+            "बच्चे को नई स्थिति में घुमाएँ और दोहराएँ।"
           ]
         },
         audioFile: "",
@@ -148,10 +140,8 @@ const ACTIVITY_DATA = [
         // specific video arrives; just swap the filename then.
         videoFile: "demo-direction-basic.mp4",
         dataFields: [
-          { id: "given",   label: "Commands given",    type: "count" },
-          { id: "correct", label: "Correct responses", type: "count" },
-          { id: "result",  label: "Overall",           type: "result" },
-          { id: "notes",   label: "Notes",             type: "notes" }
+          { id: "result", label: "Did the child get it?", type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
         ]
       }
     ]

@@ -355,6 +355,29 @@ async function upsertProfile(profile){
   return saveProfiles(list);
 }
 function newProfileId(){ return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+/* DEMO CHILDREN seed — Aditya and Vaishu appear on every fresh install so the
+   child flows are usable without re-entering them per device. Their photos are
+   bundled LOCAL files (faces/aditya.jpg, faces/vaishu.jpg — the faces/ folder
+   is gitignored: children's photos never enter the repo; build.sh copies it
+   into www/ like the other media). Seeds ONLY when the device has zero
+   profiles, so it never touches real data. PRIVACY: bundling a real child's
+   photo+name into the APK needs guardian consent on file — remove or swap
+   these before any build that leaves the team if that consent isn't in place.
+   researchId is minted locally (legacy path) on purpose: demo children must
+   NOT be enrolled to the cloud. */
+async function ensureDemoChildrenSeeded(){
+  if(loadProfiles().length) return;
+  const now = new Date().toISOString();
+  const mk = (name, photo) => ({
+    id: newProfileId(), researchId: newResearchId(), schemaVersion: SCHEMA_VERSION,
+    name, dob: '', height: '', weight: '', dominantHand: '', filledBy: 'Teacher',
+    photo, capturedOn: now,
+    videoConsent: false, videoConsentBy: '', videoConsentRelation: '',
+    videoConsentMethod: '', videoConsentOn: '', videoConsentWithdrawnOn: '',
+    videoConsentFormSerial: '', videoConsentFormPhoto: ''
+  });
+  await saveProfiles([ mk('Aditya', 'faces/aditya.jpg'), mk('Vaishu', 'faces/vaishu.jpg') ]);
+}
 // The active child whose name flows into saved records.
 function getActiveProfileId(){ return Store.getString('activeProfile', ''); }
 function setActiveProfileId(v){ return Store.setString('activeProfile', v); }
@@ -1128,7 +1151,7 @@ function showChildDetail(profileId, opts){
   const body = groups.length
     ? groups.map(g=>{
         const act = findActivity(g.activityId);
-        const resultLabels = act ? act.dataFields.filter(f=>f.type==='result').map(f=>f.label) : [];
+        const resultLabels = act ? act.dataFields.filter(f=>f.type==='result'||f.type==='mastery').map(f=>f.label) : [];
         const recs = g.records.map(r=>childRecordRow(r, resultLabels, g.activityId)).join('');
         return `<h2 class="section-label">${esc(g.activity || g.activityId)}</h2>${recs}`;
       }).join('')
@@ -2044,7 +2067,7 @@ function showActivity(catIndex, actIndex, opts){
   themeFor(catIndex);
   const audioHtml = buildAudioHtml(act);
   const fields = act.dataFields.map(f=>buildField(f)).join('');
-  const resultLabels = act.dataFields.filter(f=>f.type==='result').map(f=>f.label);
+  const resultLabels = act.dataFields.filter(f=>f.type==='result'||f.type==='mastery').map(f=>f.label);
   const records = loadRecords(act.id);
   const recHtml = records.length ? records.map(r=>renderRecord(r, resultLabels, act.id)).join('') : '<p class="empty">No results logged yet — run the activity, then record below.</p>';
   const activeChild = getActiveProfile();
@@ -2191,6 +2214,23 @@ function buildField(f){
   if(f.type === 'result'){
     return `<div class="field"><label id="lbl_${f.id}">${esc(f.label)}</label><div class="seg" id="f_${f.id}" data-value="" role="group" aria-labelledby="lbl_${f.id}">${['Independent','Prompted','Unable'].map(v=>`<button type="button" onclick="pickSeg('f_${f.id}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
   }
+  // 'mastery' — the one-tap scale for simple drills. Plain-language version of
+  // the support-level scoring O&M inventories use (independent / prompted /
+  // not yet): Got it = first-cue, on their own; With help = needed a prompt or
+  // a repeat; Not yet = couldn't do it this time (and that's fine — it's a
+  // snapshot, not a verdict).
+  if(f.type === 'mastery'){
+    return `<div class="field"><label id="lbl_${f.id}">${esc(f.label)}</label><div class="seg" id="f_${f.id}" data-value="" role="group" aria-labelledby="lbl_${f.id}">${['Got it','With help','Not yet'].map(v=>`<button type="button" onclick="pickSeg('f_${f.id}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
+  }
+  // 'teacherNotes' — progressive disclosure: the score is the required tap,
+  // the note is optional and stays folded until the teacher wants it. The
+  // placeholder prompts what's actually useful to write.
+  if(f.type === 'teacherNotes'){
+    return `<details class="tnotes">
+      <summary>${ICON.edit}<span class="tnotes-title">${esc(f.label)}</span><span class="tnotes-opt">optional</span></summary>
+      <textarea id="f_${f.id}" placeholder="Anything worth remembering — what helped, what surprised you, what to try next session."></textarea>
+    </details>`;
+  }
   if(f.type === 'checkbox'){ return `<div class="field"><div class="checkrow"><input type="checkbox" id="f_${f.id}"><label for="f_${f.id}">${esc(f.label)}</label></div></div>`; }
   return `<div class="field"><label for="f_${f.id}">${esc(f.label)}</label><textarea id="f_${f.id}" placeholder="Type any observations..."></textarea></div>`;
 }
@@ -2214,7 +2254,7 @@ async function handleSave(activityId){
   act.dataFields.forEach(f=>{
     const el = document.getElementById('f_'+f.id);
     if(f.type === 'count')        values[f.label] = el.value || '0';
-    else if(f.type === 'result')  values[f.label] = el.dataset.value || '—';
+    else if(f.type === 'result' || f.type === 'mastery') values[f.label] = el.dataset.value || '—';
     else if(f.type === 'checkbox')values[f.label] = el.checked ? 'Yes' : 'No';
     else                          values[f.label] = el.value || '';
   });
@@ -2295,6 +2335,7 @@ async function confirmDeleteRecord(activityId, recordId){
     await migrateLegacyData();       // idempotent backfill: id / schemaVersion /
                                      // teacherId:'legacy' / safe whenISO
     await ensureSchoolsSeeded();     // PILOT seed of schools/teachers (see seam)
+    await ensureDemoChildrenSeeded();// demo children (fresh installs only — see seed note)
   }
   catch(e){ setTimeout(()=>toast('Storage failed to load — please restart the app.'), 400); }
   // Login gates the app. Once signed in, the welcome-seen flag decides whether
