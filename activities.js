@@ -144,7 +144,9 @@ const ACTIVITY_DATA = [
           ]
         },
         audioFile: "",
-        videoFile: "",
+        // Same drill format as Basic — reusing its demo until a cardinal-
+        // specific video arrives; just swap the filename then.
+        videoFile: "demo-direction-basic.mp4",
         dataFields: [
           { id: "given",   label: "Commands given",    type: "count" },
           { id: "correct", label: "Correct responses", type: "count" },
