@@ -1,8 +1,41 @@
 # TRACKER.md — O&M Cane Training
 
-_Last updated: 2026-07-06_
+_Last updated: 2026-07-13_
 
-## Done this session (2026-07-06 — workflow hardening + file split)
+## Done this session (2026-07-13 — Direction command board, `feat/sop-content`, UNMERGED)
+NOTE: this branch is cut from `main`; the cloud-sync wrap lives on
+`feat/cloud-sync` (its TRACKER block will collide here on merge — keep both).
+- [x] **Direction category restructured** (SOP video #1 received): `Basic
+      Commands` (left/right/forward/backward/jump/clap/stop/turn-around) +
+      `Advanced Commands` (N/S/E/W; intercardinals as commented adds).
+      Ordering grounded in O&M progression (egocentric → cardinal; TAPS/APH).
+      Old ids dir-leftright/dir-frontback retired — pre-pilot, orphaned test
+      records accepted knowingly.
+- [x] **Command board shipped** (commit `b30372f`): tappable pads that SPEAK
+      the cue from bundled Sarvam mp3s (`audio/commands/{id}_{lang}.mp3` —
+      derived-path contract with CB.play()); spoken text under English label;
+      `Surprise me` anti-prediction random; language follows `audioLang`;
+      hi-fallback + toast when a file is missing; CB.reset() on nav.
+      Commands are content-team editable in activities.js.
+- [x] **`scripts/generate-command-audio.js`** — sibling of generate-audio.js,
+      same voice (shubh), pace 0.9, dedupes shared ids, skips empty langs.
+- [x] **build.sh step 3b** — `audio/`, `sounds/`, `demo-*.mp4` now copied to
+      `www/` by the build (was manual).
+- [x] **SOPs rewritten from demo video #1** + facilitator notes; video wired
+      as `demo-direction-basic.mp4` (root, gitignored like all media).
+      Tests 35/35.
+
+## NEXT (sop-content track)
+- [ ] **Aditya, Mac:** `node scripts/generate-command-audio.js` (needs
+      SARVAM_API_KEY; Sarvam API unreachable from cloud sandbox), listen to
+      ./audio/commands/, then `./scripts/build.sh` + emulator check of the
+      Direction screens.
+- [ ] **Videos #2 and #3** (next chats): same per-activity workflow — deduce
+      SOP from video, wire demo file, adjust dataFields.
+- [ ] Push `feat/sop-content`; merge once the Direction screens are verified.
+- [ ] (Parallel track, unchanged) `feat/cloud-sync` device test + merge.
+
+## Done earlier (2026-07-06 — workflow hardening + file split)
 - [x] **`scripts/build.sh` — the ONE build command.** Replaces the remembered
       `cp … && npx cap sync` ritual. Steps: school-ID consistency guard
       (app.js seedSchools vs supabase/schema.sql — fails the build on drift),
