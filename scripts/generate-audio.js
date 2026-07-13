@@ -66,6 +66,7 @@ const path = require('path');
    --------------------------------------------------------------------------- */
 const LANGUAGES = {
   // app-code (used in filenames + the app's switcher)  ->  Sarvam BCP-47 code
+  en: 'en-IN',   // English — spoken from sop[] itself, so EVERY activity gets it
   hi: 'hi-IN',   // Hindi
   ta: 'ta-IN',   // Tamil
   bn: 'bn-IN',   // Bengali
@@ -236,25 +237,20 @@ async function main() {
   console.log(`  activities=${work.length}${ONLY ? ` (--only ${ONLY})` : ''}\n`);
 
   for (const act of work) {
-    if (!act.sopTranslations) {
-      console.log(`  · skip   ${act.id}  (no sopTranslations yet — add translated SOP text in activities.js to generate audio)`);
-      skipped += langEntries.length;
-      continue;
-    }
-
     for (const [appCode, sarvamCode] of langEntries) {
       const outPath = path.join(OUT_DIR, `${act.id}_${appCode}.mp3`);
       const rel = path.relative(ROOT, outPath);
 
-      // Use the content team's translated text for THIS language. No machine
-      // translation — if a language is missing, skip it cleanly.
-      const steps = act.sopTranslations[appCode];
+      // ENGLISH speaks the on-screen sop[] itself. Other languages use the
+      // content team's translated text — no machine translation; if a
+      // language is missing, skip it cleanly.
+      const steps = appCode === 'en' ? act.sop : (act.sopTranslations || {})[appCode];
       if (!Array.isArray(steps) || !steps.length) {
         console.log(`  · skip   ${rel}  (no ${appCode} translation for ${act.id})`);
         skipped++;
         continue;
       }
-      if (steps.length !== act.sop.length) {
+      if (appCode !== 'en' && steps.length !== act.sop.length) {
         console.warn(`  ! ${act.id} [${appCode}]: ${steps.length} translated steps vs ${act.sop.length} English steps — they should line up. Generating anyway from the translation.`);
       }
 

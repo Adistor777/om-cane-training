@@ -1675,6 +1675,9 @@ async function handleProfileSave(existingId){
    The chosen language is remembered through the Store seam (key 'audioLang').
    --------------------------------------------------------------------------- */
 const AUDIO_LANGS = [
+  // English first = the DEFAULT narration. It is spoken from the on-screen
+  // sop[] itself (no translation needed), so every activity can have it.
+  { code:'en', label:'English' },
   { code:'hi', label:'हिन्दी' },   // Hindi
   { code:'ta', label:'தமிழ்' },    // Tamil
   { code:'bn', label:'বাংলা' },    // Bengali
@@ -1686,10 +1689,16 @@ function getAudioLang(){
 }
 function audioPathFor(activityId, lang){ return `audio/${activityId}_${lang}.mp3`; }
 function buildAudioHtml(act){
-  if(act.sopTranslations){
+  // The switcher renders whenever narration is POSSIBLE: any activity with
+  // sop[] can have English narration (spoken from the steps themselves);
+  // sopTranslations only gates the other languages.
+  if(act.sopTranslations || (act.sop && act.sop.length)){
+    const tr = act.sopTranslations || {};
     const cur = getAudioLang();
     const buttons = AUDIO_LANGS.map(l=>{
-      const has = !!(act.sopTranslations[l.code] && act.sopTranslations[l.code].length);
+      // English narrates the sop[] itself; other languages need a translation.
+      const has = l.code==='en' ? !!(act.sop && act.sop.length)
+                                : !!(tr[l.code] && tr[l.code].length);
       // Languages with no translation text yet are shown disabled (no audio file will exist).
       return `<button type="button" onclick="switchAudioLang('${act.id}','${l.code}',this)" aria-pressed="${l.code===cur}" ${has?'':'disabled'}>${l.label}</button>`;
     }).join('');
