@@ -1,6 +1,33 @@
 # MEMORY.md — O&M Cane Training
 
-_Last updated: 2026-07-06_
+_Last updated: 2026-07-13_
+
+## Direction category + audio model (settled 2026-07-13, `feat/sop-content`)
+- **Direction = Basic / Advanced** (egocentric commands → cardinal compass;
+  TAPS/APH progression). Both show the **command board**: pads that speak the
+  cue in ENGLISH (`audio/commands/{id}_en.mp3`, Sarvam bulbul:v3 voice
+  **priya**, pace 0.9, generate-command-audio.js). `Surprise me` = anti-
+  prediction random. Commands live on the activity in activities.js.
+- **Audio model, one sentence:** cues are English-only; SOP narration is
+  multilingual — **en is default and narrates sop[] itself**; hi/ta/bn need
+  sopTranslations text (content-team owned, NO machine translation for pilot;
+  Direction hi drafts are machine-drafted, verification pending; ta/bn empty —
+  fine, pilot schools are Hindi-belt).
+- **Record form for simple drills:** field types `mastery` (Got it / With
+  help / Not yet — plain-language independent/prompted/unable) +
+  `teacherNotes` (collapsed details section). Generic — any activity can use.
+- **Demo children Aditya + Vaishu** seed on zero-profile installs; photos in
+  gitignored `faces/` (build-copied to www). Boot repair pass re-attaches
+  photos to photo-less same-name profiles. Bundled real-child photos =
+  guardian-consent question before builds leave the team.
+- **`android:allowBackup=false`** (2026-07-13) — was silently cloud-copying
+  child data and resurrecting profiles across reinstalls. android/ is
+  gitignored → this lives ONLY on the Mac; re-apply if regenerated.
+- Media copy (audio/, sounds/, faces/, demo-*.mp4 → www/) is now build.sh's
+  job, step 3b. Both generators read SARVAM_API_KEY from .env.
+- **Per-activity content workflow** (videos #2, #3 pending): Aditya uploads a
+  demo video → deduce SOP from frames → simplify (≤4 steps, craft into
+  facilitatorNote) → wire videoFile → mastery+teacherNotes fields.
 
 ## What this is
 Offline-first Android app (`org.omcane.trainer`) for teachers running structured

@@ -25,14 +25,46 @@ NOTE: this branch is cut from `main`; the cloud-sync wrap lives on
       as `demo-direction-basic.mp4` (root, gitignored like all media).
       Tests 35/35.
 
+## Done same day, second wave (2026-07-13 pm — Direction polish + record redesign)
+- [x] **Command cues → ENGLISH only** (`8ec64d3`): label IS the cue,
+      `audio/commands/{id}_en.mp3`, voice **priya** (v3 default shubh tested
+      flat for kids; alternates listed in the script). Sarvam multilingual
+      belongs to SOP narration, not cues.
+- [x] **English SOP narration first-class + DEFAULT** (`1fdf95e`): 'en' speaks
+      sop[] itself (no translation needed), added to AUDIO_LANGS first +
+      generator; switcher renders even without translations. **ta/bn stay
+      disabled by design** until the content team delivers translated text —
+      no machine translation for teacher-facing content; not a pilot blocker
+      (all 3 pilot schools are Hindi-belt). Direction Hindi drafts are
+      machine-drafted and STILL NEED content-team verification.
+- [x] **Record form redesign** (`5849750`): one-tap mastery scale (Got it /
+      With help / Not yet — plain-language independent/prompted/unable) + new
+      collapsed **Teacher's notes** section (progressive disclosure). New
+      generic field types `mastery` + `teacherNotes`.
+- [x] **SOPs cut to 4 short steps** each; craft moved to facilitatorNote;
+      Hindi re-aligned 1:1.
+- [x] **Demo children** Aditya + Vaishu: seeded on empty installs, photos from
+      gitignored `faces/` (build-copied); boot REPAIR pass attaches photos to
+      photo-less same-name profiles (`1ea7cd2`). PRIVACY: bundled real-child
+      photos need guardian consent before any build leaves the team.
+- [x] **`android:allowBackup=false`** — Google was silently backing up child
+      data AND resurrecting old profiles across reinstalls. LOCAL-ONLY change
+      (android/ is gitignored) — re-apply if android/ is ever regenerated.
+- [x] Names → **Basic / Advanced**; category-level **? sheet** (help[] +
+      helpVideo in activities.js — any category can opt in) (`ce01be1`).
+- [x] Both audio generators read SARVAM_API_KEY from .env (`82548fd`).
+
 ## NEXT (sop-content track)
-- [ ] **Aditya, Mac:** `node scripts/generate-command-audio.js` (needs
-      SARVAM_API_KEY; Sarvam API unreachable from cloud sandbox), listen to
-      ./audio/commands/, then `./scripts/build.sh` + emulator check of the
-      Direction screens.
+- [ ] **Aditya, Mac:** generate ENGLISH narration for the two Direction
+      activities (`node scripts/generate-audio.js --only dir-basic-commands`,
+      same for advanced), then all activities before the next school demo
+      (plain run, no --only). Build + install after.
 - [ ] **Videos #2 and #3** (next chats): same per-activity workflow — deduce
       SOP from video, wire demo file, adjust dataFields.
-- [ ] Push `feat/sop-content`; merge once the Direction screens are verified.
+- [ ] Push `feat/sop-content`; merge once the Direction screens are verified
+      (merge unlocks project-knowledge sync too).
+- [ ] **Content team:** verify Direction Hindi SOP drafts; deliver ta/bn text
+      (paste into sopTranslations → run generator — no code).
 - [ ] (Parallel track, unchanged) `feat/cloud-sync` device test + merge.
 
 ## Done earlier (2026-07-06 — workflow hardening + file split)
