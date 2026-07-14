@@ -1,7 +1,58 @@
 # MEMORY.md — O&M Cane Training
-
-_Last updated: 2026-07-13 (pm — Sound + Direction + group seam)_
-
+_Last updated: 2026-07-14 (Straight Line Travel three-stage + soundboard commit landed)_
+## Straight Line Travel — three-stage rebuild (2026-07-14, committed + pushed to main)
+- **Category 4 rebuilt from 3 demo videos into THREE stages** (was 2):
+  `slt-nocane` (travel to the sound by ear — baseline) → `slt-withcane-toy`
+  (push toy attached to the cane) → `slt-withcane` (toy faded, plain cane —
+  the goal state). Commit `9ee6e2c`, pushed to main.
+- **Why the toy → why 3 stages.** The push toy on the cane is a deliberate
+  STIGMA-BREAKER: a storyline that turns the cane into something the child
+  WANTS to hold, building a positive association before it is "a cane"
+  (Aditya's design point). It's a scaffold meant to be FADED — hence the
+  progression motivate → skill → independence, one assessed record each.
+- **Sound source = the app** (soundboard, like the Sound activities) — all
+  three keep `soundboard: true`. The floor beacon in the videos is a
+  stand-in; canonical SOP reads "play a sound from the app".
+- **Record fields (all three identical):** `steps` (count) + `veer`
+  ("Times drifted off line", count — the straightness datum) + `result`
+  (mastery) + `notes` (teacherNotes). Steps AND drifts shrinking stage to
+  stage is the progress signal.
+- **Demo videos:** `demo-slt-nocane.mp4` (07-06 clip) + `demo-slt-withcane-toy.mp4`
+  (07-14 clip); compressed ~640px CRF30, gitignored, build-copied.
+  `slt-withcane` (toy-faded) has NO demo filmed yet → `videoFile: ""`;
+  film + wire later.
+- **Hindi SOP drafts machine-drafted, flagged** for content-team verify
+  (same rule as Direction/Sound+Direction — no MT for teacher-facing text).
+- `slt-withcane` MEANING shifted (was "With Cane (Push Toy)", now plain
+  cane); pre-pilot, orphaned test records accepted knowingly.
+- **Open question left with Aditya:** if the toy stays on for the whole
+  pilot (never faded), collapse back to 2 stages. 3 stands unless he says so.
+- **Emulator verify was PENDING at push** — Aditya pushed before the clean
+  install. Still to confirm on device: three cards (Without Cane / With Cane
+  + Push Toy / With Cane), each → picker → record with sound player + the
+  four fields, `?` plays the demo (3rd has none), test save lands.
+## STATUS CORRECTION — git vs docs drift (found 2026-07-14) — READ THIS
+- **The soundboard two-tab was NOT actually on main**, despite the docs
+  below saying "pushed to main". At session start `git log` main HEAD was
+  `4810a2c` (Sound+Direction tail) with the OLD 4-group `SOUND_LIBRARY`; the
+  two-tab lived ONLY in the uncommitted working `activities.js`. Landed today
+  as commit `936e05e` ("soundboard: land two-tab SOUND_LIBRARY").
+- **The soundboard PLAYER CODE (`buildSoundboard`/`SB` in index.html/app.js)
+  is also absent from main's recent git log** → likely still on an UNMERGED
+  `feat/soundboard` branch (which didn't appear in `git log --oneline -8`).
+  UNRESOLVED: confirm where soundboard code actually lives and merge it to
+  main. Aditya's working tree HAS it (he's been running it), so nothing is
+  lost — but a clean checkout of main may not build the soundboard. Sort
+  this before any build that must be reproducible from origin/main.
+- **LESSON: trust `git log` / `git status`, NOT the docs' own "committed /
+  pushed" claims.** Several wrap-ups handed over commit+push commands that
+  were apparently never run, so the docs ran ahead of the repo. Verify commit
+  AND push state at every wrap-up before writing "done". (Same family as the
+  activities.js overwrite lesson — reality lives in git, not in the notes.)
+- **Housekeeping:** the block-only patch flow used a `.sltbak` backup file in
+  the repo root — delete throwaway backups (`rm activities.js.sltbak`) so
+  they don't masquerade as a second source file. Better: keep backups out of
+  the working tree entirely.
 ## Direction category + audio model (settled 2026-07-13, `feat/sop-content`)
 - **Direction = Basic / Advanced** (egocentric commands → cardinal compass;
   TAPS/APH progression). Both show the **command board**: pads that speak the
@@ -25,10 +76,9 @@ _Last updated: 2026-07-13 (pm — Sound + Direction + group seam)_
   gitignored → this lives ONLY on the Mac; re-apply if regenerated.
 - Media copy (audio/, sounds/, faces/, demo-*.mp4 → www/) is now build.sh's
   job, step 3b. Both generators read SARVAM_API_KEY from .env.
-- **Per-activity content workflow** (video #3 pending): Aditya uploads a
+- **Per-activity content workflow** (proven again on SLT): Aditya uploads a
   demo video → deduce SOP from frames → simplify (≤4 steps, craft into
   facilitatorNote) → wire videoFile → mastery+teacherNotes fields.
-
 ## Sound + Direction + GROUP seam (2026-07-13 pm, `feat/sound-direction`, UNMERGED)
 - **Category 3 rebuilt from video batch #2** (4 videos): Near-Far → Near-Far
   with Cane → Counting Steps — Group → Counting Steps — Individual. Old
@@ -66,14 +116,12 @@ _Last updated: 2026-07-13 (pm — Sound + Direction + group seam)_
   uploads still ballooned the bundle (87 MB one!) — re-encode 640p CRF~30
   before dropping into the repo root (mount can't overwrite: rm-then-cp,
   deletion needs the permission prompt once per session).
-
 ## What this is
 Offline-first Android app (`org.omcane.trainer`) for teachers running structured
 orientation & mobility assessments with visually impaired children. Plain
 HTML/CSS/JS, **no bundler** (deliberate — `activities.js` is content-team owned
 and must stay editable without a build step). Wrapped via Capacitor 8.
 Lives in `~/Desktop/om-app` on an M5 MacBook Air.
-
 **Four-file structure since 2026-07-06** (split from the single index.html,
 zero behavior change, merged + emulator-verified): `index.html` (markup shell,
 87 lines) · `styles.css` (look; design guardrails at top of file) · `store.js`
@@ -82,22 +130,17 @@ behaviour). Load order: activities.js → supabase.js (vendored UMD) →
 store.js → app.js.
 Build with **`./scripts/build.sh`** — ID guard + JS parse + www copy +
 cap sync + built-asset verify in one command.
-
 Closed research pilot: IIT Delhi + NCAHT, 3 schools, ~6 teachers.
 Manager: Mansi (IIT Delhi). Collaborators: Flipkart UI/UX designer (peer
 review), content team (SOP text + translations), legal team (compliance),
 external developer friend (code audits).
-
 Success = a verifiable, privacy-sound app ready for closed pilot sessions, with
 clean seams for a future Supabase backend swap.
-
 ## Pilot schools (seeded with stable string IDs)
 1. Saksham School, Noida
 2. Rajasthan Netraheen Kalyan Sangam (RNKS), Jaipur
 3. National Association of Blind, Kullu
-
 Real teacher names still pending from Mansi — placeholder teachers for now.
-
 ## Supabase project — LIVE (2026-07-03), cloud phase unblocked
 - **Project created, India region.** ID `nrnmxgggmqddhbsjtuob`; URL
   `https://nrnmxgggmqddhbsjtuob.supabase.co`; publishable key
@@ -146,23 +189,31 @@ Real teacher names still pending from Mansi — placeholder teachers for now.
   `CLOUD_SYNC=true` (wrong-password-fails, server-minted ID lands in
   `children`, offline-block, cross-school RLS, parked video-picker test);
   merge → main; flag back to false for pilot builds.
-
-## Current state (committed on `feat/soundboard`, pushed, NOT yet merged to main)
-- **Sound Library media player (this session) — built, verified, emulator-tested,
-  committed + pushed on `feat/soundboard` (`0ae5844`).** Renders on activities
-  with `soundboard: true` (the 5 sound-playing activities: `sound-which`,
-  `sound-source`, `snddir-cane-count`, `slt-nocane`, `slt-withcane`), between the
-  child bar and the record form.
+## Soundboard media player — STATUS CONTESTED (see "STATUS CORRECTION" above)
+_The section below is the historical record as written last session. Its
+"committed + pushed on feat/soundboard" claims are UNVERIFIED against git —
+the two-tab was only landed on main today (`936e05e`) and the player code's
+branch state is still to be confirmed. Treat commit hashes here with caution._
+- **Sound Library media player — built, emulator-tested.** Renders on activities
+  with `soundboard: true` (currently: `sound-which`, `sound-source`,
+  `snddir-nearfar`, `snddir-nearfar-cane`, `slt-nocane`, `slt-withcane-toy`,
+  `slt-withcane`), between the child bar and the record form. Claimed commit
+  `0ae5844` on `feat/soundboard` — VERIFY.
   - Transport like Apple Music: play/pause, prev/next, shuffle, repeat
     off→all→one. Repeat-one loops a single sound (localization drills); shuffle
     randomizes the next sound so the child can't predict it during identification
     tests. Tap/arrow-key seek bar with elapsed/total time; animated equaliser on
     the playing pad. Player is always visible (quiet idle state before a sound is
     picked).
-  - **Category tabs** (Animals / Household / Traffic & Outdoors / Instruments)
-    show one group's pads at a time, so panel height stays fixed no matter how
-    many sounds get added (this was a deliberate fix — the full grid made the
-    panel too tall and pushed the record form down).
+  - **Category tabs** show one group's pads at a time, so panel height stays
+    fixed no matter how many sounds get added (deliberate fix — the full grid
+    made the panel too tall and pushed the record form down). **Updated
+    2026-07-14:** the four groups (Animals / Household / Traffic & Outdoors /
+    Instruments) were collapsed to TWO tabs — **Recommended sounds** (Clap,
+    Cuckoo, Whistle, Dog, Cat; listed first, so it's the default open tab) and
+    **Sounds** (the rest). Tabs come purely from the `group` field; no code
+    change to re-tab. **Landed on main as `936e05e` (2026-07-14), NOT last
+    session.**
   - `buildSoundboard(act)` + `SB` controller (one `<audio>`, the library is the
     queue) live in `index.html`. `SB.reset()` on navigation so audio never bleeds
     across screens. Offline: plays bundled mp3s from `./sounds` inside the
@@ -170,15 +221,16 @@ Real teacher names still pending from Mansi — placeholder teachers for now.
   - **Content-team owned, no-coder editable**: the sound list (`SOUND_LIBRARY`,
     `{file,label,group}`) AND which activities show it (`soundboard: true`) both
     live in `activities.js`. Add a sound = drop an mp3 in `sounds/` + one line.
-    20 sounds, 4 groups.
+    22 sounds (added clap + whistle 2026-07-14), 2 groups
+    (Recommended sounds + Sounds).
   - Design: warm-paper, monoline icons (no emoji), category accent. **Flag for the
     Flipkart designer** — the player is a deliberately richer-accent surface
     (accent on play button + progress fill + lit toggles + current pad), beyond
     the "accent in two spots" guardrail. Flagged, not yet reviewed.
   - Committed via a reconstructed record-only `index.html` so the record-screen
     work and the soundboard are two isolated commits, never mixed.
-- **Record-screen redesign + teacher video evidence (prior session) — now
-  COMMITTED on `feat/soundboard` (`167afc0`).** No longer uncommitted.
+- **Record-screen redesign + teacher video evidence (prior session) — claimed
+  COMMITTED on `feat/soundboard` (`167afc0`) — VERIFY against git.**
   - Unified `?` reference sheet across record + child-picker screens via shared
     `buildRefSheet(act, domId)` + `toggleRefSheet(btn, domId)`. Both open the
     same full sheet: demo video → SOP step sequence → facilitator note → Sarvam
@@ -218,12 +270,10 @@ Real teacher names still pending from Mansi — placeholder teachers for now.
 - **Login**: school dropdown → login ID → password → `verifyCredentials()` stub
   (accepts any non-empty password — correct pilot stub; real check is Supabase
   swap only). Login IDs: `saksham01`, `rnks01`, `nab01`.
-
 ## Production roadmap — agreed to solve one by one (ordered by rework risk)
 Aditya's call at end of last session: tackle each production issue in turn, plus
 a few more features to add. The build is a CORRECT PILOT BUILD — none of this is
 wrong for a closed pilot; these are the production gaps.
-
 1. **Cross-device child ID** — HIGHEST rework risk; gets more expensive every day
    real records accumulate under the local scheme. `profileId` is device-local;
    `researchId` is minted on-device, so the same child on two tablets = two IDs
@@ -261,10 +311,11 @@ wrong for a closed pilot; these are the production gaps.
    children never operate the app → declare 18+ and the Families/
    Designed-for-Families review should NOT trigger. Children's data is still
    fully disclosed on the form.
-
 Plus: **a few more features to add** — Aditya to name them next chat.
-
 ## Other on the horizon
+- **Reconcile soundboard branch state** (2026-07-14) — confirm whether the
+  soundboard player code is on main or an unmerged branch; merge if needed so
+  origin/main builds the soundboard from a clean checkout. See STATUS CORRECTION.
 - **Consent/withdraw/erasure envelope (F9) — video side DONE (2026-07-03):**
   withdrawal flow, clip erasure on withdrawal, and file-level deletion in
   `deleteRecord`/`deleteProfile`/`clearAllData` (no orphaned clips on disk).
@@ -277,14 +328,12 @@ Plus: **a few more features to add** — Aditya to name them next chat.
 - **Audio pipeline** — blocked on real translated SOP text from content team
   (Hindi, Tamil, Bengali via Sarvam Bulbul v3).
 - **Architecture one-pager** — offered, not yet produced.
-
 ## Open design notes
 - Child picker: selecting a child sets the *global* active child (persists after
   leaving the activity). Run-scoped selection would be a separate seam — flagged,
   not built.
 - Category grid: keep the count pill on tiles, or is the description subtitle
   enough? Pending Flipkart designer review.
-
 ## Key principles
 - **Un-backfillable decisions first**: child ID scheme, consent envelope, schema
   version. Pseudonymisation was sequenced before any upload code for this reason.
@@ -293,6 +342,10 @@ Plus: **a few more features to add** — Aditya to name them next chat.
   `www/` is the gitignored build copy the app loads. Every code session ends
   with **`./scripts/build.sh`** (copies, syncs, byte-verifies built assets,
   plus school-ID guard and JS parse check). Branch switches don't touch `www/`.
+- **Verify git state, not the notes** (2026-07-14): before writing "committed /
+  pushed" in these docs, confirm with `git log --oneline` + `git status`.
+  Handed-over commands don't always get run — the soundboard "pushed to main"
+  claim was false for a week. Reality lives in git.
 - **Stale APK**: if the emulator shows old behavior after a clean sync, it's a
   stale install, not stale assets — `./gradlew clean installDebug` (full reinstall,
   not Apply Changes / hot reload). Diagnosed exactly this on 2026-06-30: root +
@@ -301,9 +354,14 @@ Plus: **a few more features to add** — Aditya to name them next chat.
   value together. `verifyCredentials()` stub is the correct pilot approach.
 - **Color does one job per surface**: category hue on group/tile header only.
 - **TTS does not translate**: Sarvam speaks text as given.
+- **Never overwrite the whole `activities.js` from the synced/GitHub copy** —
+  Aditya's local file can be AHEAD of `main` (unpushed work). A whole-file `cp`
+  on 2026-07-14 reverted the Direction command boards + Sound + Direction
+  restructure; recovered via undo. Edit ONLY the targeted block, with a backup
+  and a diff proving nothing outside it moved (the SLT + soundboard changes were
+  applied this safe way; delete the `.bak` afterward — don't leave it in the tree).
 - **`ensureSchoolsSeeded()` skips if schools already exist** — clear old seed on
   emulator before new names appear.
-
 ## Working approach
 - **Extreme build mode is default**: expert engineer/UX designer, working code,
   pragmatic calls stated, skip research framing unless asked.
@@ -315,7 +373,6 @@ Plus: **a few more features to add** — Aditya to name them next chat.
   commits; regenerate them at wrap-up, commit separately.
 - Complete files over diff instructions.
 - PDF for stakeholder handoffs; visuals over code for design audiences.
-
 ## Stack & environment
 - Plain HTML/CSS/JS, no bundler; Capacitor 8 (Preferences 8.0.1, Filesystem
   8.1.2, Share 8.0.1, SplashScreen 8.0.1).
@@ -325,7 +382,6 @@ Plus: **a few more features to add** — Aditya to name them next chat.
 - Audio: Sarvam Bulbul v3 REST; `.env` (gitignored), `.env.example` committed.
 - Compliance: India DPDP Act 2023 + Rules 2025; penalties up to ₹200 crore for
   children's data; consent burden on app as data fiduciary.
-
 ## Key files
 - `index.html` — markup shell; `styles.css` — look; `store.js` — storage seam;
   `app.js` — behaviour (incl. `buildSoundboard` + `SB`, `seedSchools` ~L213,
@@ -335,7 +391,6 @@ Plus: **a few more features to add** — Aditya to name them next chat.
 - `scripts/build.sh` — the one build command (guard + parse + copy + sync + verify)
 - `sounds/` — bundled soundboard mp3s (gitignored, like `audio/`); synced to `www/`
 - `MEMORY.md`, `TRACKER.md`, `DESIGN_NOTES.md`, `REVIEW_PACKET.md`
-
 ## Useful commands
 Build + verify (replaces the old cp/sync/grep ritual AND the JS parse one-liner):
 ```
@@ -347,7 +402,7 @@ grep -c "myNewFunction" ~/Desktop/om-app/android/app/src/main/assets/public/app.
 ```
 Soundboard sounds bundled:
 ```
-ls ~/Desktop/om-app/android/app/src/main/assets/public/sounds | wc -l   # expect 20
+ls ~/Desktop/om-app/android/app/src/main/assets/public/sounds | wc -l   # expect 22
 ```
 Clean reinstall (stale APK fix):
 ```

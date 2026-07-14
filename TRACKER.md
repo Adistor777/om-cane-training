@@ -1,17 +1,18 @@
 # TRACKER.md — O&M Cane Training
-
-_Last updated: 2026-07-13 (pm — Sound + Direction + group seam)_
-
-## STATE (2026-07-13 pm) — Sound + Direction done on `feat/sound-direction`
-Video #2 batch (4 videos) processed same day: Sound + Direction rebuilt +
-NEW group-activity seam (`group:true` skips the child picker, saves one
-child-free record). Counting Steps SOPs CORRECTED by Aditya after review
-(voice localization + step estimate — commit `ac83dd9`; frame-deduced
-draft had it wrong, audio wasn't transcribable). Sits UNMERGED on
-`feat/sound-direction` pending emulator verify. Tests 40/40; build green.
-Aditya noted "a few changes required" at wrap-up — capture them at the
-start of the next chat before video #3.
-
+_Last updated: 2026-07-14 (Straight Line Travel three-stage + soundboard commit landed)_
+## STATE (2026-07-14) — Straight Line Travel done; soundboard finally committed
+Straight Line Travel (Category 4) rebuilt from 3 demo videos into THREE
+stages — Without Cane → With Cane + Push Toy → With Cane (toy faded). The
+push toy on the cane is a stigma-breaking storyline (positive association),
+a scaffold meant to fade → hence 3 stages. All app-sound (`soundboard:true`);
+record fields = steps + times-drifted + mastery + notes. Commit `9ee6e2c`,
+pushed. Demo videos wired (`demo-slt-nocane.mp4`, `demo-slt-withcane-toy.mp4`);
+toy-faded `slt-withcane` has no demo yet.
+DRIFT FOUND: the soundboard two-tab was NEVER actually on main — it was
+uncommitted in the working tree despite last session's notes saying "pushed".
+Landed today as `936e05e`. The soundboard PLAYER CODE also isn't in main's
+recent log → likely on an unmerged branch; RECONCILE (NEXT). Emulator verify
+of SLT still PENDING (Aditya pushed before the clean install).
 ## Manager review loop (decided 2026-07-13)
 Mansi reviews on HER PHONE via the debug APK — no emulator, no Play Store
 yet. Per update: `./scripts/build.sh` → `cd android && ./gradlew
@@ -22,8 +23,23 @@ non-empty password (offline stub — password not verified until the cloud
 flag flips; told to Mansi). CONSENT CAVEAT: bundled faces/ photos ride
 along in every APK — strict option is to empty faces/ for her builds.
 Debug key = only Aditya's Mac can build over-installing updates.
-
 ## NEXT — one list, in order
+- [ ] **Aditya, Mac:** emulator-verify Straight Line Travel — three cards
+      (Without Cane / With Cane + Push Toy / With Cane), each → child picker →
+      record screen with the sound player + four fields (steps, times drifted,
+      Got it/With help/Not yet, notes), `?` plays the demo (3rd card has none),
+      test save lands. Stale APK → `cd android && ./gradlew clean installDebug`.
+- [ ] **Aditya, Mac:** SLT English narration —
+      `node scripts/generate-audio.js --only slt-nocane slt-withcane-toy slt-withcane`,
+      then `./scripts/build.sh`, `cd android && ./gradlew installDebug`.
+- [ ] **RECONCILE the soundboard branch state** — `buildSoundboard`/`SB`
+      (index.html/app.js) weren't in `git log --oneline -8` on main. Find where
+      they live; if on an unmerged `feat/soundboard`, merge so origin/main
+      builds the soundboard from a clean checkout. Working tree HAS it (running
+      fine) — nothing lost, but a fresh clone may not build the player.
+- [ ] **Film + wire the toy-faded demo** for `slt-withcane` (its `videoFile`
+      is empty — no clip of plain-cane travel yet). Compress + drop in root.
+- [ ] **Content team:** verify the SLT Hindi SOP drafts (machine-drafted).
 - [ ] **Aditya, Mac:** emulator-verify `feat/sound-direction`, then merge:
       Sound + Direction card grid (4 activities, Group pill on Counting
       Steps — Group) → group card goes STRAIGHT to record screen (no child
@@ -48,7 +64,7 @@ Debug key = only Aditya's Mac can build over-installing updates.
       child blocked, edit works; cross-school RLS (second user, different
       school_id, sees none); parked video-picker test (`content://` URI →
       `commitPendingVideo`). Flag back to false after.
-- [ ] **Video #3** (next chat): per-activity workflow — deduce SOP from
+- [ ] **Video #4** (next chat): per-activity workflow — deduce SOP from
       video, simplify to ≤4 steps, wire demo file, mastery+teacherNotes.
 - [ ] **Content team:** verify Direction + Sound + Direction Hindi SOP drafts;
       deliver ta/bn text (paste into sopTranslations → run generator — no code).
@@ -58,7 +74,55 @@ Debug key = only Aditya's Mac can build over-installing updates.
       is per-child; a group clip can't be verified against unidentified
       children). If researchers want group footage, legal must define a
       group-consent envelope first.
-
+## Done 2026-07-14 (Straight Line Travel three-stage + soundboard commit landed)
+- [x] **Category 4 rebuilt from 3 demo videos into THREE stages**:
+      `slt-nocane` (travel by ear) → `slt-withcane-toy` (push toy on the cane —
+      the stigma-breaking storyline) → `slt-withcane` (toy faded, plain cane —
+      goal state). App sound source (`soundboard:true` on all three). Fields:
+      `steps` (count) + `veer` "Times drifted off line" (count) + `result`
+      (mastery) + `notes` (teacherNotes). Commit `9ee6e2c`, pushed to main.
+      Mechanics confirmed by Aditya (push toy = positive-association scaffold
+      meant to fade — hence motivate → skill → independence). Hindi drafts
+      machine-drafted, flagged. `slt-withcane` meaning shifted (was "With Cane
+      (Push Toy)") — pre-pilot orphan records accepted knowingly.
+- [x] **Demo videos** `demo-slt-nocane.mp4` + `demo-slt-withcane-toy.mp4`
+      compressed (~640px CRF30) and wired; gitignored, build-copied.
+      `slt-withcane` (toy-faded) has NO demo filmed yet → `videoFile: ""`.
+- [x] **Applied block-only** to Category 4 (backup + diff proving scope), then
+      committed as its OWN commit, kept separate from the soundboard two-tab.
+- [x] **Landed the soundboard two-tab** that had been sitting uncommitted:
+      commit `936e05e` (staged the `SOUND_LIBRARY` hunk alone via `git add -p`,
+      keeping SLT in a separate commit). Both pushed: `4810a2c..9ee6e2c`.
+- [!] **DRIFT LESSON (2026-07-14):** `git log` showed main still on the 4-group
+      `SOUND_LIBRARY` — last session's "committed + pushed" note was false; the
+      two-tab lived only in the working tree. The soundboard PLAYER CODE is
+      likewise missing from main's recent log. **RULE: verify `git log` /
+      `git status` before writing "done / pushed"; reality lives in git, not the
+      notes.** Also delete throwaway `.bak` files from the tree (removed
+      `activities.js.sltbak`) so they don't look like a second source file.
+## Done 2026-07-14 (soundboard two-tab)
+- [x] **Sound Library → two tabs.** Old groups (Animals / Household /
+      Traffic & Outdoors / Instruments) collapsed into **Recommended sounds**
+      (Clap, Cuckoo, Whistle, Dog, Cat — listed first, so it is the default
+      open tab) and **Sounds** (the other 17). Driven purely by the `group`
+      field in `SOUND_LIBRARY`; no code touched. Shared library, so the two
+      tabs now show on EVERY `soundboard:true` activity (Sound, Sound +
+      Direction, Straight Line Travel), not just Category 3.
+- [~] Applied via a **surgical in-place patch** to the `SOUND_LIBRARY` block
+      ONLY (abort-unless-exactly-one-block + byte-identical-outside guard +
+      `.soundbak` backup + printed diff). Emulator-verified. **CORRECTED
+      2026-07-14: this was NOT actually committed/pushed last session — it sat
+      uncommitted in the working tree and only landed on main today as
+      `936e05e`.** See the drift lesson above.
+- [x] Added `sounds/clap.mp3` + `sounds/whistle.mp3` (synthetic placeholders,
+      generated locally). `sounds/` is gitignored → NOT in the repo; a fresh
+      setup needs them re-copied. Real recordings flagged for content team.
+- [!] **Incident + lesson (2026-07-14):** an earlier whole-file `cp` of
+      `activities.js` from the stale GitHub-synced copy reverted richer local
+      work (Direction command boards, Sound + Direction restructure). Recovered
+      via undo. **RULE: never overwrite the whole `activities.js` from a synced
+      snapshot — edit only the targeted block, with a backup and a diff that
+      proves nothing else moved.**
 ## Done 2026-07-13 (second wave pm — Sound + Direction, `feat/sound-direction`)
 - [x] **Category 3 rebuilt from the four SOP demo videos (#2)**: `Near-Far`
       (ears only) → `Near-Far with Cane` (cane points to / touches source) →
@@ -79,7 +143,6 @@ Debug key = only Aditya's Mac can build over-installing updates.
       build-copied by step 3b.
 - [x] **Tests: SUITE 8 (group seam), 40/40.** Full `./scripts/build.sh` green
       in sandbox (school-ID guard, parse, copy, cap sync, byte-compare).
-
 ## Done 2026-07-13 (Direction command board, `feat/sop-content`)
 - [x] **Direction category restructured** (SOP video #1 received): `Basic
       Commands` (left/right/forward/backward/jump/clap/stop/turn-around) +
@@ -100,7 +163,6 @@ Debug key = only Aditya's Mac can build over-installing updates.
 - [x] **SOPs rewritten from demo video #1** + facilitator notes; video wired
       as `demo-direction-basic.mp4` (root, gitignored like all media).
       Tests 35/35.
-
 ## Done same day, second wave (2026-07-13 pm — Direction polish + record redesign)
 - [x] **Command cues → ENGLISH only** (`8ec64d3`): label IS the cue,
       `audio/commands/{id}_en.mp3`, voice **priya** (v3 default shubh tested
@@ -129,7 +191,6 @@ Debug key = only Aditya's Mac can build over-installing updates.
 - [x] Names → **Basic / Advanced**; category-level **? sheet** (help[] +
       helpVideo in activities.js — any category can opt in) (`ce01be1`).
 - [x] Both audio generators read SARVAM_API_KEY from .env (`82548fd`).
-
 ## Done 2026-07-06 pm (cloud wiring, `feat/cloud-sync`)
 - [x] **Code wiring complete, behind `CLOUD_SYNC` flag (default OFF).**
       Flag OFF = byte-identical offline pilot; tests 35/35. Commits `9b0a7a0`
@@ -154,14 +215,12 @@ Debug key = only Aditya's Mac can build over-installing updates.
       bucket, test-teacher provisioning, verification query). Step 3a (create
       auth user) is dashboard UI, rest is SQL.
 - [x] Stale `.git/index.lock` from a sandboxed git run cleared — repo healthy.
-
 - [x] Dashboard prep DONE 2026-07-06 (driven via browser, each step verified):
       schools re-seeded to the 3 `sch_*` rows; `videos` bucket private
       (`public=f`); `saksham01@test.local` created (Aditya holds the password),
       `app_metadata.school_id=sch_saksham_noida`, linked ACTIVE teachers row.
       Verify query returned the expected single row. Cloud path is testable —
       device-test matrix lives in NEXT above.
-
 ## Done earlier (2026-07-06 — workflow hardening + file split)
 - [x] **`scripts/build.sh` — the ONE build command.** Replaces the remembered
       `cp … && npx cap sync` ritual. Steps: school-ID consistency guard
@@ -184,7 +243,6 @@ Debug key = only Aditya's Mac can build over-installing updates.
       (3 pp: status by area, last-session fixes, next steps, risks; no names).
 - [x] Leftover MEMORY/TRACKER wrap-up from 07-03 committed; all work pushed
       (`main` = `ef4eae1` + wrap-up).
-
 ## R&D DECISIONS — locked 2026-07-03
 1. **Architecture A** — server-assigned child ID at enrolment (online-only
    enrolment, one moment of connectivity per child; assessments stay offline).
@@ -192,7 +250,6 @@ Debug key = only Aditya's Mac can build over-installing updates.
 3. **Multi-device-per-child: YES** — same child joins on one server ID.
 4. **Analysis: BOTH** longitudinal and cross-child (research_id is the join
    key; both indexes in schema).
-
 ## Production roadmap (ordered by rework risk)
 - [x] **1. R&D email** — sent + answered (decisions above).
 - [ ] **2. Cross-device child ID** — app wiring DONE 2026-07-06
@@ -215,23 +272,23 @@ Debug key = only Aditya's Mac can build over-installing updates.
 - [ ] **8. Play Store release** — Data Safety drafted
       (`compliance/PLAY-DATA-SAFETY.md`); needs privacy policy at a public URL;
       target audience 18+ (teachers).
-
 ## Waiting on humans
 - [ ] **Legal:** fiduciary entity of record, grievance officer, effective date,
       Rule 10 due-diligence sign-off, educational-institution exemption answer.
       All flagged in `compliance/DPDP-COMPLIANCE-MAP.md`.
 - [ ] **Content team:** verify + typeset Hindi consent form; translated SOP
       text (audio pipeline still blocked on this).
+- [ ] **Content team:** real recordings for `clap.mp3` + `whistle.mp3` — the
+      two Recommended-tab sounds added 2026-07-14 are synthetic placeholders
+      (usable, but swap when real audio lands).
 - [ ] **Pilot manager:** real teacher names for the seed.
 - [ ] Print consent forms WITH serial numbers once legal placeholders filled.
-
 ## Backlog
 - [x] ~~File split~~ — DONE 2026-07-06.
 - [ ] Consent envelope for BROADER assessment data (Part A of paper form) —
       mirror in-app only if legal asks.
 - [ ] Offline-enrolment queue — only if the online-only enrolment rule proves
       painful in the field (watch Kullu). Flagged 2026-07-06, not committed to.
-
 ## Standing reminders
 - **Every code session ends with `./scripts/build.sh`** (it does the copy,
   sync, ID guard, parse check, and built-asset verify). Stale emulator →
@@ -240,4 +297,6 @@ Debug key = only Aditya's Mac can build over-installing updates.
   `www/` is build output (gitignored) — never edit.
 - Media (`audio/`, `sounds/`, `*.mp4`) stays gitignored.
 - Feature commits stay focused — MEMORY/TRACKER committed separately.
+- **Verify `git log` / `git status` before writing "done / pushed"** — the
+  soundboard "pushed" claim was false for a week (2026-07-14 lesson).
 - `.env` holds `SARVAM_API_KEY` (gitignored).
