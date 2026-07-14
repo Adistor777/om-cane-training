@@ -340,10 +340,33 @@ const ACTIVITY_DATA = [
     ]
   },
 
-  /* ===== CATEGORY 4 ============================================ */
+  /* ===== CATEGORY 4 ============================================
+     Straight Line Travel — three stages, matching how the skill is
+     actually built up. The child travels toward a sound played on the
+     APP (soundboard, same as the Sound activities), holding a straight
+     line the whole way:
+
+       1. Without Cane         — by ear alone (baseline).
+       2. With Cane + Push Toy — a toy is attached to the cane, with a
+                                 little story, so the child WANTS to hold
+                                 it. This is deliberate: it breaks the
+                                 stigma around the cane and builds a
+                                 positive association before it is "a cane".
+       3. With Cane            — the toy comes off; the same travel, now
+                                 independent. The scaffold is faded.
+
+     The data to watch across the three stages: STEPS (efficiency) and
+     TIMES DRIFTED OFF LINE (straightness) should both shrink stage to
+     stage as the association carries over into real cane use. */
   {
     category: "Straight Line Travel",
-    description: "Travel toward a sound, without cane then with cane (with push toy). Artificial or human sound (facilitator or friend's bhopu).",
+    description: "Travel in a straight line toward a sound played on the app — first by ear, then with the cane and a push toy for a positive start, then with the cane alone.",
+    help: [
+      "Start Without Cane — the child walks to the sound by ear. This is the baseline.",
+      "Add the cane With Push Toy — the toy and its story make the cane fun and familiar; the child pushes it straight to the sound.",
+      "Finish With Cane once the toy comes off — the same straight-line travel, now independent. Steps and drifts should shrink stage to stage."
+    ],
+    helpVideo: "demo-slt-nocane.mp4",
     activities: [
       {
         id: "slt-nocane",
@@ -351,36 +374,93 @@ const ACTIVITY_DATA = [
         withCane: false,
         soundboard: true,
         sop: [
-          "Place a sound source straight ahead.",
-          "Child walks toward it in a straight line.",
-          "Count the number of steps."
+          "Place the device straight ahead and play a sound from the app.",
+          "Stand the child at the start line, facing the sound — no cane.",
+          "The child walks to the sound in a straight line; count the steps.",
+          "The child stops on reaching the sound."
         ],
-        facilitatorNote: "",
+        facilitatorNote: "Straightness is the skill, not just arrival — a child who reaches the sound but wanders there hasn't got it yet. Keep the SAME sound playing so the ears have a steady target, and keep the path clear. Steer drifts with a light touch — don't turn the child — and log every correction. Fewer drifts and fewer steps across sessions is the progress.",
+        // DRAFT translation (machine-drafted 2026-07-14) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1
+        // with `sop` above, as required by generate-audio.js.
+        sopTranslations: {
+          hi: [
+            "डिवाइस को सीधे सामने रखें और ऐप से एक आवाज़ बजाएँ।",
+            "बच्चे को शुरुआती रेखा पर, आवाज़ की ओर मुँह करके खड़ा करें — बिना छड़ी।",
+            "बच्चा सीधी रेखा में आवाज़ तक चले; कदम गिनें।",
+            "आवाज़ तक पहुँचने पर बच्चा रुक जाए।"
+          ]
+        },
         audioFile: "",
-        videoFile: "",
+        videoFile: "demo-slt-nocane.mp4",
         dataFields: [
-          { id: "steps", label: "Number of steps", type: "count" },
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
+          { id: "steps",  label: "Number of steps",        type: "count" },
+          { id: "veer",   label: "Times drifted off line", type: "count" },
+          { id: "result", label: "Did the child get it?",  type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",        type: "teacherNotes" }
+        ]
+      },
+      {
+        id: "slt-withcane-toy",
+        name: "Straight Line Travel — With Cane + Push Toy",
+        withCane: true,
+        soundboard: true,
+        sop: [
+          "Attach the push toy to the cane and introduce it — give it a name and a little story.",
+          "Place the device straight ahead and play a sound from the app.",
+          "The child pushes the toy along the floor, straight toward the sound; count the steps.",
+          "The child stops when the toy reaches the sound."
+        ],
+        facilitatorNote: "The toy is the whole point — it turns the cane into something the child wants to hold, so lean into the story ('roll the puppy to the sound'). Keep the toy on the floor and tracking a straight line, with the same sound playing throughout. Following the story but wandering off line is 'With help', not 'Got it'. This stage builds the bond with the cane; the next stage tests it without the toy.",
+        // DRAFT translation (machine-drafted 2026-07-14) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        sopTranslations: {
+          hi: [
+            "छड़ी में पुश-टॉय लगाएँ और उसका परिचय दें — उसे एक नाम और छोटी सी कहानी दें।",
+            "डिवाइस को सीधे सामने रखें और ऐप से एक आवाज़ बजाएँ।",
+            "बच्चा टॉय को फर्श पर धकेलते हुए सीधे आवाज़ की ओर ले जाए; कदम गिनें।",
+            "टॉय के आवाज़ तक पहुँचने पर बच्चा रुक जाए।"
+          ]
+        },
+        audioFile: "",
+        videoFile: "demo-slt-withcane-toy.mp4",
+        dataFields: [
+          { id: "steps",  label: "Number of steps",        type: "count" },
+          { id: "veer",   label: "Times drifted off line", type: "count" },
+          { id: "result", label: "Did the child get it?",  type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",        type: "teacherNotes" }
         ]
       },
       {
         id: "slt-withcane",
-        name: "Straight Line Travel — With Cane (Push Toy)",
+        name: "Straight Line Travel — With Cane",
         withCane: true,
         soundboard: true,
         sop: [
-          "Child travels the same path using the cane with a push toy.",
-          "Maintain a straight line toward the sound source.",
-          "Count steps and compare with the without-cane attempt."
+          "Take the toy off — the child travels with the cane alone now.",
+          "Place the device straight ahead and play a sound from the app.",
+          "The child walks to the sound in a straight line, cane tip in steady floor contact; count the steps.",
+          "The child stops on reaching the sound; compare with the push-toy run."
         ],
-        facilitatorNote: "",
+        facilitatorNote: "The goal state — the same straight-line travel, toy gone. A little slip-back is normal when the scaffold first comes off. Keep the cane in steady floor contact; a lifted or waving cane is a drift waiting to happen. Same sound playing throughout. Fewer drifts than the push-toy run means the positive association has carried over into real cane use.",
+        // DRAFT translation (machine-drafted 2026-07-14) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        // No toy-faded demo filmed yet — wire the filename once it exists.
+        sopTranslations: {
+          hi: [
+            "टॉय हटा दें — अब बच्चा सिर्फ़ छड़ी के साथ चले।",
+            "डिवाइस को सीधे सामने रखें और ऐप से एक आवाज़ बजाएँ।",
+            "बच्चा सीधी रेखा में आवाज़ तक चले, छड़ी की नोक फर्श पर टिकी रहे; कदम गिनें।",
+            "आवाज़ तक पहुँचने पर बच्चा रुके; पुश-टॉय वाली बारी से तुलना करें।"
+          ]
+        },
         audioFile: "",
         videoFile: "",
         dataFields: [
-          { id: "steps", label: "Number of steps", type: "count" },
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
+          { id: "steps",  label: "Number of steps",        type: "count" },
+          { id: "veer",   label: "Times drifted off line", type: "count" },
+          { id: "result", label: "Did the child get it?",  type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",        type: "teacherNotes" }
         ]
       }
     ]
