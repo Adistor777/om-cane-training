@@ -1,6 +1,15 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-07-14 (Straight Line Travel three-stage + soundboard commit landed)_
-## STATE (2026-07-14) — Straight Line Travel done; soundboard finally committed
+_Last updated: 2026-07-14 pm (soundboard reconcile resolved + branch prune)_
+## STATE (2026-07-14 pm) — reconcile resolved; repo clean
+Soundboard player code confirmed ON main (`git grep buildSoundboard HEAD -- app.js`
+= 2 hits — it landed via an earlier merge, outside the recent-log window).
+All feature branches (feat/cloud-sync, feat/password-login, feat/sop-content,
+feat/soundboard) fully merged into main and pruned local + remote;
+`shell-login-home` kept (2 unmerged prototype commits). Stale sound-direction
+merge instruction removed from NEXT (that work was already on main,
+`f406c55`/`21d1c7d`). Remaining work is Mac-side: SLT emulator verify,
+SLT narration, toy-faded demo.
+## STATE (2026-07-14 am) — Straight Line Travel done; soundboard finally committed
 Straight Line Travel (Category 4) rebuilt from 3 demo videos into THREE
 stages — Without Cane → With Cane + Push Toy → With Cane (toy faded). The
 push toy on the cane is a stigma-breaking storyline (positive association),
@@ -32,28 +41,30 @@ Debug key = only Aditya's Mac can build over-installing updates.
 - [ ] **Aditya, Mac:** SLT English narration —
       `node scripts/generate-audio.js --only slt-nocane slt-withcane-toy slt-withcane`,
       then `./scripts/build.sh`, `cd android && ./gradlew installDebug`.
-- [ ] **RECONCILE the soundboard branch state** — `buildSoundboard`/`SB`
-      (index.html/app.js) weren't in `git log --oneline -8` on main. Find where
-      they live; if on an unmerged `feat/soundboard`, merge so origin/main
-      builds the soundboard from a clean checkout. Working tree HAS it (running
-      fine) — nothing lost, but a fresh clone may not build the player.
+- [x] **RECONCILE the soundboard branch state — RESOLVED 2026-07-14:**
+      `buildSoundboard`/`SB` IS in main's `app.js` (landed via an earlier
+      merge — just outside the recent-log window checked last session).
+      `origin/feat/soundboard` has 0 commits not in main; a fresh clone
+      builds the player fine. Fully merged branches (feat/cloud-sync,
+      feat/password-login, feat/sop-content, feat/soundboard) pruned local
+      + remote; `shell-login-home` kept (2 unmerged prototype commits).
 - [ ] **Film + wire the toy-faded demo** for `slt-withcane` (its `videoFile`
       is empty — no clip of plain-cane travel yet). Compress + drop in root.
 - [ ] **Content team:** verify the SLT Hindi SOP drafts (machine-drafted).
-- [ ] **Aditya, Mac:** emulator-verify `feat/sound-direction`, then merge:
-      Sound + Direction card grid (4 activities, Group pill on Counting
-      Steps — Group) → group card goes STRAIGHT to record screen (no child
-      picker, "Whole group" bar, NO video control) → save → record shows
-      "Group" → per-child activity still asks for a child and shows video
-      control. Then `git checkout main && git merge feat/sound-direction`,
-      delete branch. Stale APK → `cd android && ./gradlew clean installDebug`.
+- [ ] **Aditya, Mac:** emulator-verify Sound + Direction (ALREADY ON MAIN —
+      `f406c55`/`21d1c7d`; the `feat/sound-direction` branch is gone, no merge
+      needed; stale merge instruction removed 2026-07-14): card grid
+      (4 activities, Group pill on Counting Steps — Group) → group card goes
+      STRAIGHT to record screen (no child picker, "Whole group" bar, NO video
+      control) → save → record shows "Group" → per-child activity still asks
+      for a child and shows video control.
+      Stale APK → `cd android && ./gradlew clean installDebug`.
 - [ ] **Aditya, Mac (10 min):** English narration —
       `node scripts/generate-audio.js --only dir-basic-commands` (+ advanced;
       after merge add the four snddir-* ids; plain run for ALL activities
       before the next school demo). Then `./scripts/build.sh`,
       `cd android && ./gradlew installDebug`.
-- [ ] **Aditya:** push everything —
-      `git push origin main feat/sound-direction`
+- [ ] **Aditya:** push everything — `git push origin main`
       (main's push is what refreshes project-knowledge sync).
 - [ ] **Optional trim:** `demo-snddir-steps-solo.mp4` is 23 MB (9½ min,
       already re-encoded from 87 MB). If APK size bites, trim to the best
