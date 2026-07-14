@@ -5,8 +5,23 @@ _Last updated: 2026-07-13 (pm — Sound + Direction + group seam)_
 ## STATE (2026-07-13 pm) — Sound + Direction done on `feat/sound-direction`
 Video #2 batch (4 videos) processed same day: Sound + Direction rebuilt +
 NEW group-activity seam (`group:true` skips the child picker, saves one
-child-free record). Sits UNMERGED on `feat/sound-direction` (commit
-`f406c55`) pending emulator verify. Tests 40/40; build.sh full pipeline OK.
+child-free record). Counting Steps SOPs CORRECTED by Aditya after review
+(voice localization + step estimate — commit `ac83dd9`; frame-deduced
+draft had it wrong, audio wasn't transcribable). Sits UNMERGED on
+`feat/sound-direction` pending emulator verify. Tests 40/40; build green.
+Aditya noted "a few changes required" at wrap-up — capture them at the
+start of the next chat before video #3.
+
+## Manager review loop (decided 2026-07-13)
+Mansi reviews on HER PHONE via the debug APK — no emulator, no Play Store
+yet. Per update: `./scripts/build.sh` → `cd android && ./gradlew
+assembleDebug` → rename `app-debug.apk` with the date → WhatsApp as a
+DOCUMENT (or Drive). Her first install: allow-from-source once + Play
+Protect "Install anyway". Login for review: Saksham / `saksham01` / any
+non-empty password (offline stub — password not verified until the cloud
+flag flips; told to Mansi). CONSENT CAVEAT: bundled faces/ photos ride
+along in every APK — strict option is to empty faces/ for her builds.
+Debug key = only Aditya's Mac can build over-installing updates.
 
 ## NEXT — one list, in order
 - [ ] **Aditya, Mac:** emulator-verify `feat/sound-direction`, then merge:

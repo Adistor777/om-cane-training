@@ -47,7 +47,21 @@ _Last updated: 2026-07-13 (pm — Sound + Direction + group seam)_
   researchers ever want group footage.
 - **Sandbox has no ASR path**: HuggingFace (whisper) and api.sarvam.ai both
   403 behind the workspace proxy — SOP-from-video runs on frame montages
-  (ffmpeg fps=1/N + tile), which worked fine. Don't burn time retrying ASR.
+  (ffmpeg fps=1/N + tile). LESSON: frames show the SETUP, not the RULES —
+  the Counting Steps drills looked like step-listening but were actually
+  voice localization + step ESTIMATE (child calls a name / teacher calls,
+  called child points + estimates distance in steps, individual then walks
+  counting to verify — estimate-vs-actual gap is the datum). Corrected by
+  Aditya, commit `ac83dd9`. ALWAYS have Aditya confirm deduced mechanics,
+  not just video mapping.
+- **Manager review loop**: debug APK → WhatsApp (as document) → Mansi's own
+  phone. Not an emulator, not Play Store (that's roadmap item 8). Stub login
+  for reviewers: any seeded loginId + any non-empty password while offline.
+  faces/ photos ship in every APK — consent caveat until guardian consent
+  or an emptied faces/ build.
+- **Sandbox-written files can lose the write bit on the Mac** (www/ media
+  hit this: `cp: Permission denied`) — fix is `chmod -R u+w www`, worth
+  running before builds after a sandbox session touched media.
 - **Demo video compression is part of the wiring step**: WhatsApp-sized
   uploads still ballooned the bundle (87 MB one!) — re-encode 640p CRF~30
   before dropping into the repo root (mount can't overwrite: rm-then-cp,
