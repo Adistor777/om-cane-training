@@ -61,8 +61,15 @@ const ACTIVITIES_FILE = path.join(ROOT, 'activities.js');
 const args = process.argv.slice(2);
 const FORCE   = args.includes('--force');
 const DRY_RUN = args.includes('--dry-run');
+// --only takes ONE OR MORE command ids (everything up to the next --flag) —
+// same multi-id fix as generate-audio.js (2026-07-14).
 const onlyIdx = args.indexOf('--only');
-const ONLY    = onlyIdx !== -1 ? args[onlyIdx + 1] : null;
+let ONLY = null;
+if (onlyIdx !== -1) {
+  ONLY = [];
+  for (let i = onlyIdx + 1; i < args.length && !args[i].startsWith('--'); i++) ONLY.push(args[i]);
+  if (!ONLY.length) { console.error('--only needs at least one command id'); process.exit(1); }
+}
 
 function fail(msg){ console.error(`\nFAILED: ${msg}\n`); process.exit(1); }
 
@@ -147,8 +154,9 @@ async function main(){
   if (!commands.length) fail('No commands found — does any activity have commandBoard:true with a commands list?');
 
   if (ONLY){
-    commands = commands.filter(c => c.id === ONLY);
-    if (!commands.length) fail(`--only "${ONLY}" matched no command id.`);
+    const unknown = ONLY.filter(id => !commands.some(c => c.id === id));
+    commands = commands.filter(c => ONLY.includes(c.id));
+    if (unknown.length) fail(`--only id(s) matched no command: ${unknown.join(', ')}`);
   }
 
   if (!DRY_RUN) fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -157,7 +165,7 @@ async function main(){
 
   console.log(`\n${DRY_RUN ? '[DRY RUN] ' : ''}Generating command audio (English, ${SARVAM_LANG})`);
   console.log(`  model=${MODEL}  speaker=${SPEAKER}  pace=${PACE}  format=${FORMAT}`);
-  console.log(`  commands=${commands.length}${ONLY ? ` (--only ${ONLY})` : ''}\n`);
+  console.log(`  commands=${commands.length}${ONLY ? ` (--only ${ONLY.join(' ')})` : ''}\n`);
 
   for (const cmd of commands){
     const text = cmd.text;

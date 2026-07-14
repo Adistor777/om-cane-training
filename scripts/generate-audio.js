@@ -92,8 +92,16 @@ const CHAR_LIMIT = 2400;         // v3 allows ~2500; stay safely under.
 const args = process.argv.slice(2);
 const FORCE   = args.includes('--force');
 const DRY_RUN = args.includes('--dry-run');
+// --only takes ONE OR MORE activity ids (everything up to the next --flag).
+// Before 2026-07-14 it silently used only the first id — the rest were
+// dropped without a word, so multi-id runs generated less than asked.
 const onlyIdx = args.indexOf('--only');
-const ONLY    = onlyIdx !== -1 ? args[onlyIdx + 1] : null;
+let ONLY = null;
+if (onlyIdx !== -1) {
+  ONLY = [];
+  for (let i = onlyIdx + 1; i < args.length && !args[i].startsWith('--'); i++) ONLY.push(args[i]);
+  if (!ONLY.length) { console.error('--only needs at least one activity id'); process.exit(1); }
+}
 
 /* ---------------------------------------------------------------------------
    .env FALLBACK — the key lives in the repo's gitignored .env (the app never
@@ -220,9 +228,10 @@ async function main() {
 
   let work = activities;
   if (ONLY) {
-    work = activities.filter(a => a.id === ONLY);
-    if (!work.length) {
-      fail(`--only "${ONLY}" matched no activity.\n  Known ids: ${activities.map(a => a.id).join(', ')}`);
+    work = activities.filter(a => ONLY.includes(a.id));
+    const unknown = ONLY.filter(id => !activities.some(a => a.id === id));
+    if (unknown.length) {
+      fail(`--only id(s) matched no activity: ${unknown.join(', ')}\n  Known ids: ${activities.map(a => a.id).join(', ')}`);
     }
   }
 
@@ -234,7 +243,7 @@ async function main() {
   console.log(`\n${DRY_RUN ? '[DRY RUN] ' : ''}Generating SOP audio`);
   console.log(`  model=${MODEL}  speaker=${SPEAKER}  pace=${PACE}  format=${FORMAT}`);
   console.log(`  languages=${langEntries.map(([a]) => a).join(', ')}`);
-  console.log(`  activities=${work.length}${ONLY ? ` (--only ${ONLY})` : ''}\n`);
+  console.log(`  activities=${work.length}${ONLY ? ` (--only ${ONLY.join(' ')})` : ''}\n`);
 
   for (const act of work) {
     for (const [appCode, sarvamCode] of langEntries) {
