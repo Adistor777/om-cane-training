@@ -612,31 +612,32 @@ const ACTIVITY_DATA = [
    The groups appear in the order they first show up in this list.
    ============================================================================= */
 const SOUND_LIBRARY = [
-  /* ----- Animals ----- */
-  { file: "sounds/dog.mp3",            label: "Dog",          group: "Animals" },
-  { file: "sounds/cat.mp3",            label: "Cat",          group: "Animals" },
-  { file: "sounds/cow.mp3",            label: "Cow",          group: "Animals" },
-  { file: "sounds/chicken.mp3",        label: "Chicken",      group: "Animals" },
-  { file: "sounds/cuckoo.mp3",         label: "Cuckoo",       group: "Animals" },
+  /* ----- Recommended sounds -----
+     The short, go-to set for the sound activities. Listed FIRST, so it is
+     the tab the teacher sees when the Sound Library opens. To feature another
+     sound, move its line up here; to un-feature one, move it down to "Sounds". */
+  { file: "sounds/clap.mp3",           label: "Clap",         group: "Recommended sounds" },
+  { file: "sounds/cuckoo.mp3",         label: "Cuckoo",       group: "Recommended sounds" },
+  { file: "sounds/whistle.mp3",        label: "Whistle",      group: "Recommended sounds" },
+  { file: "sounds/dog.mp3",            label: "Dog",          group: "Recommended sounds" },
+  { file: "sounds/cat.mp3",            label: "Cat",          group: "Recommended sounds" },
 
-  /* ----- Household ----- */
-  { file: "sounds/doorbell.mp3",       label: "Doorbell",     group: "Household" },
-  { file: "sounds/door.mp3",           label: "Door",         group: "Household" },
-  { file: "sounds/clock.mp3",          label: "Clock",        group: "Household" },
-  { file: "sounds/keys.mp3",           label: "Keys",         group: "Household" },
-  { file: "sounds/flush.mp3",          label: "Toilet flush", group: "Household" },
-  { file: "sounds/glass-breaking.mp3", label: "Glass break",  group: "Household" },
-  { file: "sounds/chewing.mp3",        label: "Chewing",      group: "Household" },
-  { file: "sounds/burp.mp3",           label: "Burp",         group: "Household" },
-
-  /* ----- Traffic & Outdoors ----- */
-  { file: "sounds/horn.mp3",           label: "Horn",         group: "Traffic & Outdoors" },
-  { file: "sounds/police-siren.mp3",   label: "Police siren", group: "Traffic & Outdoors" },
-  { file: "sounds/bike-driving.mp3",   label: "Bike",         group: "Traffic & Outdoors" },
-  { file: "sounds/bicycle-bell.mp3",   label: "Bicycle bell", group: "Traffic & Outdoors" },
-  { file: "sounds/rain.mp3",           label: "Rain",         group: "Traffic & Outdoors" },
-  { file: "sounds/fireworks.mp3",      label: "Fireworks",    group: "Traffic & Outdoors" },
-
-  /* ----- Instruments ----- */
-  { file: "sounds/tabla.mp3",          label: "Tabla",        group: "Instruments" },
+  /* ----- Sounds ----- */
+  { file: "sounds/cow.mp3",            label: "Cow",          group: "Sounds" },
+  { file: "sounds/chicken.mp3",        label: "Chicken",      group: "Sounds" },
+  { file: "sounds/doorbell.mp3",       label: "Doorbell",     group: "Sounds" },
+  { file: "sounds/door.mp3",           label: "Door",         group: "Sounds" },
+  { file: "sounds/clock.mp3",          label: "Clock",        group: "Sounds" },
+  { file: "sounds/keys.mp3",           label: "Keys",         group: "Sounds" },
+  { file: "sounds/flush.mp3",          label: "Toilet flush", group: "Sounds" },
+  { file: "sounds/glass-breaking.mp3", label: "Glass break",  group: "Sounds" },
+  { file: "sounds/chewing.mp3",        label: "Chewing",      group: "Sounds" },
+  { file: "sounds/burp.mp3",           label: "Burp",         group: "Sounds" },
+  { file: "sounds/horn.mp3",           label: "Horn",         group: "Sounds" },
+  { file: "sounds/police-siren.mp3",   label: "Police siren", group: "Sounds" },
+  { file: "sounds/bike-driving.mp3",   label: "Bike",         group: "Sounds" },
+  { file: "sounds/bicycle-bell.mp3",   label: "Bicycle bell", group: "Sounds" },
+  { file: "sounds/rain.mp3",           label: "Rain",         group: "Sounds" },
+  { file: "sounds/fireworks.mp3",      label: "Fireworks",    group: "Sounds" },
+  { file: "sounds/tabla.mp3",          label: "Tabla",        group: "Sounds" },
 ];
