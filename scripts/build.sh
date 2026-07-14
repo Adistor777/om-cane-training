@@ -47,16 +47,17 @@ for f in index.html styles.css store.js app.js activities.js supabase.js; do
 done
 
 # ---- 3b. Bundled media: SOP narration + command cues (audio/), Sound Library
-#          mp3s (sounds/), demo-profile photos (faces/), and demo videos
-#          (demo-*.mp4 at root). All gitignored; previously copied by hand (the
-#          step everyone forgets) — now the build owns it. cp -R dir/.
-#          preserves subfolders (audio/commands/).
+#          mp3s (sounds/), demo-profile photos (faces/), demo videos
+#          (demo-*.mp4 at root), and category setup photos (help-*.jpg at
+#          root). All gitignored; previously copied by hand (the step everyone
+#          forgets) — now the build owns it. cp -R dir/. preserves subfolders
+#          (audio/commands/).
 for d in audio sounds faces; do
   if [ -d "$d" ]; then
     mkdir -p "www/$d" && cp -R "$d/." "www/$d/" && echo "OK  copied $d/ -> www/$d/"
   fi
 done
-for v in demo-*.mp4; do
+for v in demo-*.mp4 help-*.jpg; do
   if [ -f "$v" ]; then
     cp "$v" "www/$v" && echo "OK  copied $v -> www/"
   fi

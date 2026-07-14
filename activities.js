@@ -466,70 +466,127 @@ const ACTIVITY_DATA = [
     ]
   },
 
-  /* ===== CATEGORY 5 ============================================ */
-  {
-    category: "Push Toy",
-    description: "Race on a path with a push toy, referenced on a mat.",
-    activities: [
-      {
-        id: "push-race",
-        name: "Race on a Path with Push Toy",
-        withCane: true,
-        sop: [
-          "Set up a path on the mat.",
-          "Ask the child: \"Which pet do you want? Who would you meet?\" to motivate.",
-          "Child pushes the toy along the path."
-        ],
-        facilitatorNote: "",
-        audioFile: "",
-        videoFile: "",
-        dataFields: [
-          { id: "completed", label: "Completed the path", type: "checkbox" },
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
-        ]
-      }
-    ]
-  },
+  /* ===== CATEGORY 5 ============================================
+     (Push Toy category removed 2026-07-14 — the push toy is now a
+     stage inside Straight Line Travel, Category 4: slt-withcane-toy.
+     Old id `push-race` retired; pre-pilot orphan records accepted.)
+     ============================================================== */
+  /* ===== Terrain Game — three stages ============================
+     Rebuilt 2026-07-14 from field videos + the course photo. The
+     course is a LANE of contrasting floor textures laid end to end
+     (e.g. yoga mat → grass mat → tactile paving → doormat), with
+     small red discs as pick-up obstacles for stage 3:
 
-  /* ===== CATEGORY 6 ============================================ */
+       1. Introduction      — the child learns each surface: feet
+                              first (with footwear), then the cane.
+       2. Walk the Course   — the child travels the whole lane with
+                              the cane, naming each surface change.
+       3. Find the Obstacle — a red disc on every mat but one; the
+                              child sweeps, finds, and picks each up.
+
+     The category-level ? sheet teaches the TEACHER how to build the
+     course (help lines + setup video + room photo). The data to
+     watch across stages: SURFACES NAMED (recognition) rising, and
+     TIMES HESITATED (confidence at transitions) falling. */
   {
     category: "Terrain Game",
-    description: "Terrain introduction (without then with cane), border reference, arc movement, trial run, find run, picking obstacles.",
+    description: "A lane of changing floor textures — the child learns each surface, walks the course with the cane, then hunts obstacles across it.",
+    help: [
+      "Build a straight lane of 4–5 contrasting textures laid end to end — e.g. yoga mat → grass mat → tactile paving → doormat. Any mats you have work; what matters is that each one feels and sounds different underfoot.",
+      "Leave no gaps between mats — every step should land on a texture, and each border is a 'surface change' the child learns to catch.",
+      "Keep small red discs (or toffees) handy — they become the obstacles in stage 3.",
+      "Run the stages in order: Introduction → Walk the Course → Find the Obstacle. Two lanes side by side let two children run without waiting."
+    ],
+    helpVideo: "demo-terrain-setup.mp4",
+    helpImage: "help-terrain-setup.jpg",
     activities: [
       {
         id: "terrain-intro",
-        name: "Terrain Introduction",
+        name: "Terrain — Introduction",
         withCane: false,
         sop: [
-          "Introduce the different mats/terrains while the child wears footwear.",
-          "Let the child feel how the surface changes (tactile and sound).",
-          "Then repeat the introduction with the cane."
+          "Walk the child over the lane with footwear on, one mat at a time.",
+          "On each mat, let the child stop and feel it — underfoot and by its sound — and say its name.",
+          "Repeat the lane with the cane: the tip touches each new surface first.",
+          "Ask the child to name each surface as they reach it."
         ],
-        facilitatorNote: "",
+        facilitatorNote: "Feet first, cane second — the order is deliberate: the child's own soles learn the textures, then the cane becomes an extension of them. Give each surface a short, consistent name ('grass', 'bumpy', 'lines') and keep the same names in every session — the names are what the later stages score. No hurry here; this stage is exploration, not travel.",
+        // DRAFT translation (machine-drafted 2026-07-14) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1
+        // with `sop` above, as required by generate-audio.js.
+        sopTranslations: {
+          hi: [
+            "बच्चे को जूते पहनाकर लेन पर चलाएँ — एक बार में एक मैट।",
+            "हर मैट पर बच्चे को रुकने दें और उसे महसूस करने दें — पैरों से और उसकी आवाज़ से — और उसका नाम बोलने दें।",
+            "अब छड़ी के साथ लेन दोहराएँ: छड़ी की नोक हर नई सतह को पहले छुए।",
+            "हर सतह पर पहुँचने पर बच्चे से उसका नाम पूछें।"
+          ]
+        },
         audioFile: "",
         videoFile: "",
         dataFields: [
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
+          { id: "surfaces", label: "Surfaces named correctly", type: "count" },
+          { id: "result",   label: "Did the child get it?",    type: "mastery" },
+          { id: "notes",    label: "Teacher's notes",          type: "teacherNotes" }
+        ]
+      },
+      {
+        id: "terrain-walk",
+        name: "Terrain — Walk the Course",
+        withCane: true,
+        sop: [
+          "Stand the child at the start of the lane, cane tip on the first mat.",
+          "The child walks the full lane, keeping the cane in contact with the floor.",
+          "At every surface change the child stops and names the new surface.",
+          "Count the surfaces named correctly, and every hesitation or stall."
+        ],
+        facilitatorNote: "The skill is the cane announcing the change BEFORE the feet arrive — watch for the tip catching a border and the child reading it. Walk alongside with a light touch; steer, don't turn. A hesitation at a transition is information, not failure — log it and let the child work it out. Fewer hesitations across sessions is the progress line.",
+        // DRAFT translation (machine-drafted 2026-07-14) — content team must
+        // verify wording BEFORE pilot audio is generated.
+        sopTranslations: {
+          hi: [
+            "बच्चे को लेन की शुरुआत पर खड़ा करें, छड़ी की नोक पहले मैट पर।",
+            "बच्चा पूरी लेन चले, छड़ी फ़र्श से लगी रहे।",
+            "हर सतह बदलने पर बच्चा रुककर नई सतह का नाम बोले।",
+            "सही नाम बताई गई सतहें गिनें, और हर झिझक या रुकावट भी।"
+          ]
+        },
+        audioFile: "",
+        videoFile: "demo-terrain-walk.mp4",
+        dataFields: [
+          { id: "surfaces", label: "Surfaces named correctly",  type: "count" },
+          { id: "hesit",    label: "Times hesitated / stopped", type: "count" },
+          { id: "result",   label: "Did the child get it?",     type: "mastery" },
+          { id: "notes",    label: "Teacher's notes",           type: "teacherNotes" }
         ]
       },
       {
         id: "terrain-obstacle",
-        name: "Find & Pick Obstacle (Trial Run)",
+        name: "Terrain — Find the Obstacle",
         withCane: true,
         sop: [
-          "Place an obstacle (e.g. toffee) on each mat; one mat has none.",
-          "Child uses border reference and arc movement to navigate.",
-          "Child finds and picks up the obstacle on each mat."
+          "Place a red disc on every mat except one — don't say which one is empty.",
+          "The child walks the lane, sweeping the cane in an arc from border to border.",
+          "On finding a disc, the child picks it up and carries on.",
+          "Count the discs found; check the child searches the empty mat fully too."
         ],
-        facilitatorNote: "Placing each obstacle on each kind of mat, all of them have toffee except the last one.",
+        facilitatorNote: "Border reference and the arc sweep are what this stage trains — the disc is just the reason to sweep well. The empty mat is the honest test: a child who searches it end to end and moves on has the technique; one who declares it empty after one poke doesn't. A toffee under (or instead of) a disc keeps the hunt worth winning.",
+        // DRAFT translation (machine-drafted 2026-07-14) — content team must
+        // verify wording BEFORE pilot audio is generated.
+        sopTranslations: {
+          hi: [
+            "एक को छोड़कर हर मैट पर एक लाल डिस्क रखें — यह न बताएँ कि कौन-सा खाली है।",
+            "बच्चा लेन पर चले, छड़ी को किनारे से किनारे तक अर्ध-गोले में घुमाते हुए।",
+            "डिस्क मिलने पर बच्चा उसे उठाए और आगे बढ़े।",
+            "मिली डिस्कें गिनें; देखें कि बच्चा खाली मैट को भी पूरा टटोलता है।"
+          ]
+        },
         audioFile: "",
         videoFile: "",
         dataFields: [
-          { id: "found", label: "Obstacles found", type: "count" },
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
+          { id: "found",  label: "Obstacles found",          type: "count" },
+          { id: "result", label: "Did the child get it?",    type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",          type: "teacherNotes" }
         ]
       }
     ]

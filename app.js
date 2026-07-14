@@ -77,7 +77,6 @@ const ICON = {
   catEar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 3-2 4-3 5.5-.8 1.2-.5 2.5-1.5 3.5a2.5 2.5 0 0 1-4-2"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .3"/></svg>',
   catSoundDir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M8 9.5a4 4 0 0 0 0 5"/><path d="M16 9.5a4 4 0 0 1 0 5"/><path d="M5 7a8 8 0 0 0 0 10"/><path d="M19 7a8 8 0 0 1 0 10"/></svg>',
   catFootprints:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5c1.5 0 2 1.5 2 3.5s-.5 4-2 4-2-2-2-4 .5-3.5 2-3.5Z"/><path d="M5.5 14.5c0 1.5 3 1.5 3 0"/><path d="M17 9.5c1.5 0 2 1.5 2 3.5s-.5 4-2 4-2-2-2-4 .5-3.5 2-3.5Z"/><path d="M15.5 19.5c0 1.5 3 1.5 3 0"/></svg>',
-  catPushToy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5 H8"/><path d="M6.5 5 L13.5 16"/><path d="M9 16 H19"/><circle cx="10.5" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg>',
   catTerrain:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8c3-2 5-2 9 0s6 2 9 0"/><path d="M3 13c3-2 5-2 9 0s6 2 9 0"/><path d="M3 18c3-2 5-2 9 0s6 2 9 0"/></svg>',
   catDots:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="1.6"/><circle cx="12" cy="7" r="1.6"/><circle cx="17" cy="7" r="1.6"/><circle cx="7" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="17" cy="12" r="1.6"/><circle cx="7" cy="17" r="1.6"/><circle cx="12" cy="17" r="1.6"/><circle cx="17" cy="17" r="1.6"/></svg>'
 };
@@ -89,10 +88,9 @@ const CATEGORY_ICONS = [
   ICON.compass,       // 0 Direction
   ICON.catEar,        // 1 Sound
   ICON.catSoundDir,   // 2 Sound + Direction
-  ICON.catFootprints, // 3 Straight Line Travel
-  ICON.catPushToy,    // 4 Push Toy
-  ICON.catTerrain,    // 5 Terrain Game
-  ICON.catDots,       // 6 Other Activities
+  ICON.catFootprints, // 3 Straight Line Travel (includes push-toy stage)
+  ICON.catTerrain,    // 4 Terrain Game
+  ICON.catDots,       // 5 Other Activities
 ];
 function catIcon(i){ return CATEGORY_ICONS[i] || ICON.catDots; }
 const CATEGORY_PALETTE = [
@@ -1342,11 +1340,18 @@ function showCategory(ci, dir){
   const helpVideo = hasHelp && cat.helpVideo
     ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(cat.helpVideo)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
     : '';
+  // Optional setup photo — same opt-in pattern as helpVideo. Content team sets
+  // `helpImage` on the category in activities.js (filename at root, bundled
+  // like demo videos). Renders between the demo video and the help lines.
+  const helpImage = hasHelp && cat.helpImage
+    ? `<div class="ref-block"><span class="section-label">Setup example</span><img src="${esc(cat.helpImage)}" alt="How the ${esc(cat.category)} setup looks when laid out" style="width:100%;margin-top:10px;border-radius:14px;"/></div>`
+    : '';
   const helpSheet = hasHelp
     ? `<details class="sop sop-headless" id="catRefSheet">
         <summary class="sop-hidden-summary" tabindex="-1" aria-hidden="true"></summary>
         <div class="sop-body"><div class="sop-inner">
           ${helpVideo}
+          ${helpImage}
           <h2 class="section-label">How to use this category</h2>
           <ol class="sop-list">${cat.help.map(h=>`<li>${esc(h)}</li>`).join('')}</ol>
         </div></div>

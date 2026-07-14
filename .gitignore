@@ -18,3 +18,6 @@ sounds/
 
 # Children's photos bundled locally for demo profiles — NEVER in the repo
 faces/
+
+# Category setup photos (bundled locally + synced to www, like demo videos)
+help-*.jpg
