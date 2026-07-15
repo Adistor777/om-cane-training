@@ -65,6 +65,7 @@ const ICON = {
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>',
   shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"/></svg>',
   logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
   // ---- sound library (soundboard) media-player controls -------------------
   sbPlay:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.87l11-6.8a1 1 0 0 0 0-1.74l-11-6.8A1 1 0 0 0 8 5.2Z"/></svg>',
   sbPause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>',
@@ -369,7 +370,10 @@ function profileById(id){ return loadProfiles().find(p=>p.id===id) || null; }
 async function upsertProfile(profile){
   const list = loadProfiles();
   const i = list.findIndex(p=>p.id===profile.id);
-  if(i===-1) list.unshift(profile); else list[i] = profile;
+  // New children go to the END of the list (design call 2026-07-15): the grid
+  // reads in the order children were added, so long-standing students keep
+  // their familiar spots and the newest face appears last.
+  if(i===-1) list.push(profile); else list[i] = profile;
   return saveProfiles(list);
 }
 function newProfileId(){ return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
@@ -822,6 +826,9 @@ function downscaleImage(file, max){
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function paint(html, dir, stagger, opts){
   opts = opts || {};
+  // Navigating away? Close the help popup FIRST (instant, no animation) so its
+  // borrowed content returns to the outgoing screen before innerHTML wipes it.
+  if(typeof closeRefSheet === 'function') closeRefSheet(true);
   // Default: utilities menu is hidden. The signed-in landing re-shows it.
   if(typeof setMenuVisible === 'function') setMenuVisible(false);
   if(dir === 'none'){
@@ -1335,7 +1342,7 @@ function showCategory(ci, dir){
   const hasHelp = Array.isArray(cat.help) && cat.help.length;
   const helpBtn = hasHelp
     ? `<button type="button" class="help-btn" aria-label="About ${esc(cat.category)} — what to pick and why"
-        aria-expanded="false" onclick="toggleRefSheet(this,'catRefSheet')">?</button>`
+        aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'catRefSheet')">?</button>`
     : '';
   const helpVideo = hasHelp && cat.helpVideo
     ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(cat.helpVideo)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
@@ -1347,15 +1354,12 @@ function showCategory(ci, dir){
     ? `<div class="ref-block"><span class="section-label">Setup example</span><img src="${esc(cat.helpImage)}" alt="How the ${esc(cat.category)} setup looks when laid out" style="width:100%;margin-top:10px;border-radius:14px;"/></div>`
     : '';
   const helpSheet = hasHelp
-    ? `<details class="sop sop-headless" id="catRefSheet">
-        <summary class="sop-hidden-summary" tabindex="-1" aria-hidden="true"></summary>
-        <div class="sop-body"><div class="sop-inner">
+    ? `<div class="ref-src" id="catRefSheet" data-help-title="${esc(cat.category)}" hidden>
           ${helpVideo}
           ${helpImage}
           <h2 class="section-label">How to use this category</h2>
           <ol class="sop-list">${cat.help.map(h=>`<li>${esc(h)}</li>`).join('')}</ol>
-        </div></div>
-      </details>`
+      </div>`
     : '';
   paint(`<section class="cat-group">
     <div class="cat-head"><span class="cat-ic" style="background:${col}">${catIcon(ci)}</span><span class="cat-name" style="color:${pal.deep}">${esc(cat.category)}</span></div>
@@ -1475,7 +1479,7 @@ function profileFormMarkup(editing, bare){
             </div>
           </div>
         </div>
-        <button type="button" class="save" id="saveProfileBtn" onclick="handleProfileSave('${editing ? editing.id : ''}')">${ editing ? 'Save changes' : 'Save child'}</button>
+        <button type="button" class="save" id="saveProfileBtn" onclick="handleProfileSave('${editing ? editing.id : ''}')">${ editing ? 'Save changes' : 'Save info'}</button>
       </fieldset></form>`;
   if(bare) return body;
   return `
@@ -1532,7 +1536,7 @@ function clearPhoto(){
    under consent/, keyed by researchId — the profile holds only the filename.
    WITHDRAWAL DOES NOT DELETE IT (it is the evidence consent existed); child
    deletion and device wipe do. ---- */
-let pendingConsentPhoto = null;   // staged dataURL before Save child
+let pendingConsentPhoto = null;   // staged dataURL before Save info
 function handleConsentPhotoPick(input){
   const file = input.files && input.files[0];
   if(!file) return;
@@ -1855,7 +1859,7 @@ function showChildPicker(catIndex, actIndex, dir, opts){
     <div class="lede-row">
       <h1 class="lede">${esc(act.name)}<small>Who are you working with?</small></h1>
       <button type="button" class="help-btn" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
-        aria-expanded="false" onclick="toggleRefSheet(this,'pickerRefSheet')">?</button>
+        aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'pickerRefSheet')">?</button>
     </div>
     ${sopBlock}
     ${profiles.length ? `<div class="picker-grid">${tiles}</div>` : ''}
@@ -1881,6 +1885,13 @@ async function pickChildAndRun(profileId, catIndex, actIndex){
    record screen. One builder, one toggle, so the two ? buttons are identical:
    demo video → step sequence → facilitator note → Sarvam narration switcher.
    `domId` differentiates the two instances (they never coexist on one screen).
+
+   DESIGN CHANGE 2026-07-15: the ? no longer expands inline. Every ? in the
+   app now opens the SAME animated popup (see helpPopup below), so the help
+   experience is identical on the category, picker and record screens. The
+   builder stashes the content in a hidden div; toggleRefSheet MOVES it into
+   the popup on open and returns it on close (moving, not cloning, keeps any
+   playing narration/demo element intact and its inline handlers wired).
    --------------------------------------------------------------------------- */
 function buildRefSheet(act, domId){
   const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
@@ -1889,24 +1900,85 @@ function buildRefSheet(act, domId){
   const demoVideoHtml = act.videoFile
     ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(act.videoFile)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
     : `<div class="ref-block"><span class="section-label">Demonstration</span><div class="media-slot">${ICON.video}<span>Demo video slot — add a filename in activities.js (videoFile) when available.</span></div></div>`;
-  return `<details class="sop sop-headless" id="${domId}">
-      <summary class="sop-hidden-summary" tabindex="-1" aria-hidden="true"></summary>
-      <div class="sop-body"><div class="sop-inner">
+  return `<div class="ref-src" id="${domId}" data-help-title="${esc(act.name)}" hidden>
         ${demoVideoHtml}
         <h2 class="section-label">Sequence of procedure</h2><ol class="sop-list">${sopSteps}</ol>
         ${noteHtml}
         ${audioHtml}
-      </div></div>
-    </details>`;
+    </div>`;
 }
-// One toggle for any reference sheet, identified by its dom id. Keeps the ?'s
-// aria-expanded honest and scrolls the opened sheet into view.
+/* ---- HELP POPUP — one dialog, lazily created, shared by every ? ---------- */
+let helpPopupState = null; // { src, opener } while open — where to return content/focus
+function ensureHelpPopup(){
+  let ov = document.getElementById('helpOverlay');
+  if(ov) return ov;
+  ov = document.createElement('div');
+  ov.id = 'helpOverlay'; ov.className = 'help-overlay'; ov.hidden = true;
+  ov.innerHTML = `
+    <div class="help-card" role="dialog" aria-modal="true" aria-labelledby="helpPopupTitle">
+      <div class="help-card-head">
+        <h2 class="help-card-title" id="helpPopupTitle"></h2>
+        <button type="button" class="help-close" aria-label="Close help" onclick="closeRefSheet()">${ICON.close}</button>
+      </div>
+      <div class="help-card-body" id="helpPopupBody"></div>
+    </div>`;
+  // Tap the dimmed backdrop (not the card) to dismiss.
+  ov.addEventListener('click', e=>{ if(e.target === ov) closeRefSheet(); });
+  document.body.appendChild(ov);
+  return ov;
+}
+function helpEscListener(e){ if(e.key === 'Escape') closeRefSheet(); }
+// Give borrowed content back to its hidden home (if that screen still exists).
+function restoreHelpContent(){
+  const ov = document.getElementById('helpOverlay');
+  if(!ov) return;
+  const body = ov.querySelector('#helpPopupBody');
+  if(helpPopupState && helpPopupState.src && document.contains(helpPopupState.src)){
+    while(body.firstChild) helpPopupState.src.appendChild(body.firstChild);
+  } else {
+    body.innerHTML = '';
+  }
+  helpPopupState = null;
+}
+// The one entry point every ? button calls. Same name as the old inline
+// toggle so the mental model ("? toggles the reference sheet") survives.
+// The popup title rides on the source div (data-help-title) — set by the
+// builders — so no name ever passes through an inline onclick string.
 function toggleRefSheet(btn, domId){
-  const d = document.getElementById(domId);
-  if(!d) return;
-  d.open = !d.open;
-  btn.setAttribute('aria-expanded', d.open ? 'true' : 'false');
-  if(d.open){ d.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+  const src = document.getElementById(domId);
+  if(!src) return;
+  const ov = ensureHelpPopup();
+  if(!ov.hidden){ closeRefSheet(); return; } // ? acts as close while open
+  restoreHelpContent(); // safety: reclaim anything a previous screen left behind
+  const body = ov.querySelector('#helpPopupBody');
+  while(src.firstChild) body.appendChild(src.firstChild);
+  ov.querySelector('#helpPopupTitle').textContent = src.getAttribute('data-help-title') || 'How to run this activity';
+  helpPopupState = { src, opener: btn };
+  ov.hidden = false;
+  // Two-frame open so the transition actually runs from the hidden state.
+  requestAnimationFrame(()=> requestAnimationFrame(()=> ov.classList.add('open')));
+  document.body.style.overflow = 'hidden'; // page behind must not scroll
+  btn.setAttribute('aria-expanded','true');
+  document.addEventListener('keydown', helpEscListener);
+  const closeBtn = ov.querySelector('.help-close');
+  if(closeBtn) closeBtn.focus({preventScroll:true});
+}
+function closeRefSheet(instant){
+  const ov = document.getElementById('helpOverlay');
+  if(!ov || ov.hidden) return;
+  // Silence any demo video / narration before it goes back to its hidden home.
+  ov.querySelectorAll('video,audio').forEach(m=>{ try{ m.pause(); }catch(_){} });
+  document.body.style.overflow = '';
+  document.removeEventListener('keydown', helpEscListener);
+  const opener = helpPopupState && helpPopupState.opener;
+  if(opener && document.contains(opener)){
+    opener.setAttribute('aria-expanded','false');
+    if(!instant) opener.focus({preventScroll:true});
+  }
+  const finish = ()=>{ ov.hidden = true; restoreHelpContent(); };
+  ov.classList.remove('open');
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(instant || reduced){ finish(); } else { setTimeout(finish, 300); } // matches CSS .28s
 }
 /* ---------------------------------------------------------------------------
    SOUND LIBRARY (soundboard) — rendered on activities with soundboard:true.
@@ -2204,7 +2276,7 @@ function showActivity(catIndex, actIndex, opts){
     <div class="lede-row">
       <h1 class="lede">${esc(act.name)}<small>${esc(cat.category)}</small></h1>
       <button type="button" class="help-btn" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
-        aria-expanded="false" onclick="toggleRefSheet(this,'actRefSheet')">?</button>
+        aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'actRefSheet')">?</button>
     </div>
     ${refSheet}
     ${childBar}

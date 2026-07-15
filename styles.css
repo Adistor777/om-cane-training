@@ -572,15 +572,45 @@
   @media (hover:hover){ .help-btn:hover{ background:var(--card); border-color:var(--cat); } }
   .help-btn:active{ background:var(--card); }
   .help-btn:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
-  /* Headless SOP: no visible summary bar — the ? button is the only control.
-     The summary is kept in the DOM (details needs it) but collapsed to nothing.
-     When CLOSED the whole box disappears (no border/padding/background); the
-     border + padding only paint once it's open via the ?. */
-  details.sop-headless > summary.sop-hidden-summary{ display:none; }
-  details.sop-headless{ margin-top:0; margin-bottom:0; }
-  details.sop-headless:not([open]){ border-color:transparent; padding:0; }
-  details.sop-headless[open]{ margin-top:var(--s2); margin-bottom:var(--s3); }
-  details.sop-headless .sop-inner .section-label{ margin-top:0; }
+  /* HELP POPUP — what the ? opens (2026-07-15: replaced the inline headless
+     <details> sheet so every ? in the app behaves identically). One dialog,
+     built once by app.js (ensureHelpPopup); each screen's reference content
+     lives in a hidden .ref-src div and is MOVED into the card while open.
+     Motion: backdrop fades, card rises + settles — .28s on the house ease.
+     Restraint rules still apply: card surface, one shadow (the card IS the
+     elevated/important thing), Inter 600 title — the serif stays on .lede. */
+  .ref-src{ display:none; }
+  .help-overlay{ position:fixed; inset:0; z-index:80; display:flex; align-items:flex-end;
+    justify-content:center; padding:var(--s2); background:rgba(34,32,27,.4);
+    opacity:0; transition:opacity .28s var(--ease); }
+  .help-overlay[hidden]{ display:none; }
+  .help-overlay.open{ opacity:1; }
+  /* Phones: bottom sheet (thumb-reachable close). Larger screens: centred card. */
+  @media (min-width:560px){ .help-overlay{ align-items:center; } }
+  .help-card{ width:100%; max-width:560px; max-height:min(86vh, 86dvh); overflow-y:auto;
+    -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+    box-shadow:var(--shadow-lift); padding:var(--s3);
+    transform:translateY(24px); opacity:0;
+    transition:transform .28s var(--ease), opacity .28s var(--ease); }
+  .help-overlay.open .help-card{ transform:translateY(0); opacity:1; }
+  .help-card-head{ display:flex; align-items:center; gap:var(--s2); margin-bottom:var(--s2);
+    padding-bottom:var(--s2); border-bottom:1px solid var(--line-soft); }
+  .help-card-title{ flex:1; min-width:0; margin:0; font-family:"Inter",sans-serif;
+    font-weight:600; font-size:var(--t-title); color:var(--ink); line-height:1.3; }
+  .help-close{ flex:0 0 auto; width:42px; height:42px; border-radius:50%;
+    background:var(--cat-soft); color:var(--cat-deep); border:1px solid var(--cat-line);
+    cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .help-close svg{ width:19px; height:19px; }
+  @media (hover:hover){ .help-close:hover{ background:var(--card); border-color:var(--cat); } }
+  .help-close:active{ background:var(--card); }
+  .help-close:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .help-card-body .section-label:first-child{ margin-top:0; }
+  .help-card-body .ref-block:first-child .section-label{ margin-top:0; }
+  @media (prefers-reduced-motion:reduce){
+    .help-overlay, .help-card{ transition:none !important; }
+    .help-card{ transform:none; }
+  }
   /* "Active" pseudo-badge — quiet, not a third accent: it borrows the category
      soft tint already in play on this surface. */
   .active-tag{ display:inline-block; font-size:var(--t-micro); font-weight:600; letter-spacing:.02em;
