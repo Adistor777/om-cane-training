@@ -1916,6 +1916,7 @@ function ensureHelpPopup(){
   ov.id = 'helpOverlay'; ov.className = 'help-overlay'; ov.hidden = true;
   ov.innerHTML = `
     <div class="help-card" role="dialog" aria-modal="true" aria-labelledby="helpPopupTitle">
+      <div class="help-handle" aria-hidden="true"></div>
       <div class="help-card-head">
         <h2 class="help-card-title" id="helpPopupTitle"></h2>
         <button type="button" class="help-close" aria-label="Close help" onclick="closeRefSheet()">${ICON.close}</button>
@@ -1924,10 +1925,54 @@ function ensureHelpPopup(){
     </div>`;
   // Tap the dimmed backdrop (not the card) to dismiss.
   ov.addEventListener('click', e=>{ if(e.target === ov) closeRefSheet(); });
+  const card = ov.querySelector('.help-card');
+  const body = ov.querySelector('.help-card-body');
+  // Header hairline appears only once content actually scrolls beneath it.
+  body.addEventListener('scroll', ()=>{ card.classList.toggle('is-scrolled', body.scrollTop > 4); }, {passive:true});
+  // Swipe-down on the handle/header dismisses the sheet (phones). The card
+  // tracks the finger 1:1; past the threshold the closing transition takes
+  // over FROM the dragged position, otherwise it springs back.
+  let dragFrom = null, dragY = 0;
+  const onDragStart = e=>{ dragFrom = e.touches[0].clientY; dragY = 0; card.style.transition = 'none'; };
+  const onDragMove = e=>{
+    if(dragFrom === null) return;
+    dragY = Math.max(0, e.touches[0].clientY - dragFrom);
+    card.style.transform = 'translateY(' + dragY + 'px)';
+  };
+  const onDragEnd = ()=>{
+    if(dragFrom === null) return;
+    const y = dragY; dragFrom = null; dragY = 0;
+    if(y > 80){
+      closeRefSheet(); // removes .open + adds .closing (transition re-enabled next frame)
+      requestAnimationFrame(()=>{ card.style.transition = ''; card.style.transform = ''; });
+    } else {
+      card.style.transition = ''; card.style.transform = ''; // spring back
+    }
+  };
+  const head = ov.querySelector('.help-card-head');
+  const handle = ov.querySelector('.help-handle');
+  [head, handle].forEach(el=>{
+    el.addEventListener('touchstart', onDragStart, {passive:true});
+    el.addEventListener('touchmove', onDragMove, {passive:true});
+    el.addEventListener('touchend', onDragEnd);
+    el.addEventListener('touchcancel', onDragEnd);
+  });
   document.body.appendChild(ov);
   return ov;
 }
-function helpEscListener(e){ if(e.key === 'Escape') closeRefSheet(); }
+// One keydown handler while open: Esc dismisses, Tab is trapped inside the
+// dialog (cycles through the card's own controls — close, video, narration).
+function helpKeyListener(e){
+  if(e.key === 'Escape'){ closeRefSheet(); return; }
+  if(e.key !== 'Tab') return;
+  const ov = document.getElementById('helpOverlay');
+  if(!ov || ov.hidden) return;
+  const focusables = ov.querySelectorAll('button, [href], input, select, textarea, video[controls], audio[controls], [tabindex]:not([tabindex="-1"])');
+  if(!focusables.length) return;
+  const first = focusables[0], last = focusables[focusables.length - 1];
+  if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+}
 // Give borrowed content back to its hidden home (if that screen still exists).
 function restoreHelpContent(){
   const ov = document.getElementById('helpOverlay');
@@ -1954,12 +1999,17 @@ function toggleRefSheet(btn, domId){
   while(src.firstChild) body.appendChild(src.firstChild);
   ov.querySelector('#helpPopupTitle').textContent = src.getAttribute('data-help-title') || 'How to run this activity';
   helpPopupState = { src, opener: btn };
+  // Fresh start every open: scrolled to the top, no leftover scroll hairline.
+  const bodyEl = ov.querySelector('.help-card-body');
+  bodyEl.scrollTop = 0;
+  ov.querySelector('.help-card').classList.remove('is-scrolled');
+  ov.classList.remove('closing');
   ov.hidden = false;
   // Two-frame open so the transition actually runs from the hidden state.
   requestAnimationFrame(()=> requestAnimationFrame(()=> ov.classList.add('open')));
   document.body.style.overflow = 'hidden'; // page behind must not scroll
   btn.setAttribute('aria-expanded','true');
-  document.addEventListener('keydown', helpEscListener);
+  document.addEventListener('keydown', helpKeyListener);
   const closeBtn = ov.querySelector('.help-close');
   if(closeBtn) closeBtn.focus({preventScroll:true});
 }
@@ -1969,16 +2019,17 @@ function closeRefSheet(instant){
   // Silence any demo video / narration before it goes back to its hidden home.
   ov.querySelectorAll('video,audio').forEach(m=>{ try{ m.pause(); }catch(_){} });
   document.body.style.overflow = '';
-  document.removeEventListener('keydown', helpEscListener);
+  document.removeEventListener('keydown', helpKeyListener);
   const opener = helpPopupState && helpPopupState.opener;
   if(opener && document.contains(opener)){
     opener.setAttribute('aria-expanded','false');
     if(!instant) opener.focus({preventScroll:true});
   }
-  const finish = ()=>{ ov.hidden = true; restoreHelpContent(); };
+  const finish = ()=>{ ov.hidden = true; ov.classList.remove('closing'); restoreHelpContent(); };
   ov.classList.remove('open');
+  ov.classList.add('closing'); // exit runs shorter + accelerating (see CSS)
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(instant || reduced){ finish(); } else { setTimeout(finish, 300); } // matches CSS .28s
+  if(instant || reduced){ finish(); } else { setTimeout(finish, 240); } // matches CSS .22s exit
 }
 /* ---------------------------------------------------------------------------
    SOUND LIBRARY (soundboard) — rendered on activities with soundboard:true.
