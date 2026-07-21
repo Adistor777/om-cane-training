@@ -3,6 +3,10 @@ const brandEl = document.getElementById('brand');
 const crumbEl = document.getElementById('crumb');
 const backBtn = document.getElementById('backBtn');
 const homeDot = document.getElementById('homeDot');
+// DESIGN (2026-07-15): the home chip shows ONE mark — the house — on every
+// screen. It used to swap per screen (list glyph, category icon, …), which
+// made it read as a menu/status indicator when it is actually a Home button.
+// One icon, one meaning, one behaviour. Don't reintroduce per-screen icons.
 // Tapping the header home-dot returns to Home — but only when signed in, so it
 // never short-circuits the login/welcome screens (where it's just a mark).
 function goHomeFromDot(){ if(isLoggedIn() && Store.getString(WELCOME_SEEN,'')==='1') showHome('back'); }
@@ -1007,7 +1011,7 @@ function showHome(dir){
   paint(`
     <h1 class="lede">Today<small>Pick a student, then run an activity.</small></h1>
     <div class="hub-actions">
-      <button class="action-row primary-action" onclick="showActivityList('fwd')">
+      <button class="action-row" onclick="showActivityList('fwd')">
         <span class="action-ic">${ICON.compass}</span>
         <span class="action-text"><strong>Activities</strong><small>Choose an activity, then the student to run it with</small></span>
         <span class="action-go">${ICON.chevronRight}</span>
@@ -1026,7 +1030,11 @@ function showHome(dir){
 function showHub(dir, opts){ showHome(dir); }
 
 async function handleLogout(){
-  if(!window.confirm('Sign out? You can sign back in from the school list.')) return;
+  const go = await askConfirm({
+    title:'Sign out?',
+    body:'You can sign back in any time from the school list. Nothing on this device is deleted.',
+    confirmLabel:'Sign out' });
+  if(!go) return;
   await logOut();
   loginSelSchoolId = '';
   showLogin('back');
@@ -1087,7 +1095,7 @@ function showStudents(dir, opts){
   crumbEl.textContent = 'Students';
   backBtn.style.display = 'flex';
   backBtn.onclick = ()=>showHub('back');
-  homeDot.innerHTML = ICON.user;
+  homeDot.innerHTML = ICON.home;
   resetTheme();
   const profiles = loadProfiles();
   const activeId = getActiveProfileId();
@@ -1140,7 +1148,7 @@ function showManageData(dir){
   crumbEl.textContent = 'Stored data';
   backBtn.style.display = 'flex';
   backBtn.onclick = ()=>showHome('back');
-  homeDot.innerHTML = ICON.database;
+  homeDot.innerHTML = ICON.home;
   resetTheme();
   const profiles = loadProfiles();
   const childRows = profiles.length
@@ -1185,7 +1193,7 @@ function showChildDetail(profileId, opts){
   const from = opts.from || childDetailFrom || 'students';
   childDetailFrom = from;
   backBtn.onclick = ()=> from === 'manage' ? showManageData('back') : showStudents('back');
-  homeDot.innerHTML = ICON.user;
+  homeDot.innerHTML = ICON.home;
   resetTheme();
   const groups = recordsForProfile(profileId);
   const total = groups.reduce((n,g)=>n+g.records.length, 0);
@@ -1253,7 +1261,11 @@ function childRecordRow(r, resultLabels, activityId){
 // Delete a result from the child-detail screen, then re-render that screen in
 // place (not the activity screen, where the sibling delete returns).
 async function confirmDeleteRecordFromChild(activityId, recordId, profileId){
-  if(!window.confirm('Delete this saved result?\n\nThis cannot be undone.')) return;
+  const go = await askConfirm({
+    title:'Delete this result?',
+    body:'This one saved result will be permanently removed. This cannot be undone.',
+    confirmLabel:'Delete result', danger:true });
+  if(!go) return;
   const ok = await deleteRecord(activityId, recordId);
   if(!ok){ toast('Could not delete — please try again.'); return; }
   toast('Result deleted');
@@ -1262,18 +1274,29 @@ async function confirmDeleteRecordFromChild(activityId, recordId, profileId){
 async function confirmDeleteChild(id){
   const p = profileById(id); if(!p) return;
   const n = recordCountForProfile(id);
-  const msg = `Remove ${p.name}${n? ` and their ${n} saved ${n===1?'result':'results'}`:''}?\n\nThis cannot be undone. If you haven't exported a CSV backup, cancel and export first.`;
-  if(!window.confirm(msg)) return;
+  const go = await askConfirm({
+    title:`Remove ${esc(p.name)}?`,
+    body:`${esc(p.name)}'s profile${n? ` and their <strong>${n} saved ${n===1?'result':'results'}</strong>`:''} will be permanently removed. This cannot be undone — if you haven't exported a CSV backup yet, cancel and export first.`,
+    confirmLabel:`Remove ${esc(p.name)}`, danger:true });
+  if(!go) return;
   const ok = await deleteProfile(id);
   toast(ok ? `Removed ${p.name}` : 'Could not remove — please try again.');
   showManageData('none');
 }
 async function confirmClearAll(){
   const profiles = loadProfiles().length;
-  if(!profiles && !gatherAllRecords().length){ toast('There is no data to clear.'); return; }
-  // Two-step confirm for the irreversible wipe.
-  if(!window.confirm('Clear ALL data on this device?\n\nEvery child and every saved result will be permanently deleted. Export a CSV backup first if you need one.')) return;
-  if(!window.confirm('Are you sure? This cannot be undone.')) return;
+  const results = gatherAllRecords().length;
+  if(!profiles && !results){ toast('There is no data to clear.'); return; }
+  // ONE dialog with real counts + an explicit "I understand" tick (replaces
+  // the old double window.confirm — two stacked yes/no boxes teach people to
+  // click through; a named consequence + armed button makes them read).
+  const go = await askConfirm({
+    title:'Clear all data on this device?',
+    body:`This permanently deletes <strong>${profiles} ${profiles===1?'child':'children'}</strong> and <strong>${results} saved ${results===1?'result':'results'}</strong>. The CSV export is the only backup.`,
+    extra:`<button type="button" class="confirm-export" onclick="exportCSV()">${ICON.download} Export CSV first</button>`,
+    ack:'I understand this cannot be undone',
+    confirmLabel:'Clear all data', danger:true });
+  if(!go) return;
   await clearAllData();
   toast('All data cleared');
   showHome('back');
@@ -1287,7 +1310,7 @@ function showActivityList(dir){
   crumbEl.textContent = 'Activities';
   backBtn.style.display = 'flex';
   backBtn.onclick = ()=>showHub('back');
-  homeDot.innerHTML = ICON.list;
+  homeDot.innerHTML = ICON.home;
   resetTheme();
   const tiles = [];
   ACTIVITY_DATA.forEach((cat,ci)=>{
@@ -1314,7 +1337,7 @@ function showCategory(ci, dir){
   crumbEl.textContent = cat.category;
   backBtn.style.display = 'flex';
   backBtn.onclick = ()=>showActivityList('back');
-  homeDot.innerHTML = catIcon(ci);
+  homeDot.innerHTML = ICON.home;
   themeFor(ci);
   const pal = CATEGORY_PALETTE[ci % CATEGORY_PALETTE.length];
   const col = catColor(ci);
@@ -1728,7 +1751,10 @@ async function handleProfileSave(existingId){
   if(existingId){ showChildDetail(profile.id, { dir:'none' }); }
   else if(pendingPickerReturn){
     const ctx = pendingPickerReturn; pendingPickerReturn = null;
-    showChildPicker(ctx.catIndex, ctx.actIndex, 'none', { skipLedeFocus:true });
+    // A child added mid-roster joins the batch PRE-SELECTED and marked New —
+    // the teacher asked for them, so don't make them tap the face again.
+    if(!rosterSel.includes(profile.id)) rosterSel.push(profile.id);
+    showChildPicker(ctx.catIndex, ctx.actIndex, 'none', { skipLedeFocus:true, newId: profile.id });
   }
   else showStudents('none');
 }
@@ -1811,6 +1837,12 @@ function audioMissing(){
    active. The ? in the lede row reveals the activity's step sequence.
    --------------------------------------------------------------------------- */
 let pendingPickerReturn = null; // {catIndex, actIndex} — set while adding a child from the picker
+/* BATCH ROSTER (2026-07-21, replaces the single-child picker): activities run
+   in batches, so the face grid is now a MULTI-select. Tap faces to build the
+   roster, then one CTA starts the activity with everyone selected. A solo
+   session is simply a batch of one — one flow, one mental model. */
+let rosterSel = [];   // profileIds ticked in the picker (survives add-student round-trips)
+let batchRoster = []; // the roster locked in when Start is tapped; consumed by showActivity
 function showChildPicker(catIndex, actIndex, dir, opts){
   opts = opts || {};
   const cat = ACTIVITY_DATA[catIndex];
@@ -1824,10 +1856,12 @@ function showChildPicker(catIndex, actIndex, dir, opts){
   crumbEl.textContent = act.name;
   backBtn.style.display = 'flex';
   backBtn.onclick = ()=>showCategory(catIndex,'back');
-  homeDot.innerHTML = catIcon(catIndex);
+  homeDot.innerHTML = ICON.home;
   themeFor(catIndex);
 
   const profiles = loadProfiles();
+  // Drop selections whose child no longer exists (deleted between visits).
+  rosterSel = rosterSel.filter(id=>profiles.some(p=>p.id===id));
   // No children yet → drop straight into the add form, same as the Students screen.
   const formOpen = !!opts.addForm || profiles.length === 0;
 
@@ -1835,8 +1869,13 @@ function showChildPicker(catIndex, actIndex, dir, opts){
     const face = p.photo
       ? `<img class="face" src="${p.photo}" alt="">`
       : `<span class="face">${esc((p.name||'?').trim().charAt(0).toUpperCase())}</span>`;
-    return `<button type="button" class="pick-tile" onclick="pickChildAndRun('${p.id}',${catIndex},${actIndex})">
-      ${face}<span class="pick-name">${esc(p.name)}</span>
+    const sel = rosterSel.includes(p.id);
+    const isNew = opts.newId === p.id;
+    return `<button type="button" class="pick-tile roster-tile${sel?' sel':''}" id="tile_${p.id}"
+      aria-pressed="${sel}" onclick="rosterToggle('${p.id}')">
+      ${face}<span class="roster-tick" aria-hidden="true">${ICON.check}</span>
+      ${isNew ? '<span class="roster-new">New</span>' : ''}
+      <span class="pick-name">${esc(p.name)}</span>
     </button>`;
   }).join('');
 
@@ -1844,9 +1883,8 @@ function showChildPicker(catIndex, actIndex, dir, opts){
   // narration), fully hidden until the ? is used.
   const sopBlock = buildRefSheet(act, 'pickerRefSheet');
 
-  // Single add path: the "Add a new student" disclosure below the grid. (There
-  // was previously also a dashed add-tile in the grid; removed so there's one
-  // unambiguous way to add a child.) Auto-opens when there are no children yet.
+  // Single add path: the "Add a new student" disclosure below the grid. A child
+  // added from HERE joins the roster pre-selected (see handleProfileSave).
   const addForm = `<details class="disclosure" id="pickerAddForm" ${formOpen?'open':''}>
       <summary>${ICON.plus}<span class="disclosure-label">Add a new student</span><span class="chev">${ICON.chevron}</span></summary>
       <div class="sop-body"><div class="sop-inner">${profileFormMarkup(null, true)}</div></div>
@@ -1857,27 +1895,70 @@ function showChildPicker(catIndex, actIndex, dir, opts){
 
   paint(`
     <div class="lede-row">
-      <h1 class="lede">${esc(act.name)}<small>Who are you working with?</small></h1>
+      <h1 class="lede">${esc(act.name)}<small>Who is doing this activity? Tap everyone taking part.</small></h1>
       <button type="button" class="help-btn" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
         aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'pickerRefSheet')">?</button>
     </div>
     ${sopBlock}
-    ${profiles.length ? `<div class="picker-grid">${tiles}</div>` : ''}
+    ${profiles.length ? `
+      <div class="roster-selbar">
+        <span class="roster-count" id="rosterCount" aria-live="polite"></span>
+        <button type="button" class="roster-all" id="rosterAllBtn" onclick="rosterSelectAll()">Select all</button>
+      </div>
+      <div class="picker-grid">${tiles}</div>` : ''}
     ${addForm}
+    ${profiles.length ? `<button type="button" class="save roster-cta" id="rosterCta" onclick="startBatch(${catIndex},${actIndex})"></button>` : ''}
   `, dir || 'fwd', true, { skipLedeFocus: !!opts.skipLedeFocus });
 
+  rosterPaintCount();
   // When there are no children at all, the add form is the only path — open it
   // and the SOP stays available behind the ?.
   if(formOpen && profiles.length === 0){
     const d = document.getElementById('pickerAddForm'); if(d) d.open = true;
   }
 }
-// Select a child, then continue into the activity run screen.
-async function pickChildAndRun(profileId, catIndex, actIndex){
-  await setActiveProfileId(profileId);
-  const p = profileById(profileId);
-  if(p) await setStudent(p.name);
+function rosterToggle(id){
+  const i = rosterSel.indexOf(id);
+  if(i === -1) rosterSel.push(id); else rosterSel.splice(i,1);
+  const tile = document.getElementById('tile_'+id);
+  if(tile){ tile.classList.toggle('sel', i === -1); tile.setAttribute('aria-pressed', i === -1 ? 'true' : 'false'); }
+  rosterPaintCount();
+}
+function rosterSelectAll(){
+  const all = loadProfiles().map(p=>p.id);
+  const everyone = rosterSel.length === all.length;
+  rosterSel = everyone ? [] : all; // toggles: Select all ⇄ Clear
+  all.forEach(id=>{
+    const t = document.getElementById('tile_'+id);
+    if(t){ t.classList.toggle('sel', !everyone); t.setAttribute('aria-pressed', String(!everyone)); }
+  });
+  rosterPaintCount();
+}
+// One place keeps the count line, the Select-all label and the CTA honest.
+function rosterPaintCount(){
+  const total = loadProfiles().length;
+  const n = rosterSel.length;
+  const cnt = document.getElementById('rosterCount');
+  if(cnt) cnt.textContent = `${n} of ${total} selected`;
+  const allBtn = document.getElementById('rosterAllBtn');
+  if(allBtn) allBtn.textContent = (n === total && total > 0) ? 'Clear' : 'Select all';
+  const cta = document.getElementById('rosterCta');
+  if(cta){
+    cta.textContent = n ? `Start with ${n} ${n===1?'student':'students'}` : 'Select at least one student';
+    cta.disabled = !n;
+  }
+}
+async function startBatch(catIndex, actIndex){
+  if(!rosterSel.length) return;
+  batchRoster = rosterSel.slice();
   pendingPickerReturn = null;
+  // Batch of ONE keeps full parity with the old solo flow (incl. the video
+  // evidence control, which is consent-gated per child via the active profile).
+  if(batchRoster.length === 1){
+    await setActiveProfileId(batchRoster[0]);
+    const p = profileById(batchRoster[0]);
+    if(p) await setStudent(p.name);
+  }
   showActivity(catIndex, actIndex, { dir:'fwd' });
 }
 /* ---------------------------------------------------------------------------
@@ -1959,6 +2040,57 @@ function ensureHelpPopup(){
   });
   document.body.appendChild(ov);
   return ov;
+}
+/* ---- CONFIRM DIALOG — styled replacement for window.confirm() ------------
+   Same cuboid card + motion as the help popup, so destructive moments feel
+   like part of the app instead of a browser interruption. Best-practice
+   shape: consequences stated with REAL COUNTS, Cancel is the focused
+   default, the destructive button is rust-red, and irreversible bulk
+   actions demand an explicit "I understand" tick before the button arms.
+   Returns a Promise<boolean> — await it exactly like window.confirm. */
+function askConfirm(opts){
+  return new Promise(resolve=>{
+    const prev = document.getElementById('confirmOverlay');
+    if(prev) prev.remove();
+    const ov = document.createElement('div');
+    ov.id = 'confirmOverlay'; ov.className = 'help-overlay';
+    const ackHtml = opts.ack
+      ? `<label class="confirm-ack"><input type="checkbox" id="confirmAck"><span>${opts.ack}</span></label>`
+      : '';
+    ov.innerHTML = `
+      <div class="help-card confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+        <div class="help-card-head"><h2 class="help-card-title" id="confirmTitle">${opts.title}</h2></div>
+        <div class="help-card-body">
+          <p class="confirm-body" id="confirmBody">${opts.body}</p>
+          ${opts.extra || ''}
+          ${ackHtml}
+          <div class="confirm-actions">
+            <button type="button" class="confirm-cancel" id="confirmCancel">${opts.cancelLabel || 'Cancel'}</button>
+            <button type="button" class="save confirm-go ${opts.danger ? 'danger-btn' : ''}" id="confirmGo" ${opts.ack ? 'disabled' : ''}>${opts.confirmLabel || 'Confirm'}</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const settle = val=>{
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+      ov.classList.remove('open'); ov.classList.add('closing');
+      setTimeout(()=>{ ov.remove(); resolve(val); }, 240);
+    };
+    const onKey = e=>{ if(e.key === 'Escape') settle(false); };
+    ov.addEventListener('click', e=>{ if(e.target === ov) settle(false); });
+    ov.querySelector('#confirmCancel').onclick = ()=>settle(false);
+    ov.querySelector('#confirmGo').onclick = ()=>settle(true);
+    if(opts.ack){
+      ov.querySelector('#confirmAck').addEventListener('change', e=>{
+        ov.querySelector('#confirmGo').disabled = !e.target.checked;
+      });
+    }
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(()=> requestAnimationFrame(()=> ov.classList.add('open')));
+    ov.querySelector('#confirmCancel').focus({preventScroll:true}); // safe default
+  });
 }
 // One keydown handler while open: Esc dismisses, Tab is trapped inside the
 // dialog (cycles through the card's own controls — close, video, narration).
@@ -2302,25 +2434,54 @@ function showActivity(catIndex, actIndex, opts){
   crumbEl.textContent = cat.category;
   backBtn.style.display = 'flex';
   backBtn.onclick = ()=>{ if(typeof SB !== 'undefined') SB.reset(); if(typeof CB !== 'undefined') CB.reset(); showCategory(catIndex,'back'); };
-  homeDot.innerHTML = catIcon(catIndex);
+  homeDot.innerHTML = ICON.home;
   themeFor(catIndex);
   const audioHtml = buildAudioHtml(act);
-  const fields = act.dataFields.map(f=>buildField(f)).join('');
   const resultLabels = act.dataFields.filter(f=>f.type==='result'||f.type==='mastery').map(f=>f.label);
   const records = loadRecords(act.id);
   const recHtml = records.length ? records.map(r=>renderRecord(r, resultLabels, act.id)).join('') : '<p class="empty">No results logged yet — run the activity, then record below.</p>';
-  // GROUP mode: one result for the whole group, no child selected. The bar
-  // states that plainly so the teacher isn't hunting for a face grid. Any
-  // previously active child is irrelevant here and deliberately not shown.
   const isGroup = !!act.group;
-  const activeChild = isGroup ? null : getActiveProfile();
+  // Non-group activities run on the BATCH ROSTER. No roster (deep link, stale
+  // state) → back to the picker; the record sheet is meaningless without one.
+  if(!isGroup && !batchRoster.length){ showChildPicker(catIndex, actIndex, opts.dir || 'fwd'); return; }
+  const rosterKids = isGroup ? [] : batchRoster.map(id=>profileById(id)).filter(Boolean);
+  const solo = !isGroup && rosterKids.length === 1;
+  // GROUP mode: one result for the whole group. Otherwise the roster bar names
+  // the batch and offers one way back to change it.
   const childBar = isGroup
     ? `<div class="activechild"><span class="avatar">${ICON.user}</span><span class="who">Whole group<small>One result for the group — no child selection</small></span></div>`
-    : activeChild
-    ? `<div class="activechild">${avatarFor(activeChild,'avatar')}<span class="who">${esc(activeChild.name)}<small>${childSub(activeChild) || 'Active child'}</small></span><button type="button" class="swap" onclick="showHub('back')">Change</button></div>`
-    : `<div class="activechild"><span class="avatar">${ICON.user}</span><span class="who">No child selected<small>Pick or add a child before recording</small></span><button type="button" class="swap" onclick="showHub('back')">Choose</button></div>`;
+    : `<div class="activechild"><span class="avatar">${ICON.user}</span><span class="who">${rosterKids.length} ${rosterKids.length===1?'student':'students'} in this batch<small>${esc(rosterKids.map(p=>p.name).join(', '))}</small></span><button type="button" class="swap" onclick="showChildPicker(${catIndex},${actIndex},'back')">Change</button></div>`;
   // Reset any video staged from a previous record on this screen.
   pendingVideo = null;
+  // FORM AREA. Group + solo keep the single flat form (solo = batch of one,
+  // full parity incl. video evidence). A batch of 2+ renders the RESULT SHEET:
+  // one row per child, big tick = achieved, tap the row for optional detail
+  // (the activity's own fields, namespaced per child). Sheet video capture is
+  // deliberately absent for 2+ — clips are consent-gated per child and one
+  // stage can't hold N gates honestly; solo runs keep the control.
+  let formInner, saveBtnHtml;
+  if(isGroup || solo){
+    const fields = act.dataFields.map(f=>buildField(f)).join('');
+    formInner = `${fields}${isGroup ? '' : videoUploadMarkup()}`;
+    // Solo = batch of one = the active profile (set in startBatch), so the
+    // original handleSave path — including video commit — applies unchanged.
+    saveBtnHtml = `<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button>`;
+  } else {
+    formInner = rosterKids.map(p=>{
+      const perChild = act.dataFields.map(f=>buildField(f, '_'+p.id)).join('');
+      return `<div class="rkid" id="rrow_${p.id}">
+        <div class="rkid-top">
+          <button type="button" class="rkid-main" aria-expanded="false" onclick="toggleRosterDetail('${p.id}',this)">
+            ${avatarFor(p,'avatar')}<span class="rkid-name">${esc(p.name)}<small id="rsub_${p.id}">Tap for detail</small></span>
+          </button>
+          <button type="button" class="bigcheck" id="ach_${p.id}" aria-pressed="false"
+            aria-label="${esc(p.name)} achieved this activity" onclick="toggleAchieved('${p.id}',this)">${ICON.check}</button>
+        </div>
+        <div class="rkid-detail" id="rdet_${p.id}" hidden>${perChild}</div>
+      </div>`;
+    }).join('');
+    saveBtnHtml = `<button type="button" class="save" id="saveBtn" onclick="handleBatchSave('${act.id}')">Save results</button>`;
+  }
   // The ? sheet: shared with the child picker — demo, steps, note, narration.
   const refSheet = buildRefSheet(act, 'actRefSheet');
   paint(`
@@ -2334,11 +2495,12 @@ function showActivity(catIndex, actIndex, opts){
     ${buildSoundboard(act)}
     ${buildCommandBoard(act)}
     <div class="panel primary" id="formPanel">
-      <h2 class="panel-title">${ICON.edit} Record a result</h2>
-      <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${fields}${isGroup ? '' : videoUploadMarkup()}<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button></fieldset></form>
+      <h2 class="panel-title">${ICON.edit} ${isGroup || solo ? 'Record a result' : 'Record results — tick who got it'}</h2>
+      <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${formInner}${saveBtnHtml}</fieldset></form>
     </div>
     <div class="panel quiet"><h2 class="panel-title">${ICON.list} Past results</h2><div id="recordList">${recHtml}</div></div>
   `, opts.dir || 'fwd', false, { skipLedeFocus: !!opts.focusForm });
+  if(!isGroup && !solo) batchPaintSave();
   if(opts.focusForm){
     const panel = document.getElementById('formPanel');
     if(panel){ panel.scrollIntoView({behavior:'smooth', block:'start'}); }
@@ -2454,10 +2616,15 @@ async function commitPendingVideo(researchId){
     return null;
   }
 }
-function buildField(f){
-  if(f.type === 'count'){ return `<div class="field"><label for="f_${f.id}">${esc(f.label)}</label><input type="number" id="f_${f.id}" min="0" placeholder="0"></div>`; }
+// `sfx` (optional) namespaces every field id — the batch sheet renders the SAME
+// dataFields once per child as `f_<field>_<profileId>`, so one activity screen
+// can hold N children's inputs without collisions. Solo/group callers omit it.
+function buildField(f, sfx){
+  sfx = sfx || '';
+  const fid = `f_${f.id}${sfx}`;
+  if(f.type === 'count'){ return `<div class="field"><label for="${fid}">${esc(f.label)}</label><input type="number" id="${fid}" min="0" placeholder="0"></div>`; }
   if(f.type === 'result'){
-    return `<div class="field"><label id="lbl_${f.id}">${esc(f.label)}</label><div class="seg" id="f_${f.id}" data-value="" role="group" aria-labelledby="lbl_${f.id}">${['Independent','Prompted','Unable'].map(v=>`<button type="button" onclick="pickSeg('f_${f.id}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
+    return `<div class="field"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label><div class="seg" id="${fid}" data-value="" role="group" aria-labelledby="lbl_${f.id}${sfx}">${['Independent','Prompted','Unable'].map(v=>`<button type="button" onclick="pickSeg('${fid}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
   }
   // 'mastery' — the one-tap scale for simple drills. Plain-language version of
   // the support-level scoring O&M inventories use (independent / prompted /
@@ -2465,7 +2632,7 @@ function buildField(f){
   // a repeat; Not yet = couldn't do it this time (and that's fine — it's a
   // snapshot, not a verdict).
   if(f.type === 'mastery'){
-    return `<div class="field"><label id="lbl_${f.id}">${esc(f.label)}</label><div class="seg" id="f_${f.id}" data-value="" role="group" aria-labelledby="lbl_${f.id}">${['Got it','With help','Not yet'].map(v=>`<button type="button" onclick="pickSeg('f_${f.id}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
+    return `<div class="field"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label><div class="seg" id="${fid}" data-value="" role="group" aria-labelledby="lbl_${f.id}${sfx}">${['Got it','With help','Not yet'].map(v=>`<button type="button" onclick="pickSeg('${fid}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
   }
   // 'teacherNotes' — progressive disclosure: the score is the required tap,
   // the note is optional and stays folded until the teacher wants it. The
@@ -2473,11 +2640,11 @@ function buildField(f){
   if(f.type === 'teacherNotes'){
     return `<details class="tnotes">
       <summary>${ICON.edit}<span class="tnotes-title">${esc(f.label)}</span><span class="tnotes-opt">optional</span></summary>
-      <textarea id="f_${f.id}" placeholder="Anything worth remembering — what helped, what surprised you, what to try next session."></textarea>
+      <textarea id="${fid}" placeholder="Anything worth remembering — what helped, what surprised you, what to try next session."></textarea>
     </details>`;
   }
-  if(f.type === 'checkbox'){ return `<div class="field"><div class="checkrow"><input type="checkbox" id="f_${f.id}"><label for="f_${f.id}">${esc(f.label)}</label></div></div>`; }
-  return `<div class="field"><label for="f_${f.id}">${esc(f.label)}</label><textarea id="f_${f.id}" placeholder="Type any observations..."></textarea></div>`;
+  if(f.type === 'checkbox'){ return `<div class="field"><div class="checkrow"><input type="checkbox" id="${fid}"><label for="${fid}">${esc(f.label)}</label></div></div>`; }
+  return `<div class="field"><label for="${fid}">${esc(f.label)}</label><textarea id="${fid}" placeholder="Type any observations..."></textarea></div>`;
 }
 function pickSeg(groupId, value, btn){
   const group = document.getElementById(groupId);
@@ -2534,6 +2701,64 @@ async function handleSave(activityId){
   else                                             toast('Saved');
   showActivity(state.category, state.activity, { sopCollapsed:true, focusForm:true, dir:'none' });
 }
+/* ---- BATCH SHEET interactions + save (rosters of 2+) ---------------------
+   The tick IS the result: ticked children save `Achieved: Yes` plus whatever
+   detail was entered. Unticked children save `Achieved: No` ONLY if the
+   teacher entered detail for them — an untouched, unticked row writes
+   NOTHING, because absence of a record must not read as failure in the CSV. */
+function toggleAchieved(pid, btn){
+  const on = btn.getAttribute('aria-pressed') !== 'true';
+  btn.setAttribute('aria-pressed', String(on));
+  const row = document.getElementById('rrow_'+pid);
+  if(row) row.classList.toggle('done', on);
+  batchPaintSave();
+}
+function toggleRosterDetail(pid, btn){
+  const det = document.getElementById('rdet_'+pid);
+  if(!det) return;
+  det.hidden = !det.hidden;
+  btn.setAttribute('aria-expanded', String(!det.hidden));
+  const sub = document.getElementById('rsub_'+pid);
+  if(sub && det.hidden) sub.textContent = 'Tap for detail';
+  if(sub && !det.hidden) sub.textContent = 'Optional — score, counts, notes';
+}
+function batchPaintSave(){
+  const btn = document.getElementById('saveBtn');
+  if(!btn) return;
+  const n = document.querySelectorAll('.bigcheck[aria-pressed="true"]').length;
+  btn.textContent = n ? `Save ${n} ${n===1?'result':'results'}` : 'Save results';
+}
+async function handleBatchSave(activityId){
+  const cat = ACTIVITY_DATA[state.category];
+  const act = cat.activities[state.activity];
+  const btn = document.getElementById('saveBtn');
+  if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 400); }
+  let saved = 0, failed = 0;
+  for(const pid of batchRoster){
+    const child = profileById(pid);
+    if(!child) continue;
+    const achBtn = document.getElementById('ach_'+pid);
+    const achieved = !!(achBtn && achBtn.getAttribute('aria-pressed') === 'true');
+    const values = {};
+    let hasDetail = false;
+    act.dataFields.forEach(f=>{
+      const el = document.getElementById('f_'+f.id+'_'+pid);
+      if(!el) return;
+      if(f.type === 'count'){ const v = el.value || ''; if(v && v !== '0') hasDetail = true; values[f.label] = v || '0'; }
+      else if(f.type === 'result' || f.type === 'mastery'){ const v = el.dataset.value || ''; if(v) hasDetail = true; values[f.label] = v || '—'; }
+      else if(f.type === 'checkbox'){ if(el.checked) hasDetail = true; values[f.label] = el.checked ? 'Yes' : 'No'; }
+      else { const v = el.value || ''; if(v.trim()) hasDetail = true; values[f.label] = v; }
+    });
+    if(!achieved && !hasDetail) continue; // untouched row → no record, on purpose
+    values['Achieved'] = achieved ? 'Yes' : 'No'; // flows straight into the CSV's value columns
+    const ok = await saveRecord(activityId, { researchId: child.researchId, profileId: child.id, values });
+    if(ok) saved++; else failed++;
+  }
+  if(failed){ toast(`Saved ${saved}, but ${failed} failed — storage may be full. Export your data, then try again.`); }
+  else if(!saved){ toast('Nothing to save yet — tick who got it, or add detail to a row.'); return; }
+  else toast(`Saved ${saved} ${saved===1?'result':'results'}`);
+  showActivity(state.category, state.activity, { dir:'none', skipLedeFocus:true });
+}
 // Human-readable timestamp, derived AT RENDER from the canonical whenISO.
 // Legacy records that never got a safe whenISO fall back to their stored
 // display string. Never store the locale form for new records.
@@ -2565,7 +2790,11 @@ function renderRecord(r, resultLabels, activityId){
   return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="who">${esc(recordDisplayName(r))}</span> <span class="when">· ${esc(fmtWhen(r))}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}${videoPill}</div></div>`;
 }
 async function confirmDeleteRecord(activityId, recordId){
-  if(!window.confirm('Delete this saved result?\n\nThis cannot be undone.')) return;
+  const go = await askConfirm({
+    title:'Delete this result?',
+    body:'This one saved result will be permanently removed. This cannot be undone.',
+    confirmLabel:'Delete result', danger:true });
+  if(!go) return;
   const ok = await deleteRecord(activityId, recordId);
   if(!ok){ toast('Could not delete — please try again.'); return; }
   toast('Result deleted');

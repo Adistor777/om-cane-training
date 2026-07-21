@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design drafts — activity cards + batch result flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Same tokens as the app — drafts should be judged on the real surface. */
+  :root{
+    --ink:#22201b; --ink-soft:#6b6458; --ink-faint:#736b5e;
+    --paper:#f7f4ed; --card:#fffdf8; --line:#e8e0d0; --line-soft:#f0e9da;
+    --cat:#2f6f4e; --cat-deep:#1f4d36; --cat-soft:#e2efe5; --cat-line:#cce0d1;
+    --rust:#8a3c12; --rust-soft:#f6e3d4;
+    --s1:8px; --s2:16px; --s3:24px; --s4:32px;
+    --r-lg:20px; --r-md:14px; --r-sm:11px;
+    --shadow-lift:0 1px 2px rgba(60,45,15,.05), 0 18px 40px -16px rgba(70,55,25,.22);
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:"Inter",system-ui,sans-serif; font-size:15px; line-height:1.5; padding:40px 20px 80px; }
+  .wrap{ max-width:1080px; margin:0 auto; }
+  h1{ font-family:"Instrument Serif",Georgia,serif; font-weight:400; font-size:42px; margin:0 0 8px; letter-spacing:-.01em; }
+  .sub{ color:var(--ink-soft); max-width:60ch; margin:0 0 48px; }
+  h2.sec{ font-family:"Instrument Serif",Georgia,serif; font-weight:400; font-size:30px; margin:64px 0 6px; }
+  .secnote{ color:var(--ink-soft); font-size:14px; max-width:70ch; margin:0 0 24px; }
+  .row{ display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; }
+  .draft{ flex:1 1 300px; max-width:360px; }
+  .draft-label{ font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--cat-deep); margin:0 0 4px; }
+  .draft-why{ font-size:13px; color:var(--ink-faint); margin:0 0 14px; min-height:60px; }
+  .verdict{ display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:3px 9px; border-radius:6px; margin-left:8px; vertical-align:2px; }
+  .verdict.rec{ background:var(--cat-soft); color:var(--cat-deep); }
+  .phone{ background:var(--paper); border:1px solid var(--line); border-radius:26px; padding:18px 14px; box-shadow:8px 10px 0 -1px rgba(70,55,25,.10); }
+
+  /* ============ SECTION A — activity card variants ============ */
+  .cardA, .cardB, .cardC{ width:100%; text-align:left; font:inherit; cursor:pointer; background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); margin-bottom:12px; transition:transform .2s var(--ease), box-shadow .2s var(--ease); }
+  .cardA:hover,.cardB:hover,.cardC:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lift); }
+  .tag{ display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:6px; background:var(--line-soft); color:var(--ink-soft); margin-right:6px; }
+  .tag.cane{ background:var(--rust-soft); color:var(--rust); }
+  .pill-saved{ display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:6px; background:var(--cat-soft); color:var(--cat-deep); }
+
+  /* A1 — current */
+  .cardA{ padding:16px 18px; }
+  .cardA h3{ margin:0 0 8px; font-size:16px; font-weight:600; }
+
+  /* A2 — stage ladder (recommended) */
+  .cardB{ display:flex; align-items:center; gap:14px; padding:14px 16px; position:relative; }
+  .stageN{ width:34px; height:34px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:var(--cat-soft); color:var(--cat-deep); border:1.5px solid var(--cat-line); }
+  .stageN.done{ background:var(--cat); color:#fff; border-color:var(--cat); }
+  .cardB .bmain{ flex:1; min-width:0; }
+  .cardB h3{ margin:0 0 4px; font-size:15.5px; font-weight:600; }
+  .cardB .bmeta{ display:flex; align-items:center; }
+  .cardB .chev{ color:var(--ink-faint); flex:0 0 auto; }
+  .ladder .cardB:not(:last-child)::after{ content:""; position:absolute; left:32px; bottom:-13px; width:2px; height:13px; background:var(--cat-line); }
+
+  /* A3 — media-forward */
+  .cardC{ overflow:hidden; }
+  .cardC .cthumb{ height:92px; background:linear-gradient(120deg, var(--cat-soft), var(--line-soft)); display:flex; align-items:center; justify-content:center; color:var(--cat-deep); font-size:12px; font-weight:600; gap:8px; }
+  .cardC .cbody{ padding:12px 16px 14px; }
+  .cardC h3{ margin:0 0 6px; font-size:15.5px; font-weight:600; }
+
+  /* ============ SECTION B — batch flow ============ */
+  .lede-m{ font-family:"Instrument Serif",Georgia,serif; font-size:26px; margin:0 0 4px; }
+  .lede-m small{ display:block; font-family:"Inter",sans-serif; font-size:12.5px; color:var(--ink-soft); margin-top:4px; }
+  .roster-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0; }
+  .kid{ position:relative; border:0; background:transparent; font:inherit; cursor:pointer; text-align:center; padding:0; }
+  .kid .face{ width:100%; aspect-ratio:1; border-radius:16px; background:var(--card); border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:"Instrument Serif",serif; font-size:28px; color:var(--ink-soft); transition:all .18s var(--ease); }
+  .kid .nm{ display:block; font-size:12px; font-weight:600; margin-top:6px; color:var(--ink); }
+  .kid.sel .face{ border-color:var(--cat); background:var(--cat-soft); color:var(--cat-deep); }
+  .kid .tick{ position:absolute; top:-6px; right:-6px; width:22px; height:22px; border-radius:50%; background:var(--cat); color:#fff; display:none; align-items:center; justify-content:center; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+  .kid.sel .tick{ display:flex; }
+  .kid.isnew .face{ animation:popin .4s var(--ease); }
+  @keyframes popin{ from{ transform:scale(.7); opacity:0; } to{ transform:scale(1); opacity:1; } }
+  .newbadge{ position:absolute; top:-6px; left:-6px; font-size:9px; font-weight:700; letter-spacing:.04em; background:var(--rust); color:#fff; padding:2px 6px; border-radius:6px; }
+  .selbar{ display:flex; align-items:center; justify-content:space-between; margin:4px 0 12px; }
+  .selbar .cnt{ font-size:12.5px; color:var(--ink-soft); }
+  .selbar button{ font:inherit; font-size:12.5px; font-weight:600; color:var(--cat-deep); background:none; border:0; cursor:pointer; }
+  .cta{ width:100%; font:inherit; font-weight:700; font-size:15px; background:var(--cat); color:#fff; border:0; border-radius:var(--r-sm); padding:15px; cursor:pointer; }
+  .cta:disabled{ opacity:.4; }
+  .addrow{ width:100%; display:flex; align-items:center; gap:10px; font:inherit; font-size:13px; font-weight:600; color:var(--ink-soft); background:transparent; border:1.5px dashed var(--line); border-radius:var(--r-sm); padding:12px 14px; cursor:pointer; margin-bottom:14px; }
+
+  /* result checklist */
+  .rkid{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); margin-bottom:10px; overflow:hidden; }
+  .rkid .rtop{ display:flex; align-items:center; gap:12px; padding:12px 14px; cursor:pointer; }
+  .rkid .avatar{ width:36px; height:36px; border-radius:10px; background:var(--line-soft); display:flex; align-items:center; justify-content:center; font-family:"Instrument Serif",serif; font-size:18px; color:var(--ink-soft); flex:0 0 auto; }
+  .rkid .rnm{ flex:1; font-weight:600; font-size:14px; }
+  .rkid .rnm small{ display:block; font-weight:400; font-size:11px; color:var(--ink-faint); }
+  .bigcheck{ width:28px; height:28px; border-radius:9px; border:2px solid var(--line); background:var(--card); flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; cursor:pointer; transition:all .15s var(--ease); }
+  .rkid.done .bigcheck{ background:var(--cat); border-color:var(--cat); }
+  .rkid.done .rnm{ color:var(--cat-deep); }
+  .rdetail{ display:none; border-top:1px solid var(--line-soft); padding:12px 14px; background:var(--paper); }
+  .rkid.open .rdetail{ display:block; }
+  .seg{ display:flex; gap:6px; margin:6px 0 10px; }
+  .seg button{ flex:1; font:inherit; font-size:11.5px; font-weight:600; padding:8px 4px; border-radius:8px; border:1px solid var(--line); background:var(--card); cursor:pointer; }
+  .seg button.on{ background:var(--cat); border-color:var(--cat); color:#fff; }
+  .flabel{ font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); }
+  .csvnote{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); padding:14px 16px; font-size:12.5px; color:var(--ink-soft); }
+  .csvnote code{ display:block; background:var(--ink); color:#e8e0d0; border-radius:8px; padding:10px 12px; font-size:10.5px; overflow-x:auto; white-space:pre; margin-top:8px; font-family:ui-monospace,monospace; }
+  .arrow{ align-self:center; color:var(--ink-faint); font-size:26px; padding:0 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Design drafts</h1>
+  <p class="sub">Two decisions on this page: <strong>A.</strong> how activity cards should look, and <strong>B.</strong> the batch result flow (select students → tick results → CSV). Everything is drawn with the app's real tokens — paper, ink, one green accent. The batch screens are tappable: try selecting faces and ticking results.</p>
+
+  <!-- ================= SECTION A ================= -->
+  <h2 class="sec">A · Activity cards — three directions</h2>
+  <p class="secnote">Current cards are a title + two tags. The real information a teacher needs at this point: <em>which stage comes next, has this child done it before, is there a demo</em>. Each variant bets on a different one of those.</p>
+
+  <div class="row">
+    <div class="draft">
+      <p class="draft-label">A1 · Current (baseline)</p>
+      <p class="draft-why">What ships today. Calm, but every card looks equally important — no sense that Stage 1 leads to Stage 2, and "5 saved" is the only progress signal.</p>
+      <div class="phone">
+        <button class="cardA"><h3>Travel to the Sound</h3><span class="tag">Without cane</span><span class="pill-saved">5 saved</span></button>
+        <button class="cardA"><h3>With Cane + Push Toy</h3><span class="tag cane">With cane</span><span class="pill-saved">2 saved</span></button>
+        <button class="cardA"><h3>With Cane</h3><span class="tag cane">With cane</span></button>
+      </div>
+    </div>
+
+    <div class="draft">
+      <p class="draft-label">A2 · Stage ladder<span class="verdict rec">Recommended</span></p>
+      <p class="draft-why">Numbers the stages and draws the thread between them — the curriculum's motivate → skill → independence progression becomes visible. A filled number = "this stage has results". Cheapest to build, strongest wayfinding.</p>
+      <div class="phone">
+        <div class="ladder">
+          <button class="cardB"><span class="stageN done">✓</span><div class="bmain"><h3>Travel to the Sound</h3><div class="bmeta"><span class="tag">Without cane</span><span class="pill-saved">5 saved</span></div></div><span class="chev">›</span></button>
+          <button class="cardB"><span class="stageN done">✓</span><div class="bmain"><h3>With Cane + Push Toy</h3><div class="bmeta"><span class="tag cane">With cane</span><span class="pill-saved">2 saved</span></div></div><span class="chev">›</span></button>
+          <button class="cardB"><span class="stageN">3</span><div class="bmain"><h3>With Cane</h3><div class="bmeta"><span class="tag cane">With cane</span></div></div><span class="chev">›</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="draft">
+      <p class="draft-label">A3 · Media-forward</p>
+      <p class="draft-why">Leads with the demo-video frame — instantly scannable, good for training new teachers. But it doubles card height, needs a thumbnail for every activity (three are still missing), and decorates a list the teacher visits dozens of times a day.</p>
+      <div class="phone">
+        <button class="cardC"><div class="cthumb">▶ &nbsp;demo · 0:42</div><div class="cbody"><h3>Travel to the Sound</h3><span class="tag">Without cane</span><span class="pill-saved">5 saved</span></div></button>
+        <button class="cardC"><div class="cthumb">▶ &nbsp;demo · 0:58</div><div class="cbody"><h3>With Cane + Push Toy</h3><span class="tag cane">With cane</span></div></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SECTION B ================= -->
+  <h2 class="sec">B · Batch result flow — the one design</h2>
+  <p class="secnote">Replaces the single-child picker entirely (a solo session is a batch of one). Three moments: <strong>pick the roster</strong> → <strong>run &amp; tick</strong> → <strong>one CSV row per child</strong>. Adding a student mid-flow drops them into the roster already selected, marked NEW. The checkbox is the result; tapping a row opens optional detail so the mastery scale and counts survive.</p>
+
+  <div class="row">
+    <!-- B1 roster -->
+    <div class="draft">
+      <p class="draft-label">1 · Pick the roster</p>
+      <p class="draft-why">Multi-select face grid (was single-tap-and-go). Selection count lives in the button so the action is never ambiguous. Try tapping faces.</p>
+      <div class="phone">
+        <p class="lede-m">Travel to the Sound<small>Who is doing this activity?</small></p>
+        <div class="selbar"><span class="cnt" id="cnt">2 of 5 selected</span><button onclick="selAll()">Select all</button></div>
+        <div class="roster-grid" id="grid">
+          <button class="kid sel" onclick="tog(this)"><span class="face">A</span><span class="tick">✓</span><span class="nm">Aditya</span></button>
+          <button class="kid sel" onclick="tog(this)"><span class="face">V</span><span class="tick">✓</span><span class="nm">Vaishu</span></button>
+          <button class="kid" onclick="tog(this)"><span class="face">R</span><span class="tick">✓</span><span class="nm">Rahul</span></button>
+          <button class="kid" onclick="tog(this)"><span class="face">P</span><span class="tick">✓</span><span class="nm">Priya</span></button>
+          <button class="kid" onclick="tog(this)"><span class="face">S</span><span class="tick">✓</span><span class="nm">Sana</span></button>
+        </div>
+        <button class="addrow" onclick="addKid()">＋ &nbsp;Add a new student</button>
+        <button class="cta" id="cta">Start with 2 students</button>
+      </div>
+    </div>
+
+    <div class="arrow">→</div>
+
+    <!-- B2 record -->
+    <div class="draft">
+      <p class="draft-label">2 · Run &amp; tick</p>
+      <p class="draft-why">The roster becomes the result sheet. Big checkbox = achieved. Tap the row (not the box) for optional detail — mastery, steps, notes. Group activities show one "whole group" row instead. Try it.</p>
+      <div class="phone">
+        <p class="lede-m">Travel to the Sound<small>Tick who got it · tap a row for detail</small></p>
+        <div id="sheet">
+          <div class="rkid done open">
+            <div class="rtop" onclick="rowTog(this.parentNode,event)">
+              <span class="avatar">A</span><span class="rnm">Aditya<small>Detail added · 12 steps</small></span>
+              <span class="bigcheck" onclick="ckTog(this,event)">✓</span>
+            </div>
+            <div class="rdetail">
+              <span class="flabel">How did it go?</span>
+              <div class="seg"><button class="on">Got it</button><button>With help</button><button>Not yet</button></div>
+              <span class="flabel">Steps taken</span>
+              <div class="seg"><button>10</button><button class="on">12</button><button>15+</button></div>
+            </div>
+          </div>
+          <div class="rkid done">
+            <div class="rtop" onclick="rowTog(this.parentNode,event)">
+              <span class="avatar">V</span><span class="rnm">Vaishu</span>
+              <span class="bigcheck" onclick="ckTog(this,event)">✓</span>
+            </div>
+            <div class="rdetail"><span class="flabel">How did it go?</span><div class="seg"><button>Got it</button><button>With help</button><button>Not yet</button></div></div>
+          </div>
+          <div class="rkid">
+            <div class="rtop" onclick="rowTog(this.parentNode,event)">
+              <span class="avatar">R</span><span class="rnm">Rahul</span>
+              <span class="bigcheck" onclick="ckTog(this,event)">✓</span>
+            </div>
+            <div class="rdetail"><span class="flabel">How did it go?</span><div class="seg"><button>Got it</button><button>With help</button><button>Not yet</button></div></div>
+          </div>
+        </div>
+        <button class="cta" id="savecta">Save 2 results</button>
+      </div>
+    </div>
+
+    <div class="arrow">→</div>
+
+    <!-- B3 csv -->
+    <div class="draft">
+      <p class="draft-label">3 · What lands in the CSV</p>
+      <p class="draft-why">Each child in the batch = one row, same file the existing export produces. Ticked-only saves keep the sheet honest: unticked children get "not yet" rows only if the teacher opened their detail — otherwise no row (absence ≠ failure).</p>
+      <div class="phone">
+        <div class="csvnote">
+          <strong>batch → rows</strong><br>One session, three students, one activity:
+          <code>date,activity,student,achieved,mastery,steps,notes
+2026-07-21,travel-sound,Aditya,yes,got-it,12,
+2026-07-21,travel-sound,Vaishu,yes,,,
+2026-07-21,travel-sound,Rahul,no,not-yet,,tired today</code>
+          Group activities write <em>one</em> row with <strong>student = "group (n=5)"</strong> — same columns, no special casing downstream.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Just enough behaviour to judge the feel — not production code.
+  function refresh(){
+    const n = document.querySelectorAll('#grid .kid.sel').length;
+    document.getElementById('cnt').textContent = n + ' of ' + document.querySelectorAll('#grid .kid').length + ' selected';
+    const cta = document.getElementById('cta');
+    cta.textContent = n ? 'Start with ' + n + ' student' + (n>1?'s':'') : 'Select at least one student';
+    cta.disabled = !n;
+  }
+  function tog(el){ el.classList.toggle('sel'); refresh(); }
+  function selAll(){ document.querySelectorAll('#grid .kid').forEach(k=>k.classList.add('sel')); refresh(); }
+  let extra = 0;
+  function addKid(){
+    extra++;
+    const names = ['Meera','Arjun','Divya']; const nm = names[(extra-1)%3];
+    const b = document.createElement('button');
+    b.className = 'kid sel isnew'; b.onclick = ()=>tog(b);
+    b.innerHTML = '<span class="face">'+nm[0]+'</span><span class="tick">✓</span><span class="newbadge">NEW</span><span class="nm">'+nm+'</span>';
+    document.getElementById('grid').appendChild(b); refresh();
+  }
+  function ckTog(el, ev){ ev.stopPropagation(); el.closest('.rkid').classList.toggle('done'); saveRefresh(); }
+  function rowTog(row){ row.classList.toggle('open'); }
+  function saveRefresh(){
+    const n = document.querySelectorAll('#sheet .rkid.done').length;
+    document.getElementById('savecta').textContent = 'Save ' + n + ' result' + (n===1?'':'s');
+  }
+  document.querySelectorAll('.seg button').forEach(b=>b.onclick = e=>{ e.stopPropagation();
+    [...b.parentNode.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  refresh(); saveRefresh();
+</script>
+</body>
+</html>

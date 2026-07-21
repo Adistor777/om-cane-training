@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A2 vs A3 — side by side, twice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#22201b; --ink-soft:#6b6458; --ink-faint:#736b5e;
+    --paper:#f7f4ed; --card:#fffdf8; --line:#e8e0d0; --line-soft:#f0e9da;
+    --cat:#2f6f4e; --cat-deep:#1f4d36; --cat-soft:#e2efe5; --cat-line:#cce0d1;
+    --rust:#8a3c12; --rust-soft:#f6e3d4;
+    --r-lg:20px; --r-md:14px; --r-sm:11px;
+    --shadow-lift:0 1px 2px rgba(60,45,15,.05), 0 18px 40px -16px rgba(70,55,25,.22);
+    --ease:cubic-bezier(.22,.61,.36,1);
+    /* second category hue (Sound) pulled from the app palette family */
+    --snd:#8a5a12; --snd-deep:#5f3e0c; --snd-soft:#f3e9d2; --snd-line:#e3d3ab;
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:"Inter",system-ui,sans-serif; font-size:15px; line-height:1.5; padding:40px 20px 80px; }
+  .wrap{ max-width:1150px; margin:0 auto; }
+  h1{ font-family:"Instrument Serif",Georgia,serif; font-weight:400; font-size:40px; margin:0 0 8px; }
+  .sub{ color:var(--ink-soft); max-width:64ch; margin:0 0 40px; }
+  .pairhead{ font-family:"Instrument Serif",Georgia,serif; font-size:26px; margin:44px 0 4px; }
+  .pairnote{ color:var(--ink-soft); font-size:13.5px; margin:0 0 18px; }
+  .row{ display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+  .col{ flex:1 1 300px; max-width:390px; }
+  .collabel{ font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--cat-deep); margin:0 0 10px; }
+  .phone{ background:var(--paper); border:1px solid var(--line); border-radius:26px; padding:18px 14px; box-shadow:8px 10px 0 -1px rgba(70,55,25,.10); }
+  .lede-m{ font-family:"Instrument Serif",Georgia,serif; font-size:24px; margin:0 0 14px; }
+  .lede-m small{ display:block; font-family:"Inter",sans-serif; font-size:12px; color:var(--ink-soft); margin-top:4px; }
+  .tag{ display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:6px; background:var(--line-soft); color:var(--ink-soft); margin-right:6px; }
+  .tag.cane{ background:var(--rust-soft); color:var(--rust); }
+  .pill-saved{ display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:6px; background:var(--cat-soft); color:var(--cat-deep); }
+  .snd .pill-saved{ background:var(--snd-soft); color:var(--snd-deep); }
+
+  /* A2 stage ladder */
+  .cardB{ width:100%; text-align:left; font:inherit; cursor:pointer; background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); margin-bottom:12px; display:flex; align-items:center; gap:14px; padding:14px 16px; position:relative; transition:transform .2s var(--ease), box-shadow .2s var(--ease); }
+  .cardB:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lift); }
+  .stageN{ width:34px; height:34px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:var(--cat-soft); color:var(--cat-deep); border:1.5px solid var(--cat-line); }
+  .stageN.done{ background:var(--cat); color:#fff; border-color:var(--cat); }
+  .snd .stageN{ background:var(--snd-soft); color:var(--snd-deep); border-color:var(--snd-line); }
+  .snd .stageN.done{ background:var(--snd); color:#fff; border-color:var(--snd); }
+  .cardB .bmain{ flex:1; min-width:0; }
+  .cardB h3{ margin:0 0 4px; font-size:15.5px; font-weight:600; }
+  .cardB .chev{ color:var(--ink-faint); flex:0 0 auto; }
+  .ladder .cardB:not(:last-child)::after{ content:""; position:absolute; left:32px; bottom:-13px; width:2px; height:13px; background:var(--cat-line); }
+  .snd .ladder .cardB:not(:last-child)::after{ background:var(--snd-line); }
+
+  /* A3 media-forward */
+  .cardC{ width:100%; text-align:left; font:inherit; cursor:pointer; background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); margin-bottom:12px; overflow:hidden; padding:0; transition:transform .2s var(--ease), box-shadow .2s var(--ease); }
+  .cardC:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lift); }
+  .cardC .cthumb{ height:88px; background:linear-gradient(120deg, var(--cat-soft), var(--line-soft)); display:flex; align-items:center; justify-content:center; color:var(--cat-deep); font-size:12px; font-weight:600; gap:8px; }
+  .snd .cardC .cthumb{ background:linear-gradient(120deg, var(--snd-soft), var(--line-soft)); color:var(--snd-deep); }
+  .cardC .cthumb.missing{ background:repeating-linear-gradient(45deg, var(--line-soft), var(--line-soft) 8px, var(--paper) 8px, var(--paper) 16px); color:var(--ink-faint); }
+  .cardC .cbody{ padding:12px 16px 14px; }
+  .cardC h3{ margin:0 0 6px; font-size:15.5px; font-weight:600; }
+  .footer{ margin-top:56px; color:var(--ink-soft); font-size:13.5px; max-width:70ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>A2 vs A3 — same content, side by side, twice</h1>
+  <p class="sub">Both variants rendered with identical real content from the app, for two different categories — one with a clean 3-stage ladder and full demo coverage, one longer with a missing demo video. Judge them on the awkward case, not the flattering one.</p>
+
+  <!-- ===== PAIR 1 — Straight Line Travel ===== -->
+  <p class="pairhead">Pair 1 · Straight Line Travel</p>
+  <p class="pairnote">The flattering case: exactly three stages, a true progression, demos filmed for stages 1–2.</p>
+  <div class="row">
+    <div class="col">
+      <p class="collabel">A2 · Stage ladder</p>
+      <div class="phone">
+        <p class="lede-m">Straight Line Travel<small>Three stages — the toy fades, the cane stays.</small></p>
+        <div class="ladder">
+          <button class="cardB"><span class="stageN done">✓</span><div class="bmain"><h3>Travel to the Sound</h3><div><span class="tag">Without cane</span><span class="pill-saved">5 saved</span></div></div><span class="chev">›</span></button>
+          <button class="cardB"><span class="stageN done">✓</span><div class="bmain"><h3>With Cane + Push Toy</h3><div><span class="tag cane">With cane</span><span class="pill-saved">2 saved</span></div></div><span class="chev">›</span></button>
+          <button class="cardB"><span class="stageN">3</span><div class="bmain"><h3>With Cane</h3><div><span class="tag cane">With cane</span></div></div><span class="chev">›</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <p class="collabel">A3 · Media-forward</p>
+      <div class="phone">
+        <p class="lede-m">Straight Line Travel<small>Three stages — the toy fades, the cane stays.</small></p>
+        <button class="cardC"><div class="cthumb">▶ &nbsp;demo · 0:42</div><div class="cbody"><h3>Travel to the Sound</h3><span class="tag">Without cane</span><span class="pill-saved">5 saved</span></div></button>
+        <button class="cardC"><div class="cthumb">▶ &nbsp;demo · 0:58</div><div class="cbody"><h3>With Cane + Push Toy</h3><span class="tag cane">With cane</span><span class="pill-saved">2 saved</span></div></button>
+        <button class="cardC"><div class="cthumb missing">no demo filmed yet</div><div class="cbody"><h3>With Cane</h3><span class="tag cane">With cane</span></div></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PAIR 2 — Sound & Direction ===== -->
+  <p class="pairhead">Pair 2 · Sound &amp; Direction</p>
+  <p class="pairnote">The stress case: four activities, mixed cane status, one demo missing — and in its own category colour. Notice what each design does to page length.</p>
+  <div class="row snd">
+    <div class="col">
+      <p class="collabel">A2 · Stage ladder</p>
+      <div class="phone">
+        <p class="lede-m">Sound &amp; Direction<small>Find it by ear, then move on it.</small></p>
+        <div class="ladder">
+          <button class="cardB"><span class="stageN done">✓</span><div class="bmain"><h3>Near or Far</h3><div><span class="tag">Without cane</span><span class="pill-saved">8 saved</span></div></div><span class="chev">›</span></button>
+          <button class="cardB"><span class="stageN done">✓</span><div class="bmain"><h3>Steps to the Sound — Solo</h3><div><span class="tag">Without cane</span><span class="pill-saved">4 saved</span></div></div><span class="chev">›</span></button>
+          <button class="cardB"><span class="stageN">3</span><div class="bmain"><h3>Steps to the Sound — Group</h3><div><span class="tag">Without cane</span><span class="tag">Group</span></div></div><span class="chev">›</span></button>
+          <button class="cardB"><span class="stageN">4</span><div class="bmain"><h3>Near or Far — With Cane</h3><div><span class="tag cane">With cane</span></div></div><span class="chev">›</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <p class="collabel">A3 · Media-forward</p>
+      <div class="phone">
+        <p class="lede-m">Sound &amp; Direction<small>Find it by ear, then move on it.</small></p>
+        <button class="cardC"><div class="cthumb">▶ &nbsp;demo · 1:04</div><div class="cbody"><h3>Near or Far</h3><span class="tag">Without cane</span><span class="pill-saved">8 saved</span></div></button>
+        <button class="cardC"><div class="cthumb">▶ &nbsp;demo · 0:47</div><div class="cbody"><h3>Steps to the Sound — Solo</h3><span class="tag">Without cane</span><span class="pill-saved">4 saved</span></div></button>
+        <button class="cardC"><div class="cthumb">▶ &nbsp;demo · 0:51</div><div class="cbody"><h3>Steps to the Sound — Group</h3><span class="tag">Without cane</span><span class="tag">Group</span></div></button>
+        <button class="cardC"><div class="cthumb missing">no demo filmed yet</div><div class="cbody"><h3>Near or Far — With Cane</h3><span class="tag cane">With cane</span></div></button>
+      </div>
+    </div>
+  </div>
+
+  <p class="footer"><strong>What to look for:</strong> in Pair 2, A3 is roughly twice as tall — a teacher scrolls past four decorative headers to reach the fourth activity, and the "no demo filmed yet" slot punishes missing content forever. A2's cost is subtler: the stage numbers claim a sequence, which is true for Straight Line Travel but only loosely true for Sound &amp; Direction. If some categories aren't real ladders, A2 can drop the connecting line and ticks for those and keep plain icon chips — same layout, no false promise.</p>
+</div>
+</body>
+</html>

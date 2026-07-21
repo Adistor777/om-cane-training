@@ -520,7 +520,48 @@
      the two intents don't share one tap. Reuses .activechild's inner pieces. */
   .student-row{ display:flex; align-items:stretch; gap:0; margin-bottom:var(--s2);
     border:1px solid var(--line); border-radius:var(--r-sm); background:var(--card); overflow:hidden; }
-  .student-row.is-active{ border-color:var(--cat); box-shadow:var(--ring-active); }
+  /* Active child: the quiet "Active" tag inside the row is the ONLY signal —
+     no green border/ring (uniformity call 2026-07-15; rings read as buttons). */
+  /* ===== BATCH ROSTER (2026-07-21) ==================================== */
+  /* Multi-select face grid: selection = tick badge + tinted face. This is the
+     ONE place a green ring is legitimate — it literally means "selected". */
+  .roster-tile{ position:relative; }
+  .roster-tile .roster-tick{ position:absolute; top:-4px; right:2px; width:24px; height:24px;
+    border-radius:50%; background:var(--cat); color:#fff; display:none;
+    align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .roster-tile .roster-tick svg{ width:13px; height:13px; }
+  .roster-tile.sel .roster-tick{ display:flex; }
+  .roster-tile.sel .face{ border-color:var(--cat); background:var(--cat-soft); color:var(--cat-deep); }
+  .roster-tile .roster-new{ position:absolute; top:-4px; left:2px; font-size:10px; font-weight:700;
+    letter-spacing:.04em; text-transform:uppercase; background:#8a3c12; color:#fff;
+    padding:2px 7px; border-radius:6px; }
+  .roster-selbar{ display:flex; align-items:center; justify-content:space-between; margin:0 0 var(--s1); }
+  .roster-count{ font-size:var(--t-caption); color:var(--ink-soft); }
+  .roster-all{ font:inherit; font-size:var(--t-caption); font-weight:600; color:var(--cat-deep);
+    background:none; border:0; cursor:pointer; padding:6px 2px; }
+  .roster-all:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; border-radius:6px; }
+  .roster-cta{ margin-top:var(--s2); }
+  .roster-cta[disabled]{ opacity:.45; cursor:not-allowed; }
+  /* Result sheet (batches of 2+): tick = achieved, row expands for detail. */
+  .rkid{ border:1px solid var(--line); border-radius:var(--r-md); background:var(--card);
+    margin-bottom:10px; overflow:hidden; }
+  .rkid-top{ display:flex; align-items:center; gap:0; }
+  .rkid-main{ flex:1; min-width:0; display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:transparent; border:0; font:inherit; text-align:left; color:var(--ink); cursor:pointer; }
+  .rkid-main .avatar{ width:38px; height:38px; border-radius:10px; flex:0 0 auto; object-fit:cover; }
+  .rkid-name{ font-weight:600; font-size:var(--t-bodysm); min-width:0; }
+  .rkid-name small{ display:block; font-weight:400; font-size:var(--t-micro); color:var(--ink-faint); margin-top:1px; }
+  .rkid-main:focus-visible{ outline:3px solid var(--cat); outline-offset:-3px; border-radius:var(--r-md); }
+  .bigcheck{ flex:0 0 auto; width:34px; height:34px; margin:0 14px 0 6px; border-radius:10px;
+    border:2px solid var(--line); background:var(--card); color:transparent;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    transition:background .15s var(--ease), border-color .15s var(--ease); }
+  .bigcheck svg{ width:18px; height:18px; }
+  .bigcheck[aria-pressed="true"]{ background:var(--cat); border-color:var(--cat); color:#fff; }
+  .bigcheck:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .rkid.done .rkid-name{ color:var(--cat-deep); }
+  .rkid-detail{ border-top:1px solid var(--line-soft); padding:12px 14px; background:var(--paper); }
+  .rkid-detail .field:last-child{ margin-bottom:0; }
   .student-pick{ flex:1; min-width:0; display:flex; align-items:center; gap:12px; padding:12px 15px;
     background:transparent; border:0; font:inherit; text-align:left; color:var(--ink); cursor:pointer; }
   .student-pick .avatar{ width:38px; height:38px; border-radius:10px; flex:0 0 auto; object-fit:cover;
@@ -634,6 +675,28 @@
     padding:var(--s2) var(--s3) var(--s3); }
   .help-card-body .section-label:first-child{ margin-top:0; }
   .help-card-body .ref-block:first-child .section-label{ margin-top:0; }
+  /* CONFIRM DIALOG — narrower card on the same cuboid surface. Cancel is the
+     quiet, focused default; the destructive action carries the rust colour;
+     bulk wipes stay disabled until the "I understand" tick arms them. */
+  .confirm-card{ max-width:420px; }
+  .confirm-body{ margin:0 0 var(--s2); font-size:var(--t-bodysm); color:var(--ink-soft); }
+  .confirm-body strong{ color:var(--ink); }
+  .confirm-ack{ display:flex; align-items:flex-start; gap:10px; margin:var(--s2) 0 0;
+    font-size:var(--t-bodysm); color:var(--ink); cursor:pointer; }
+  .confirm-ack input{ width:20px; height:20px; margin:1px 0 0; accent-color:#8a3c12; flex:0 0 auto; }
+  .confirm-actions{ display:flex; justify-content:flex-end; gap:var(--s1); margin-top:var(--s3); }
+  .confirm-cancel{ font:inherit; font-weight:600; font-size:var(--t-bodysm); color:var(--ink);
+    background:transparent; border:1px solid var(--line); border-radius:var(--r-sm);
+    padding:12px 18px; cursor:pointer; }
+  @media (hover:hover){ .confirm-cancel:hover{ background:var(--paper); } }
+  .confirm-cancel:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .confirm-actions .save{ width:auto; margin:0; padding:12px 18px; }
+  .confirm-go[disabled]{ opacity:.45; cursor:not-allowed; }
+  .confirm-export{ display:inline-flex; align-items:center; gap:8px; font:inherit; font-weight:600;
+    font-size:var(--t-bodysm); color:var(--cat-deep); background:var(--cat-soft);
+    border:1px solid var(--cat-line); border-radius:var(--r-sm); padding:10px 14px;
+    cursor:pointer; margin-top:var(--s1); }
+  .confirm-export svg{ width:17px; height:17px; }
   @media (prefers-reduced-motion:reduce){
     .help-overlay{ -webkit-backdrop-filter:none; backdrop-filter:none; }
     .help-overlay, .help-card, .help-card-head{ transition:none !important; }
@@ -697,7 +760,9 @@
   .welcome-mark svg{ width:30px; height:30px; }
   .welcome .lede{ margin-bottom:var(--s3); }
   .welcome-btn{ width:auto; min-width:200px; }
-  /* Hub action rows (page 2). Border-only; the primary one carries the accent. */
+  /* Hub action rows (page 2). Border-only, UNIFORM — no row carries a green
+     border/filled chip (2026-07-15: that read as a selection state, not
+     hierarchy). Order communicates priority; the surfaces stay identical. */
   .hub-actions{ display:flex; flex-direction:column; gap:var(--s2); margin-top:var(--s3); }
   .action-row{ display:flex; align-items:center; gap:14px; width:100%; text-align:left; font:inherit;
     background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg); padding:18px var(--s3);
@@ -710,8 +775,6 @@
   .action-row .action-text small{ display:block; font-weight:400; font-size:var(--t-micro); color:var(--ink-faint); margin-top:2px; }
   .action-row .action-go{ flex:0 0 auto; color:var(--ink-faint); display:flex; }
   .action-row .action-go svg{ width:20px; height:20px; }
-  .action-row.primary-action{ border-color:var(--cat); }
-  .action-row.primary-action .action-ic{ background:var(--cat); color:#fff; }
   @media (hover:hover){ .action-row:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lift); border-color:var(--cat); } }
   .action-row:active{ transform:translateY(0); box-shadow:var(--shadow-lift); }
   .action-row:disabled{ opacity:.55; cursor:default; }
