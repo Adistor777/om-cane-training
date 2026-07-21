@@ -584,37 +584,34 @@
      curve); LEAVING is shorter and accelerates away. Symmetric in/out reads
      mechanical — exits should feel lighter than entrances. */
   .help-overlay{ --pop-in:cubic-bezier(.32,.72,0,1); --pop-out:cubic-bezier(.55,.06,.68,.19);
-    position:fixed; inset:0; z-index:80; display:flex; align-items:flex-end; justify-content:center;
-    background:rgba(34,32,27,.42); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+    position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center;
+    padding:var(--s2); background:rgba(34,32,27,.42);
+    -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
     opacity:0; transition:opacity .34s var(--pop-in); }
   .help-overlay[hidden]{ display:none; }
   .help-overlay.open{ opacity:1; }
   .help-overlay.closing{ transition:opacity .22s var(--pop-out); }
-  .help-card{ display:flex; flex-direction:column; width:100%; min-height:0;
-    background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow-lift);
+  /* Centred CUBOID card (design call 2026-07-15, replaced the bottom sheet):
+     the card reads as a solid paper slab. Depth comes from TWO shadows doing
+     different jobs — a hard offset edge (the cuboid's visible side faces,
+     bottom-right, matching a top-left light source) plus a soft ambient pool
+     far beneath it for lift. Deliberate second tier vs guardrail #2: the
+     modal is the one surface that genuinely floats ABOVE the page, so it is
+     allowed depth the in-page panels are not. */
+  .help-card{ display:flex; flex-direction:column; width:100%; max-width:560px;
+    max-height:min(86vh, 86dvh); min-height:0;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+    box-shadow:
+      8px 10px 0 -1px rgba(70,55,25,.16),
+      0 30px 50px -24px rgba(70,55,25,.32);
+    transform:translateY(20px) scale(.96); opacity:0;
     transition:transform .34s var(--pop-in), opacity .34s var(--pop-in); }
+  .help-overlay.open .help-card{ transform:none; opacity:1; }
   .help-overlay.closing .help-card{ transition:transform .22s var(--pop-out), opacity .22s var(--pop-out); }
-  /* Phones: a TRUE bottom sheet — pinned to the bottom edge, full-width, top
-     corners only, grab handle, slides up from off-screen without a fade
-     (sheets are physical objects; they move, they don't materialise). */
-  @media (max-width:559.98px){
-    .help-overlay{ padding:0; }
-    .help-card{ max-height:min(88vh, 88dvh); border-radius:var(--r-lg) var(--r-lg) 0 0;
-      border-left:0; border-right:0; border-bottom:0;
-      padding-bottom:env(safe-area-inset-bottom, 0px);
-      transform:translateY(100%); }
-    .help-overlay.open .help-card{ transform:translateY(0); }
-  }
-  /* Larger screens: centred card — small rise + settle with a fade, no handle. */
-  @media (min-width:560px){
-    .help-overlay{ align-items:center; padding:var(--s4); }
-    .help-card{ max-width:560px; max-height:min(84vh, 84dvh); border-radius:var(--r-lg);
-      transform:translateY(16px) scale(.97); opacity:0; }
-    .help-overlay.open .help-card{ transform:none; opacity:1; }
-    .help-handle{ display:none; }
-  }
-  .help-handle{ flex:0 0 auto; width:44px; height:5px; border-radius:3px;
-    background:var(--line); margin:10px auto 0; }
+  @media (min-width:560px){ .help-overlay{ padding:var(--s4); } }
+  /* No grab handle on a centred card — drag-to-dismiss still works from the
+     header on touch, but the sheet affordance would lie about the pattern. */
+  .help-handle{ display:none; }
   /* Header is pinned while the BODY scrolls — the close button can never
      scroll out of reach. Its hairline only paints once content is actually
      scrolled beneath it (an always-on rule reads as clutter when short
