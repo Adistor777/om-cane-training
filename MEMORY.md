@@ -1,5 +1,60 @@
 # MEMORY.md — O&M Cane Training
-_Last updated: 2026-07-14 (Straight Line Travel three-stage + soundboard commit landed)_
+_Last updated: 2026-07-21 (design overhaul session: batch focus-flow, popups, thumbnails, onboarding, Arimo)_
+## Design overhaul session (2026-07-21) — big UX pass, all landed in working tree
+- **BATCH FLOW replaced the single-child flow entirely.** Activity → roster
+  multi-select face grid (`rosterSel`/`batchRoster`, Select all, "Start with N
+  students" CTA; child added mid-flow joins PRE-selected with a NEW badge) →
+  **FOCUS FLOW** for 2+ kids: chip strip w/ ticks, ONE scorecard at a time,
+  score pick auto-advances (350ms), "Skip for now" = NO record (absence ≠
+  failure), Review & save screen, `Achieved` column DERIVES from the score
+  (Got it/Independent → Yes) and flows into the CSV value columns. Solo batch
+  = old handleSave path (keeps video evidence, active profile set in
+  startBatch). Group activities unchanged. Engine: `batchFlowInit/batchShow/
+  batchAdvance/batchReview/handleBatchSave` in app.js. The interim "tick
+  sheet + achieved checkbox" design was built then replaced same session
+  (redundant with mastery scale — checkbox killed on principle).
+- **Popup system:** the ? reference sheet is a shared MODAL (centred "cuboid"
+  card — hard offset shadow 8px 10px + ambient pool; entrance .34s
+  cubic-bezier(.32,.72,0,1), exit .22s accelerating; content MOVED not cloned,
+  paint() reclaims it). `askConfirm()` replaced every window.confirm (counts,
+  Cancel focused, rust danger button, "I understand" tick arms the full wipe,
+  Export-CSV shortcut inside the dialog). Bottom-sheet variant was built then
+  replaced by the centred cuboid on Aditya's call.
+- **Activity cards = A3 "media-forward"** (won on-device bake-off vs A2 stage
+  ladder). Thumbnails: OBJECT STILL-LIFE inline SVGs (`STILL`/`activityStill`
+  in app.js) — real equipment only, NO people, auto-tint via --cat vars, rust
+  = cane semantic. 17 scenes + category fallbacks. History: video first-frames
+  and a ▶-plays-demo overlay were built then REMOVED (videos not final; demo
+  stays behind the ?). `scripts/generate-thumbs.sh` + demo-*.jpg copying in
+  build.sh remain for when videos finalise.
+- **Onboarding (contextual, no tour):** `hintOnce()` one-line dismissible
+  hints (roster + focusflow screens only), teaching empty states, ? gets a
+  pulse + a labelled CALLOUT bubble that persists on EVERY screen until the
+  explicit "Don't show again" (key `helpTipDismissed` — renamed from helpUsed
+  when semantics changed; opening the ? does NOT dismiss). All flags are
+  PER-TEACHER (`_obKey()` suffixes teacher id) so shared tablets re-onboard
+  each new sign-in.
+- **Header:** home-dot REMOVED (read as a second back button; back chevron is
+  the one nav control). Earlier same session it had been unified to always
+  show ICON.home — then cut entirely. homeDot is a null-safe stub in app.js.
+- **Other UI calls:** new students append LAST (upsertProfile push, was
+  unshift); "Save child" → "Save info"; green primary-action border + active
+  child ring removed (uniformity); font **Inter → Arimo** everywhere (Arial
+  metric twin; Instrument Serif still ledes-only).
+- **Login reminder:** seeded logins saksham01/rnks01/nab01, any non-empty
+  password while CLOUD_SYNC=false; "incorrect" almost always = school/id
+  mismatch or stale seeded roster (clear storage to reseed).
+- **Prototypes added:** design-drafts-activity-cards-batch-flow.html,
+  compare-a2-vs-a3.html, result-sheet-focus-flow.html, thumb-directions.html,
+  thumbnails-preview.html (all in prototypes/ — safe to prune).
+- **Verification habit:** every change parse-checked + jsdom smoke-tested in
+  sandbox (roster, focus flow, confirm dialog, popup lifecycle, per-teacher
+  flags) before sync; www/ synced by hand each time (sandbox can't run cap
+  sync or delete files — git lock files must be rm'd on Aditya's machine).
+- **OPEN:** narrated welcome ("listen to how this app works", Sarvam script +
+  audio — content task); demo-slt-*.mp4 exist only on Aditya's machine;
+  Hindi SOP drafts still awaiting content-team verify; focus-flow 350ms
+  auto-advance timing unvalidated with real teachers.
 ## Straight Line Travel — three-stage rebuild (2026-07-14, committed + pushed to main)
 - **Category 4 rebuilt from 3 demo videos into THREE stages** (was 2):
   `slt-nocane` (travel to the sound by ear — baseline) → `slt-withcane-toy`

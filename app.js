@@ -2,16 +2,13 @@ const screen  = document.getElementById('screen');
 const brandEl = document.getElementById('brand');
 const crumbEl = document.getElementById('crumb');
 const backBtn = document.getElementById('backBtn');
-const homeDot = document.getElementById('homeDot');
-// DESIGN (2026-07-15): the home chip shows ONE mark — the house — on every
-// screen. It used to swap per screen (list glyph, category icon, …), which
-// made it read as a menu/status indicator when it is actually a Home button.
-// One icon, one meaning, one behaviour. Don't reintroduce per-screen icons.
-// Tapping the header home-dot returns to Home — but only when signed in, so it
-// never short-circuits the login/welcome screens (where it's just a mark).
-function goHomeFromDot(){ if(isLoggedIn() && Store.getString(WELCOME_SEEN,'')==='1') showHome('back'); }
-homeDot.addEventListener('click', goHomeFromDot);
-homeDot.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); goHomeFromDot(); } });
+// DESIGN (2026-07-21): the header home-dot is GONE. With the back chevron in
+// the same header it read as two competing "go back" buttons; navigation now
+// has exactly one control (the back chevron), and the brand text carries
+// identity on its own. homeDot resolves null on purpose — the innerHTML
+// assignments across the screens are no-op'd through this stub so removing
+// the element didn't need forty call-site edits.
+const homeDot = document.getElementById('homeDot') || { innerHTML:'' };
 
 // ---- Header overflow menu (utilities) -------------------------------------
 const hmenuEl  = document.getElementById('hmenu');
