@@ -160,6 +160,14 @@ const ACTIVITY_DATA = [
   {
     category: "Sound",
     description: "Sound identification and localization (Left-Right, Front-Back, Top, Bottom).",
+    /* DRAFT help — content team to verify wording (added 2026-07-21: this was
+       a pilot category without `help`, so its screen had no ?). */
+    help: [
+      "Start with Which Sound? — the child names each sound you play from the app's sound library.",
+      "Move to Source of Sound? — the child points to where the sound comes from: left-right, front-back, top and bottom.",
+      "Stand about 3 steps from the child when playing sounds. Open an activity for the full steps and the demo."
+    ],
+    helpVideo: "demo-sound.mp4",
     activities: [
       {
         id: "sound-which",
