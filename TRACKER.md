@@ -1,5 +1,32 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-07-14 pm (soundboard reconcile resolved + branch prune)_
+_Last updated: 2026-07-21 (design-overhaul session wrapped)_
+## STATE (2026-07-21) — full UX overhaul landed; batch flow replaces single-child
+Big design session, all committed on main (through `0efdedb`), working tree
+clean, ~6 commits ahead of origin at wrap-up (push may already be done).
+Details in MEMORY.md's 2026-07-21 section. Headlines: BATCH FLOW is now THE
+flow (roster multi-select → focus-flow scoring one student at a time →
+review → one record per scored child; `Achieved` derives from the score;
+skipped = no record). ? sheet is a centred cuboid MODAL; window.confirm
+replaced by styled askConfirm dialogs; activity cards = media-forward with
+object still-life SVG thumbnails (no video frames — clips not final);
+contextual onboarding (hints + persistent ? callout, per-teacher flags);
+home-dot removed from header; font Inter → Arimo. NOTE for older docs: any
+instruction that says "card → child picker → record screen" now reads
+"card → roster select → focus flow".
+## NEXT — one list, in order (2026-07-21 refresh)
+- [ ] **Aditya:** `git push origin main` if not yet pushed (check `git status`).
+- [ ] **Aditya:** fresh `assembleDebug` APK → Mansi via the documented loop
+      below (batch flow + new design is a big review drop; login unchanged).
+- [ ] **Aditya, Mac:** run `./scripts/generate-thumbs.sh` — the two SLT demo
+      clips exist only on the Mac (posters unused on cards now, but the script
+      + build copying stay ready for when videos finalise).
+- [ ] **Content:** narrated welcome — "listen to how this app works" on the
+      welcome screen (Sarvam script EN/HI + generate-audio run). Script is the
+      blocker; no code slot built yet.
+- [ ] **Content:** Hindi SOP drafts still machine-drafted — verify before pilot.
+- [ ] **Pilot watch-item:** focus-flow auto-advance beat is 350ms — validate
+      with real teachers; dial lives in batchFlowInit's setTimeout.
+- [ ] Optional housekeeping: prototypes/ has 5 draft HTML files (safe to prune).
 ## STATE (2026-07-14 pm) — reconcile resolved; repo clean
 Soundboard player code confirmed ON main (`git grep buildSoundboard HEAD -- app.js`
 = 2 hits — it landed via an earlier merge, outside the recent-log window).
