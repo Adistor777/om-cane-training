@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Result entry drafts — focus flow vs open cards</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#22201b; --ink-soft:#6b6458; --ink-faint:#736b5e;
+    --paper:#f7f4ed; --card:#fffdf8; --line:#e8e0d0; --line-soft:#f0e9da;
+    --cat:#2f6f4e; --cat-deep:#1f4d36; --cat-soft:#e2efe5; --cat-line:#cce0d1;
+    --rust:#8a3c12;
+    --r-lg:20px; --r-md:14px; --r-sm:11px;
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:Inter,system-ui,sans-serif; font-size:15px; line-height:1.5; padding:40px 20px 80px; }
+  .wrap{ max-width:1000px; margin:0 auto; }
+  h1{ font-family:"Instrument Serif",Georgia,serif; font-weight:400; font-size:38px; margin:0 0 6px; }
+  .sub{ color:var(--ink-soft); max-width:62ch; font-size:14.5px; margin:0 0 36px; }
+  .row{ display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start; }
+  .col{ flex:1 1 320px; max-width:400px; }
+  .collabel{ font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--cat-deep); margin:0 0 4px; }
+  .colwhy{ font-size:13px; color:var(--ink-faint); margin:0 0 14px; min-height:40px; }
+  .phone{ background:var(--paper); border:1px solid var(--line); border-radius:26px; padding:18px 14px 20px; box-shadow:8px 10px 0 -1px rgba(70,55,25,.10); }
+  .lede-m{ font-family:"Instrument Serif",Georgia,serif; font-size:23px; margin:0 0 12px; }
+  .lede-m small{ display:block; font-family:Inter,sans-serif; font-size:12px; color:var(--ink-soft); margin-top:3px; }
+
+  /* chip strip */
+  .chips{ display:flex; gap:8px; margin:0 0 14px; }
+  .chip{ position:relative; width:46px; border:0; background:none; padding:0; cursor:pointer; text-align:center; font:inherit; }
+  .chip .cface{ width:44px; height:44px; border-radius:14px; background:var(--card); border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:"Instrument Serif",serif; font-size:20px; color:var(--ink-soft); transition:all .18s var(--ease); }
+  .chip.cur .cface{ border-color:var(--cat); background:var(--cat-soft); color:var(--cat-deep); transform:translateY(-2px); }
+  .chip .cname{ display:block; font-size:10px; font-weight:600; color:var(--ink-soft); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip .ctick{ position:absolute; top:-5px; right:-3px; width:18px; height:18px; border-radius:50%; background:var(--cat); color:#fff; font-size:10px; display:none; align-items:center; justify-content:center; }
+  .chip.done .ctick{ display:flex; }
+  .chip.cur .cname{ color:var(--cat-deep); }
+
+  /* focus card */
+  .fcard{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg); padding:18px 16px; }
+  .fhead{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .fface{ width:44px; height:44px; border-radius:14px; background:var(--cat-soft); display:flex; align-items:center; justify-content:center; font-family:"Instrument Serif",serif; font-size:22px; color:var(--cat-deep); }
+  .fname{ font-weight:700; font-size:17px; }
+  .fprog{ margin-left:auto; font-size:11.5px; color:var(--ink-faint); font-weight:600; }
+  .flabel{ font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 7px; }
+  .seg3{ display:flex; gap:8px; margin-bottom:16px; }
+  .seg3 button{ flex:1; font:inherit; font-size:13.5px; font-weight:600; padding:15px 4px; border-radius:12px; border:1.5px solid var(--line); background:var(--card); cursor:pointer; transition:all .15s var(--ease); }
+  .seg3 button.on{ background:var(--cat); border-color:var(--cat); color:#fff; }
+  .stepper-row{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .stepper-row .sl{ flex:1; font-size:13.5px; color:var(--ink); }
+  .stepper{ display:flex; align-items:center; gap:0; border:1.5px solid var(--line); border-radius:12px; overflow:hidden; }
+  .stepper button{ width:44px; height:44px; font-size:20px; font-weight:600; border:0; background:var(--card); color:var(--cat-deep); cursor:pointer; }
+  .stepper button:active{ background:var(--cat-soft); }
+  .stepper .sv{ width:40px; text-align:center; font-weight:700; font-size:16px; }
+  .notes-link{ font-size:13px; font-weight:600; color:var(--cat-deep); background:none; border:0; padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:3px; font-family:inherit; }
+  .notes-area{ display:none; margin-top:10px; }
+  .notes-area.open{ display:block; }
+  .notes-area textarea{ width:100%; min-height:64px; font:inherit; font-size:13.5px; border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; background:var(--card); resize:vertical; }
+  .fnav{ display:flex; gap:10px; margin-top:16px; }
+  .fnav .skip{ flex:1; font:inherit; font-weight:600; font-size:13.5px; color:var(--ink-soft); background:transparent; border:1.5px solid var(--line); border-radius:var(--r-sm); padding:13px; cursor:pointer; }
+  .fnav .next{ flex:2; font:inherit; font-weight:700; font-size:14px; color:#fff; background:var(--cat); border:0; border-radius:var(--r-sm); padding:13px; cursor:pointer; }
+  .fnav .next[disabled]{ opacity:.45; }
+
+  /* summary */
+  .sumrow{ display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); padding:11px 13px; margin-bottom:8px; font-size:13.5px; }
+  .sumrow .sface{ width:32px; height:32px; border-radius:10px; background:var(--cat-soft); display:flex; align-items:center; justify-content:center; font-family:"Instrument Serif",serif; font-size:16px; color:var(--cat-deep); }
+  .sumrow .sres{ margin-left:auto; font-weight:700; }
+  .sumrow .sres.got{ color:var(--cat-deep); }
+  .sumrow .sres.nyet{ color:var(--rust); }
+  .sumrow .sres.skip{ color:var(--ink-faint); font-weight:400; }
+  .sumrow .sedit{ font-size:12px; color:var(--cat-deep); background:none; border:0; cursor:pointer; font-weight:600; font-family:inherit; }
+  .savebtn{ width:100%; margin-top:10px; font:inherit; font-weight:700; font-size:15px; color:#fff; background:var(--cat); border:0; border-radius:var(--r-sm); padding:15px; cursor:pointer; }
+  .toast{ margin-top:10px; text-align:center; font-size:13px; color:var(--cat-deep); font-weight:600; min-height:20px; }
+
+  /* open cards variant */
+  .ocard{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg); padding:14px; margin-bottom:12px; }
+  .ocard .fhead{ margin-bottom:10px; }
+  .ocard .seg3 button{ padding:12px 4px; font-size:12.5px; }
+  .ocard .stepper button{ width:38px; height:38px; }
+  .scored-pill{ margin-left:auto; font-size:11px; font-weight:700; color:var(--cat-deep); background:var(--cat-soft); border:1px solid var(--cat-line); padding:2px 9px; border-radius:999px; display:none; }
+  .ocard.scored .scored-pill{ display:inline-block; }
+  .ocard.scored{ border-color:var(--cat-line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Result entry — two tappable drafts</h1>
+  <p class="sub">Left: the recommended <strong>focus flow</strong> — one student at a time, chip strip shows the batch, scoring auto-advances, summary before save. Right: <strong>open cards</strong> — all students on one page, everything visible. Both drop the redundant "achieved" checkbox: the score is the result. Try scoring students in both.</p>
+
+  <div class="row">
+    <!-- ============ FOCUS FLOW ============ -->
+    <div class="col">
+      <p class="collabel">Draft 1 · Focus flow (recommended)</p>
+      <p class="colwhy">Mirrors the session — children run the activity one at a time. Big targets, clear progress, nothing to scroll.</p>
+      <div class="phone">
+        <p class="lede-m">Travel to the Sound<small id="ffsub">Score each student — 0 of 4 done</small></p>
+        <div class="chips" id="chips"></div>
+        <div id="ffbody"></div>
+        <div class="toast" id="fftoast"></div>
+      </div>
+    </div>
+
+    <!-- ============ OPEN CARDS ============ -->
+    <div class="col">
+      <p class="collabel">Draft 2 · Open cards</p>
+      <p class="colwhy">The "paper sheet" analog — every student and every field on one page. Honest but tall with bigger batches.</p>
+      <div class="phone">
+        <p class="lede-m">Travel to the Sound<small>Score each student, then save</small></p>
+        <div id="oclist"></div>
+        <button class="savebtn" id="ocsave">Save 0 results</button>
+        <div class="toast" id="octoast"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const KIDS = [ {id:'a',n:'Aditya'}, {id:'v',n:'Vaishu'}, {id:'r',n:'Rahul'}, {id:'p',n:'Priya'} ];
+  /* ---------- focus flow state ---------- */
+  const st = {}; KIDS.forEach(k=>st[k.id]={score:null,steps:0,note:'',skipped:false});
+  let cur = 0, view = 'card';
+  const $ = id=>document.getElementById(id);
+  function doneCount(){ return KIDS.filter(k=>st[k.id].score).length; }
+  function renderChips(){
+    $('chips').innerHTML = KIDS.map((k,i)=>`
+      <button class="chip ${i===cur&&view==='card'?'cur':''} ${st[k.id].score?'done':''}" onclick="goKid(${i})">
+        <span class="cface">${k.n[0]}</span><span class="ctick">✓</span><span class="cname">${k.n}</span>
+      </button>`).join('');
+    $('ffsub').textContent = view==='sum' ? 'Check and save' : `Score each student — ${doneCount()} of ${KIDS.length} done`;
+  }
+  function goKid(i){ cur=i; view='card'; render(); }
+  function pick(id, v, btn){
+    st[id].score = v;
+    [...btn.parentNode.children].forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+    setTimeout(()=>{ advance(); }, 350);
+  }
+  function advance(){
+    const nxt = KIDS.findIndex((k,i)=>i>cur && !st[k.id].score);
+    const any = KIDS.findIndex(k=>!st[k.id].score);
+    if(nxt!==-1){ cur=nxt; } else if(any!==-1 && any!==cur){ cur=any; } else { view='sum'; }
+    render();
+  }
+  function stepFF(id,d){ st[id].steps=Math.max(0,st[id].steps+d); $('sv_'+id).textContent=st[id].steps; }
+  function render(){
+    renderChips();
+    if(view==='sum'){ renderSummary(); return; }
+    const k = KIDS[cur], s = st[k.id];
+    $('ffbody').innerHTML = `
+      <div class="fcard">
+        <div class="fhead"><span class="fface">${k.n[0]}</span><span class="fname">${k.n}</span><span class="fprog">${cur+1} of ${KIDS.length}</span></div>
+        <p class="flabel">How did it go?</p>
+        <div class="seg3">${['Got it','With help','Not yet'].map(v=>`<button class="${s.score===v?'on':''}" onclick="pick('${k.id}','${v}',this)">${v}</button>`).join('')}</div>
+        <div class="stepper-row"><span class="sl">Steps taken</span>
+          <span class="stepper"><button onclick="stepFF('${k.id}',-1)">−</button><span class="sv" id="sv_${k.id}">${s.steps}</span><button onclick="stepFF('${k.id}',1)">+</button></span></div>
+        <button class="notes-link" onclick="this.nextElementSibling.classList.toggle('open')">+ add a note</button>
+        <div class="notes-area ${s.note?'open':''}"><textarea placeholder="Anything worth remembering…" oninput="st['${k.id}'].note=this.value">${s.note}</textarea></div>
+        <div class="fnav">
+          <button class="skip" onclick="advance()">Skip for now</button>
+          <button class="next" onclick="view='sum';render()">Review &amp; save</button>
+        </div>
+      </div>`;
+  }
+  function renderSummary(){
+    const rows = KIDS.map(k=>{
+      const s=st[k.id];
+      const res = s.score
+        ? `<span class="sres ${s.score==='Got it'?'got':s.score==='Not yet'?'nyet':''}">${s.score}${s.steps?` · ${s.steps} steps`:''}</span>`
+        : `<span class="sres skip">not scored — no record</span>`;
+      return `<div class="sumrow"><span class="sface">${k.n[0]}</span>${k.n} ${res}
+        <button class="sedit" onclick="goKid(${KIDS.indexOf(k)})">edit</button></div>`;
+    }).join('');
+    const n = doneCount();
+    $('ffbody').innerHTML = rows + `<button class="savebtn" onclick="$('fftoast').textContent='Saved ${n} result${n===1?'':'s'} ✓'" ${n?'':'disabled'}>Save ${n} result${n===1?'':'s'}</button>`;
+  }
+  render();
+
+  /* ---------- open cards ---------- */
+  const oc = {}; KIDS.forEach(k=>oc[k.id]={score:null,steps:0});
+  function ocPick(id,v,btn){
+    oc[id].score=v;
+    [...btn.parentNode.children].forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+    btn.closest('.ocard').classList.add('scored');
+    ocPaint();
+  }
+  function ocStep(id,d){ oc[id].steps=Math.max(0,oc[id].steps+d); $('osv_'+id).textContent=oc[id].steps; }
+  function ocPaint(){ const n=KIDS.filter(k=>oc[k.id].score).length; $('ocsave').textContent=`Save ${n} result${n===1?'':'s'}`; }
+  $('oclist').innerHTML = KIDS.map(k=>`
+    <div class="ocard" id="oc_${k.id}">
+      <div class="fhead"><span class="fface" style="width:36px;height:36px;font-size:18px;">${k.n[0]}</span><span class="fname" style="font-size:15px;">${k.n}</span><span class="scored-pill">scored</span></div>
+      <p class="flabel">How did it go?</p>
+      <div class="seg3">${['Got it','With help','Not yet'].map(v=>`<button onclick="ocPick('${k.id}','${v}',this)">${v}</button>`).join('')}</div>
+      <div class="stepper-row" style="margin-bottom:4px;"><span class="sl">Steps taken</span>
+        <span class="stepper"><button onclick="ocStep('${k.id}',-1)">−</button><span class="sv" id="osv_${k.id}">0</span><button onclick="ocStep('${k.id}',1)">+</button></span></div>
+      <button class="notes-link" onclick="this.nextElementSibling.classList.toggle('open')">+ add a note</button>
+      <div class="notes-area"><textarea placeholder="Anything worth remembering…"></textarea></div>
+    </div>`).join('');
+  $('ocsave').onclick = ()=>{ const n=KIDS.filter(k=>oc[k.id].score).length; $('octoast').textContent = n?`Saved ${n} result${n===1?'':'s'} ✓`:'Score at least one student first'; };
+</script>
+</body>
+</html>

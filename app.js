@@ -131,7 +131,7 @@ const STILL = {
   // Direction — the compass, needle mid-swing.
   'dir-basic-commands': `<svg ${STILL_W}>${_sBG}${_sShadow(160,58)}<circle cx="160" cy="58" r="38" fill="var(--card,#fffdf8)" stroke="var(--cat)" stroke-width="3"/><circle cx="160" cy="58" r="30" fill="none" stroke="var(--cat-line)" stroke-width="1.5"/><path d="M160 24 v8 M160 84 v8 M126 58 h8 M186 58 h8" stroke="var(--cat-deep)" stroke-width="2.5" stroke-linecap="round"/><path d="M172 40 L163 61 L148 76 L157 55 Z" fill="#b5521f"/><circle cx="160" cy="58" r="4" fill="var(--card,#fffdf8)" stroke="var(--cat-deep)" stroke-width="2"/></svg>`,
   // Direction advanced — the full rose with lettered points.
-  'dir-advanced-commands': `<svg ${STILL_W}>${_sBG}${_sShadow(160,58)}<circle cx="160" cy="58" r="38" fill="var(--card,#fffdf8)" stroke="var(--cat)" stroke-width="3"/><path d="M160 26 L166 52 L160 58 L154 52 Z" fill="#b5521f"/><path d="M160 90 L154 64 L160 58 L166 64 Z M128 58 L154 52 L160 58 L154 64 Z M192 58 L166 64 L160 58 L166 52 Z" fill="var(--cat-deep)" opacity=".8"/><g font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="var(--cat-deep)" text-anchor="middle"><text x="160" y="18">N</text><text x="212" y="62">E</text><text x="160" y="112">S</text><text x="108" y="62">W</text></g></svg>`,
+  'dir-advanced-commands': `<svg ${STILL_W}>${_sBG}${_sShadow(160,58)}<circle cx="160" cy="58" r="38" fill="var(--card,#fffdf8)" stroke="var(--cat)" stroke-width="3"/><path d="M160 26 L166 52 L160 58 L154 52 Z" fill="#b5521f"/><path d="M160 90 L154 64 L160 58 L166 64 Z M128 58 L154 52 L160 58 L154 64 Z M192 58 L166 64 L160 58 L166 52 Z" fill="var(--cat-deep)" opacity=".8"/><g font-family="Arimo,Arial,sans-serif" font-size="11" font-weight="700" fill="var(--cat-deep)" text-anchor="middle"><text x="160" y="18">N</text><text x="212" y="62">E</text><text x="160" y="112">S</text><text x="108" y="62">W</text></g></svg>`,
   // Sound + Direction — near speaker loud, far speaker faint.
   'snddir-nearfar': `<svg ${STILL_W}>${_sBG}${_sShadow(84,44)}${_sShadow(252,26)}${_sPhone(84,62)}${_sArcsR(114,56)}<g transform="translate(252,52) scale(.62)" opacity=".75"><rect x="-16" y="-30" width="32" height="58" rx="7" fill="var(--cat-deep)"/><rect x="-11" y="-25" width="22" height="42" rx="3" fill="var(--card,#fffdf8)"/></g><path d="M282 40 a16 16 0 0 1 0 22" fill="none" stroke="var(--cat)" stroke-width="2.5" stroke-linecap="round" opacity=".4"/></svg>`,
   // Near/far with the cane along.
@@ -907,7 +907,6 @@ function paint(html, dir, stagger, opts){
   // Navigating away? Close the help popup FIRST (instant, no animation) so its
   // borrowed content returns to the outgoing screen before innerHTML wipes it.
   if(typeof closeRefSheet === 'function') closeRefSheet(true);
-  if(typeof closeDemoPopup === 'function') closeDemoPopup(true); // and any playing demo
   // Default: utilities menu is hidden. The signed-in landing re-shows it.
   if(typeof setMenuVisible === 'function') setMenuVisible(false);
   if(dir === 'none'){
@@ -1234,7 +1233,7 @@ function showManageData(dir){
         // moved into that detail screen, so this list is clean navigation.
         return `<button type="button" class="activechild rowtap" onclick="showChildDetail('${p.id}',{from:'manage'})">${avatarFor(p,'avatar')}<span class="who">${esc(p.name)}<small>${esc(sub)}</small></span><span class="action-go">${ICON.chevronRight}</span></button>`;
       }).join('')
-    : '<p class="empty">No children saved yet.</p>';
+    : '<p class="empty">No children saved yet — add students from Home → Students, and their saved results will appear here.</p>';
   paint(`
     <h1 class="lede">Stored data<small>Tap a child to see their saved results. Export a CSV first — it is the only backup.</small></h1>
     <button class="action-row" onclick="exportCSV()" style="margin-bottom:var(--s3)">
@@ -1434,15 +1433,8 @@ function showCategory(ci, dir){
     const go = act.group ? `showActivity(${ci},${ai},{dir:'fwd'})` : `showChildPicker(${ci},${ai},'fwd')`;
     // STILL-LIFE thumbs on every card (video frames retired 2026-07-21 — the
     // demos aren't final, and a designed scene stays stable while clips
-    // churn). The ▶ badge is a real control: tapping it plays the demo in an
-    // overlay WITHOUT triggering the card's navigation (stopPropagation in
-    // playDemo). File/title ride on data-attrs so names with quotes are safe.
-    const thumb = `<span class="media-thumb still">${activityStill(cat, act)}${
-      act.videoFile ? `<span class="media-play" role="button" tabindex="0"
-        data-video="${esc(act.videoFile)}" data-title="${esc(act.name)}"
-        aria-label="Play the demo video for ${esc(act.name)}"
-        onclick="playDemo(this, event)"
-        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();playDemo(this, event);}">${ICON.sbPlay || '▶'} demo</span>` : ''}</span>`;
+    // churn). No play badge: the demo lives behind the ? on the next screens.
+    const thumb = `<span class="media-thumb still">${activityStill(cat, act)}</span>`;
     return `<button class="card-media" onclick="${go}">
       ${thumb}
       <span class="media-body"><h2>${esc(act.name)}</h2>
@@ -1455,8 +1447,8 @@ function showCategory(ci, dir){
   // lines + optional demo video), so categories opt in content-side.
   const hasHelp = Array.isArray(cat.help) && cat.help.length;
   const helpBtn = hasHelp
-    ? `<button type="button" class="help-btn" aria-label="About ${esc(cat.category)} — what to pick and why"
-        aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'catRefSheet')">?</button>`
+    ? `<button type="button" class="${helpBtnClass()}" aria-label="About ${esc(cat.category)} — what to pick and why"
+        aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'catRefSheet')">?</button>${helpCallout()}`
     : '';
   const helpVideo = hasHelp && cat.helpVideo
     ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(cat.helpVideo)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
@@ -1987,10 +1979,12 @@ function showChildPicker(catIndex, actIndex, dir, opts){
   paint(`
     <div class="lede-row">
       <h1 class="lede">${esc(act.name)}<small>Who is doing this activity? Tap everyone taking part.</small></h1>
-      <button type="button" class="help-btn" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
+      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
         aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'pickerRefSheet')">?</button>
+      ${helpCallout()}
     </div>
     ${sopBlock}
+    ${hintOnce('roster', 'Tap every student taking part — you can pick several. Then <strong>Start</strong>. New students can be added right below.')}
     ${profiles.length ? `
       <div class="roster-selbar">
         <span class="roster-count" id="rosterCount" aria-live="polite"></span>
@@ -2079,6 +2073,64 @@ function buildRefSheet(act, domId){
         ${audioHtml}
     </div>`;
 }
+/* ---------------------------------------------------------------------------
+   CONTEXTUAL ONBOARDING (2026-07-21) — no tour, no spotlight overlay. Three
+   quiet layers instead: (1) hintOnce() — a one-line dismissible hint the
+   FIRST time a teacher reaches a screen, gone forever after "Got it";
+   (2) teaching empty states (worded where the lists render); (3) the ? button
+   pulses gently until the first time ANY reference sheet is opened, then
+   never again. All flags live in the Store, so state survives restarts.
+   Discipline: max one hint per screen, and only where the flow is genuinely
+   novel — a hint on every screen teaches people to ignore hints.
+   --------------------------------------------------------------------------- */
+const HINTS_KEY = 'hintsSeen';
+// Key renamed helpUsed → helpTipDismissed when the semantics changed (v2:
+// only the explicit "Don't show again" sets it; opening the ? doesn't). The
+// rename orphans any old helpUsed flags on pilot devices on purpose — they
+// were written under the old meaning and would wrongly hide the callout.
+const HELP_USED_KEY = 'helpTipDismissed';
+// Flags are scoped PER TEACHER (keys suffixed with the signed-in teacher id):
+// on a shared school tablet every new teacher gets their own first run —
+// hints and the ? pulse reappear for them, and stay dismissed for colleagues.
+// Signed-out / pre-login states fall back to the plain device-wide key.
+function _obKey(base){ const t = (typeof getTeacherId === 'function' && getTeacherId()) || ''; return t ? `${base}:${t}` : base; }
+function hintSeen(id){ const m = Store.getJSON(_obKey(HINTS_KEY), {}); return !!(m && m[id]); }
+async function dismissHint(id, btn){
+  const k = _obKey(HINTS_KEY);
+  const m = Store.getJSON(k, {}) || {};
+  m[id] = true;
+  await Store.setJSON(k, m);
+  const box = btn.closest('.hint');
+  if(box){ box.classList.add('gone'); setTimeout(()=>box.remove(), 260); }
+}
+function hintOnce(id, html){
+  if(hintSeen(id)) return '';
+  return `<div class="hint" role="note">
+    <span class="hint-ic">${ICON.info}</span>
+    <span class="hint-text">${html}</span>
+    <button type="button" class="hint-ok" onclick="dismissHint('${id}', this)">Got it</button>
+  </div>`;
+}
+// The ? pulses until this teacher first opens any sheet (any screen counts).
+function helpBtnClass(){ return Store.getString(_obKey(HELP_USED_KEY),'') === '1' ? 'help-btn' : 'help-btn pulse'; }
+// The ? CALLOUT — a labelled bubble under the button that says plainly what it
+// does. Persistent: it renders on EVERY screen that has a ?, every visit,
+// until the teacher explicitly taps "Don't show again" (per-teacher flag —
+// the pulse retires with it). Opening the sheet does not dismiss it.
+function helpCallout(){
+  if(Store.getString(_obKey(HELP_USED_KEY),'') === '1') return '';
+  return `<div class="help-tip" role="note">
+    <span class="help-tip-arrow" aria-hidden="true"></span>
+    <span class="help-tip-text">Tap <strong>?</strong> for this screen's steps, demo video and audio guidance.</span>
+    <button type="button" class="help-tip-ok" onclick="dismissHelpTip(this)">Don't show again</button>
+  </div>`;
+}
+async function dismissHelpTip(btn){
+  await Store.setString(_obKey(HELP_USED_KEY), '1');
+  document.querySelectorAll('.help-btn.pulse').forEach(b=>b.classList.remove('pulse'));
+  const t = btn.closest('.help-tip');
+  if(t){ t.classList.add('gone'); setTimeout(()=>t.remove(), 240); }
+}
 /* ---- HELP POPUP — one dialog, lazily created, shared by every ? ---------- */
 let helpPopupState = null; // { src, opener } while open — where to return content/focus
 function ensureHelpPopup(){
@@ -2131,48 +2183,6 @@ function ensureHelpPopup(){
   });
   document.body.appendChild(ov);
   return ov;
-}
-/* ---- DEMO PLAYER — tap the ▶ badge on a card, the clip plays right there --
-   Same overlay surface as the help popup. Built fresh per open and removed on
-   close (no stale video elements holding memory); Esc / backdrop / ✕ close it
-   and always pause first. stopPropagation keeps the card tap (navigation)
-   and the badge tap (play) from firing together. */
-function demoEscListener(e){ if(e.key === 'Escape') closeDemoPopup(); }
-function closeDemoPopup(instant){
-  const ov = document.getElementById('demoOverlay');
-  if(!ov) return;
-  const v = ov.querySelector('video');
-  if(v){ try{ v.pause(); }catch(_){} }
-  document.body.style.overflow = '';
-  document.removeEventListener('keydown', demoEscListener);
-  ov.classList.remove('open'); ov.classList.add('closing');
-  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(instant || reduced){ ov.remove(); } else { setTimeout(()=>ov.remove(), 240); }
-}
-function playDemo(el, ev){
-  if(ev) ev.stopPropagation();
-  const file = el.getAttribute('data-video');
-  if(!file) return;
-  closeDemoPopup(true); // never two players
-  const ov = document.createElement('div');
-  ov.id = 'demoOverlay'; ov.className = 'help-overlay';
-  ov.innerHTML = `
-    <div class="help-card video-card" role="dialog" aria-modal="true" aria-labelledby="demoPopupTitle">
-      <div class="help-card-head">
-        <h2 class="help-card-title" id="demoPopupTitle"></h2>
-        <button type="button" class="help-close" aria-label="Close video" onclick="closeDemoPopup()">${ICON.close}</button>
-      </div>
-      <video class="demo-video" controls autoplay playsinline></video>
-    </div>`;
-  // textContent / property assignment — titles and filenames stay inert.
-  ov.querySelector('#demoPopupTitle').textContent = el.getAttribute('data-title') || 'Demonstration';
-  ov.querySelector('video').src = file;
-  ov.addEventListener('click', e=>{ if(e.target === ov) closeDemoPopup(); });
-  document.body.appendChild(ov);
-  requestAnimationFrame(()=> requestAnimationFrame(()=> ov.classList.add('open')));
-  document.body.style.overflow = 'hidden';
-  document.addEventListener('keydown', demoEscListener);
-  ov.querySelector('.help-close').focus({preventScroll:true});
 }
 /* ---- CONFIRM DIALOG — styled replacement for window.confirm() ------------
    Same cuboid card + motion as the help popup, so destructive moments feel
@@ -2257,6 +2267,9 @@ function restoreHelpContent(){
 function toggleRefSheet(btn, domId){
   const src = document.getElementById(domId);
   if(!src) return;
+  // NOTE (design call): opening the sheet does NOT retire the callout — only
+  // the explicit "Don't show again" tap does (dismissHelpTip). The reminder
+  // keeps appearing on every screen until the teacher opts out themselves.
   const ov = ensureHelpPopup();
   if(!ov.hidden){ closeRefSheet(); return; } // ? acts as close while open
   restoreHelpContent(); // safety: reclaim anything a previous screen left behind
@@ -2587,53 +2600,61 @@ function showActivity(catIndex, actIndex, opts){
   // Reset any video staged from a previous record on this screen.
   pendingVideo = null;
   // FORM AREA. Group + solo keep the single flat form (solo = batch of one,
-  // full parity incl. video evidence). A batch of 2+ renders the RESULT SHEET:
-  // one row per child, big tick = achieved, tap the row for optional detail
-  // (the activity's own fields, namespaced per child). Sheet video capture is
-  // deliberately absent for 2+ — clips are consent-gated per child and one
-  // stage can't hold N gates honestly; solo runs keep the control.
+  // full parity incl. video evidence — the original handleSave path applies).
+  // Video capture stays absent for 2+ — clips are consent-gated per child.
   let formInner, saveBtnHtml;
   if(isGroup || solo){
     const fields = act.dataFields.map(f=>buildField(f)).join('');
     formInner = `${fields}${isGroup ? '' : videoUploadMarkup()}`;
-    // Solo = batch of one = the active profile (set in startBatch), so the
-    // original handleSave path — including video commit — applies unchanged.
     saveBtnHtml = `<button type="button" class="save" id="saveBtn" onclick="handleSave('${act.id}')">Save result</button>`;
   } else {
-    formInner = rosterKids.map(p=>{
+    /* FOCUS FLOW (Draft 1, picked 2026-07-21 — replaced the checkbox tick
+       sheet): ONE student's full scorecard at a time, mirroring the session
+       (children run the activity one by one). The chip strip names the batch
+       and collects ticks; picking a score auto-advances to the next unscored
+       student; Skip records NOTHING for that child; Review & save shows
+       exactly what will be written before anything is. The old "achieved"
+       checkbox is gone — the score IS the result (Achieved derives from it).
+       All cards render up front (hidden) so answers survive card switches. */
+    const chips = rosterKids.map((p,i)=>`
+      <button type="button" class="bchip" id="chip_${p.id}" aria-label="Go to ${esc(p.name)}" onclick="batchShow(${i})">
+        ${avatarFor(p,'cface')}<span class="ctick" aria-hidden="true">${ICON.check}</span><span class="cname">${esc(p.name)}</span>
+      </button>`).join('');
+    const cards = rosterKids.map((p,i)=>{
       const perChild = act.dataFields.map(f=>buildField(f, '_'+p.id)).join('');
-      return `<div class="rkid" id="rrow_${p.id}">
-        <div class="rkid-top">
-          <button type="button" class="rkid-main" aria-expanded="false" onclick="toggleRosterDetail('${p.id}',this)">
-            ${avatarFor(p,'avatar')}<span class="rkid-name">${esc(p.name)}<small id="rsub_${p.id}">Tap for detail</small></span>
-          </button>
-          <button type="button" class="bigcheck" id="ach_${p.id}" aria-pressed="false"
-            aria-label="${esc(p.name)} achieved this activity" onclick="toggleAchieved('${p.id}',this)">${ICON.check}</button>
+      return `<div class="bcard" id="bcard_${p.id}" data-pid="${p.id}" hidden>
+        <div class="bcard-head">${avatarFor(p,'fface')}<span class="bname">${esc(p.name)}</span><span class="bprog">${i+1} of ${rosterKids.length}</span></div>
+        ${perChild}
+        <div class="bnav">
+          <button type="button" class="bskip" onclick="batchAdvance()">Skip for now</button>
+          <button type="button" class="breview" onclick="batchReview()">Review &amp; save</button>
         </div>
-        <div class="rkid-detail" id="rdet_${p.id}" hidden>${perChild}</div>
       </div>`;
     }).join('');
-    saveBtnHtml = `<button type="button" class="save" id="saveBtn" onclick="handleBatchSave('${act.id}')">Save results</button>`;
+    formInner = `<div class="bchips" id="batchChips">${chips}</div>${cards}<div id="batchSummary" hidden></div>`;
+    saveBtnHtml = ''; // the save button lives on the review screen
   }
   // The ? sheet: shared with the child picker — demo, steps, note, narration.
   const refSheet = buildRefSheet(act, 'actRefSheet');
   paint(`
     <div class="lede-row">
       <h1 class="lede">${esc(act.name)}<small>${esc(cat.category)}</small></h1>
-      <button type="button" class="help-btn" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
+      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
         aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'actRefSheet')">?</button>
+      ${helpCallout()}
     </div>
     ${refSheet}
     ${childBar}
     ${buildSoundboard(act)}
     ${buildCommandBoard(act)}
+    ${isGroup || solo ? '' : hintOnce('focusflow', 'Score one student at a time — the faces above the card show who is done. Skip anyone you did not observe; skipped students get no record.')}
     <div class="panel primary" id="formPanel">
-      <h2 class="panel-title">${ICON.edit} ${isGroup || solo ? 'Record a result' : 'Record results — tick who got it'}</h2>
+      <h2 class="panel-title">${ICON.edit} ${isGroup || solo ? 'Record a result' : 'Score each student'}</h2>
       <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${formInner}${saveBtnHtml}</fieldset></form>
     </div>
     <div class="panel quiet"><h2 class="panel-title">${ICON.list} Past results</h2><div id="recordList">${recHtml}</div></div>
   `, opts.dir || 'fwd', false, { skipLedeFocus: !!opts.focusForm });
-  if(!isGroup && !solo) batchPaintSave();
+  if(!isGroup && !solo) batchFlowInit(act);
   if(opts.focusForm){
     const panel = document.getElementById('formPanel');
     if(panel){ panel.scrollIntoView({behavior:'smooth', block:'start'}); }
@@ -2834,32 +2855,113 @@ async function handleSave(activityId){
   else                                             toast('Saved');
   showActivity(state.category, state.activity, { sopCollapsed:true, focusForm:true, dir:'none' });
 }
-/* ---- BATCH SHEET interactions + save (rosters of 2+) ---------------------
-   The tick IS the result: ticked children save `Achieved: Yes` plus whatever
-   detail was entered. Unticked children save `Achieved: No` ONLY if the
-   teacher entered detail for them — an untouched, unticked row writes
-   NOTHING, because absence of a record must not read as failure in the CSV. */
-function toggleAchieved(pid, btn){
-  const on = btn.getAttribute('aria-pressed') !== 'true';
-  btn.setAttribute('aria-pressed', String(on));
-  const row = document.getElementById('rrow_'+pid);
-  if(row) row.classList.toggle('done', on);
-  batchPaintSave();
+/* ---- FOCUS FLOW engine (rosters of 2+) ------------------------------------
+   One student's scorecard visible at a time. "Scored" = the activity's
+   mastery/result field has a value; picking it auto-advances to the next
+   unscored student (350ms beat so the selection is seen landing). Review
+   lists exactly what will save: scored students write a record with
+   `Achieved` DERIVED from the score (Got it / Independent → Yes, else No);
+   skipped students write NOTHING — absence must not read as failure. */
+let batchKids = [];        // profileIds, roster order
+let batchIdx = 0;          // which card is showing
+let batchScoreField = '';  // dataField id of the mastery/result field
+function batchFlowInit(act){
+  batchKids = batchRoster.slice();
+  batchIdx = 0;
+  const sf = act.dataFields.find(f=>f.type==='mastery' || f.type==='result');
+  batchScoreField = sf ? sf.id : '';
+  // Auto-advance: delegate on the form panel; a tap on any score-seg button
+  // inside the current card repaints the chips and moves on after a beat.
+  const panel = document.getElementById('formPanel');
+  if(panel && batchScoreField){
+    panel.addEventListener('click', e=>{
+      const segBtn = e.target.closest('.seg button');
+      if(!segBtn) return;
+      const card = segBtn.closest('.bcard');
+      if(!card) return;
+      const seg = segBtn.parentNode;
+      if(seg.id === 'f_'+batchScoreField+'_'+card.dataset.pid){
+        batchChipsPaint();
+        setTimeout(()=>batchAdvance(), 350);
+      }
+    });
+  }
+  batchShow(0);
 }
-function toggleRosterDetail(pid, btn){
-  const det = document.getElementById('rdet_'+pid);
-  if(!det) return;
-  det.hidden = !det.hidden;
-  btn.setAttribute('aria-expanded', String(!det.hidden));
-  const sub = document.getElementById('rsub_'+pid);
-  if(sub && det.hidden) sub.textContent = 'Tap for detail';
-  if(sub && !det.hidden) sub.textContent = 'Optional — score, counts, notes';
+function batchScored(pid){
+  if(!batchScoreField) return batchHasData(pid);
+  const el = document.getElementById('f_'+batchScoreField+'_'+pid);
+  return !!(el && el.dataset.value);
 }
-function batchPaintSave(){
-  const btn = document.getElementById('saveBtn');
-  if(!btn) return;
-  const n = document.querySelectorAll('.bigcheck[aria-pressed="true"]').length;
-  btn.textContent = n ? `Save ${n} ${n===1?'result':'results'}` : 'Save results';
+// Any non-default value in any of this student's fields?
+function batchHasData(pid){
+  const act = ACTIVITY_DATA[state.category].activities[state.activity];
+  return act.dataFields.some(f=>{
+    const el = document.getElementById('f_'+f.id+'_'+pid);
+    if(!el) return false;
+    if(f.type === 'count') return !!(el.value && el.value !== '0');
+    if(f.type === 'result' || f.type === 'mastery') return !!el.dataset.value;
+    if(f.type === 'checkbox') return el.checked;
+    return !!(el.value || '').trim();
+  });
+}
+function batchChipsPaint(onSummary){
+  batchKids.forEach((pid,i)=>{
+    const c = document.getElementById('chip_'+pid);
+    if(!c) return;
+    c.classList.toggle('done', batchScored(pid));
+    c.classList.toggle('cur', !onSummary && i === batchIdx);
+  });
+}
+function batchShow(i){
+  batchIdx = i;
+  const sum = document.getElementById('batchSummary');
+  if(sum) sum.hidden = true;
+  batchKids.forEach((pid,idx)=>{
+    const el = document.getElementById('bcard_'+pid);
+    if(el) el.hidden = idx !== i;
+  });
+  batchChipsPaint();
+}
+function batchAdvance(){
+  const after = batchKids.findIndex((pid,i)=> i > batchIdx && !batchScored(pid));
+  const any   = batchKids.findIndex(pid=> !batchScored(pid));
+  if(after !== -1) batchShow(after);
+  else if(any !== -1 && any !== batchIdx) batchShow(any);
+  else batchReview(); // everyone handled → straight to the review
+}
+function batchReview(){
+  const act = ACTIVITY_DATA[state.category].activities[state.activity];
+  const sum = document.getElementById('batchSummary');
+  if(!sum) return;
+  batchKids.forEach(pid=>{ const el = document.getElementById('bcard_'+pid); if(el) el.hidden = true; });
+  let n = 0;
+  const rows = batchKids.map((pid,i)=>{
+    const p = profileById(pid);
+    if(!p) return '';
+    const scored = batchScored(pid) || batchHasData(pid);
+    let detail = 'not scored — no record';
+    if(scored){
+      n++;
+      const bits = [];
+      act.dataFields.forEach(f=>{
+        const el = document.getElementById('f_'+f.id+'_'+pid);
+        if(!el) return;
+        if(f.type === 'result' || f.type === 'mastery'){ if(el.dataset.value) bits.unshift(`<strong>${esc(el.dataset.value)}</strong>`); }
+        else if(f.type === 'count'){ if(el.value && el.value !== '0') bits.push(`${esc(el.value)} ${esc(f.label.toLowerCase())}`); }
+        else if(f.type === 'teacherNotes' || !f.type){ if((el.value||'').trim()) bits.push('note ✎'); }
+      });
+      detail = bits.length ? bits.join(' · ') : 'detail only';
+    }
+    return `<div class="sumrow${scored?'':' sumskip'}">${avatarFor(p,'sface')}<span class="sumname">${esc(p.name)}</span>
+      <span class="sumres">${detail}</span>
+      <button type="button" class="sumedit" onclick="batchShow(${i})">Edit</button></div>`;
+  }).join('');
+  sum.innerHTML = `<h3 class="section-label" style="margin-top:0">Review — what will be saved</h3>${rows}
+    <button type="button" class="save" id="saveBtn" onclick="handleBatchSave('${esc(act.id)}')" ${n?'':'disabled'}>Save ${n} ${n===1?'result':'results'}</button>`;
+  sum.hidden = false;
+  batchChipsPaint(true);
+  if(sum.scrollIntoView) sum.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 async function handleBatchSave(activityId){
   const cat = ACTIVITY_DATA[state.category];
@@ -2867,28 +2969,27 @@ async function handleBatchSave(activityId){
   const btn = document.getElementById('saveBtn');
   if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 400); }
   let saved = 0, failed = 0;
-  for(const pid of batchRoster){
+  for(const pid of batchKids){
     const child = profileById(pid);
     if(!child) continue;
-    const achBtn = document.getElementById('ach_'+pid);
-    const achieved = !!(achBtn && achBtn.getAttribute('aria-pressed') === 'true');
     const values = {};
-    let hasDetail = false;
+    let scored = false, hasDetail = false, scoreVal = '';
     act.dataFields.forEach(f=>{
       const el = document.getElementById('f_'+f.id+'_'+pid);
       if(!el) return;
       if(f.type === 'count'){ const v = el.value || ''; if(v && v !== '0') hasDetail = true; values[f.label] = v || '0'; }
-      else if(f.type === 'result' || f.type === 'mastery'){ const v = el.dataset.value || ''; if(v) hasDetail = true; values[f.label] = v || '—'; }
+      else if(f.type === 'result' || f.type === 'mastery'){ const v = el.dataset.value || ''; if(v){ scored = true; scoreVal = v; } values[f.label] = v || '—'; }
       else if(f.type === 'checkbox'){ if(el.checked) hasDetail = true; values[f.label] = el.checked ? 'Yes' : 'No'; }
       else { const v = el.value || ''; if(v.trim()) hasDetail = true; values[f.label] = v; }
     });
-    if(!achieved && !hasDetail) continue; // untouched row → no record, on purpose
-    values['Achieved'] = achieved ? 'Yes' : 'No'; // flows straight into the CSV's value columns
+    if(!scored && !hasDetail) continue; // skipped student → no record, on purpose
+    // Achieved DERIVES from the score — one control, one truth.
+    values['Achieved'] = (scoreVal === 'Got it' || scoreVal === 'Independent') ? 'Yes' : 'No';
     const ok = await saveRecord(activityId, { researchId: child.researchId, profileId: child.id, values });
     if(ok) saved++; else failed++;
   }
   if(failed){ toast(`Saved ${saved}, but ${failed} failed — storage may be full. Export your data, then try again.`); }
-  else if(!saved){ toast('Nothing to save yet — tick who got it, or add detail to a row.'); return; }
+  else if(!saved){ toast('Nothing to save yet — score at least one student.'); return; }
   else toast(`Saved ${saved} ${saved===1?'result':'results'}`);
   showActivity(state.category, state.activity, { dir:'none', skipLedeFocus:true });
 }
