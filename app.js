@@ -907,6 +907,7 @@ function paint(html, dir, stagger, opts){
   // Navigating away? Close the help popup FIRST (instant, no animation) so its
   // borrowed content returns to the outgoing screen before innerHTML wipes it.
   if(typeof closeRefSheet === 'function') closeRefSheet(true);
+  if(typeof closeDemoPopup === 'function') closeDemoPopup(true); // and any playing demo
   // Default: utilities menu is hidden. The signed-in landing re-shows it.
   if(typeof setMenuVisible === 'function') setMenuVisible(false);
   if(dir === 'none'){
@@ -1433,10 +1434,15 @@ function showCategory(ci, dir){
     const go = act.group ? `showActivity(${ci},${ai},{dir:'fwd'})` : `showChildPicker(${ci},${ai},'fwd')`;
     // STILL-LIFE thumbs on every card (video frames retired 2026-07-21 — the
     // demos aren't final, and a designed scene stays stable while clips
-    // churn). Cards whose activity DOES have a demo keep the small ▶ badge,
-    // since the clip is one tap away behind the ?.
+    // churn). The ▶ badge is a real control: tapping it plays the demo in an
+    // overlay WITHOUT triggering the card's navigation (stopPropagation in
+    // playDemo). File/title ride on data-attrs so names with quotes are safe.
     const thumb = `<span class="media-thumb still">${activityStill(cat, act)}${
-      act.videoFile ? `<span class="media-play">${ICON.sbPlay || '▶'} demo</span>` : ''}</span>`;
+      act.videoFile ? `<span class="media-play" role="button" tabindex="0"
+        data-video="${esc(act.videoFile)}" data-title="${esc(act.name)}"
+        aria-label="Play the demo video for ${esc(act.name)}"
+        onclick="playDemo(this, event)"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();playDemo(this, event);}">${ICON.sbPlay || '▶'} demo</span>` : ''}</span>`;
     return `<button class="card-media" onclick="${go}">
       ${thumb}
       <span class="media-body"><h2>${esc(act.name)}</h2>
@@ -2125,6 +2131,48 @@ function ensureHelpPopup(){
   });
   document.body.appendChild(ov);
   return ov;
+}
+/* ---- DEMO PLAYER — tap the ▶ badge on a card, the clip plays right there --
+   Same overlay surface as the help popup. Built fresh per open and removed on
+   close (no stale video elements holding memory); Esc / backdrop / ✕ close it
+   and always pause first. stopPropagation keeps the card tap (navigation)
+   and the badge tap (play) from firing together. */
+function demoEscListener(e){ if(e.key === 'Escape') closeDemoPopup(); }
+function closeDemoPopup(instant){
+  const ov = document.getElementById('demoOverlay');
+  if(!ov) return;
+  const v = ov.querySelector('video');
+  if(v){ try{ v.pause(); }catch(_){} }
+  document.body.style.overflow = '';
+  document.removeEventListener('keydown', demoEscListener);
+  ov.classList.remove('open'); ov.classList.add('closing');
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(instant || reduced){ ov.remove(); } else { setTimeout(()=>ov.remove(), 240); }
+}
+function playDemo(el, ev){
+  if(ev) ev.stopPropagation();
+  const file = el.getAttribute('data-video');
+  if(!file) return;
+  closeDemoPopup(true); // never two players
+  const ov = document.createElement('div');
+  ov.id = 'demoOverlay'; ov.className = 'help-overlay';
+  ov.innerHTML = `
+    <div class="help-card video-card" role="dialog" aria-modal="true" aria-labelledby="demoPopupTitle">
+      <div class="help-card-head">
+        <h2 class="help-card-title" id="demoPopupTitle"></h2>
+        <button type="button" class="help-close" aria-label="Close video" onclick="closeDemoPopup()">${ICON.close}</button>
+      </div>
+      <video class="demo-video" controls autoplay playsinline></video>
+    </div>`;
+  // textContent / property assignment — titles and filenames stay inert.
+  ov.querySelector('#demoPopupTitle').textContent = el.getAttribute('data-title') || 'Demonstration';
+  ov.querySelector('video').src = file;
+  ov.addEventListener('click', e=>{ if(e.target === ov) closeDemoPopup(); });
+  document.body.appendChild(ov);
+  requestAnimationFrame(()=> requestAnimationFrame(()=> ov.classList.add('open')));
+  document.body.style.overflow = 'hidden';
+  document.addEventListener('keydown', demoEscListener);
+  ov.querySelector('.help-close').focus({preventScroll:true});
 }
 /* ---- CONFIRM DIALOG — styled replacement for window.confirm() ------------
    Same cuboid card + motion as the help popup, so destructive moments feel
