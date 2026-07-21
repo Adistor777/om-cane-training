@@ -1341,6 +1341,11 @@ function showCategory(ci, dir){
   themeFor(ci);
   const pal = CATEGORY_PALETTE[ci % CATEGORY_PALETTE.length];
   const col = catColor(ci);
+  /* MEDIA-FORWARD activity cards (design call 2026-07-21, "A3" won the
+     on-device bake-off): the demo's first frame leads each card — the video
+     loads metadata only, so the thumb costs one frame, not the clip. No demo
+     filmed yet → the striped placeholder, which doubles as the content team's
+     to-film list. */
   const cards = cat.activities.map((act,ai)=>{
     const n = loadRecords(act.id).length;
     // Cane status is a per-card BINARY: with-cane = rust semantic marker,
@@ -1348,14 +1353,17 @@ function showCategory(ci, dir){
     const tag = act.withCane
       ? '<span class="tag cane">With cane</span>'
       : '<span class="tag neutral">Without cane</span>';
-    // GROUP activities (group:true in activities.js) are scored ONCE for the
-    // whole group — no child is picked, so the card goes STRAIGHT to the
-    // record screen. The pill tells the teacher why no face grid appears.
+    // GROUP activities are scored once for the whole group — straight to the
+    // record screen; everything else goes to the batch roster picker.
     const groupTag = act.group ? '<span class="tag neutral">Group</span>' : '';
     const go = act.group ? `showActivity(${ci},${ai},{dir:'fwd'})` : `showChildPicker(${ci},${ai},'fwd')`;
-    return `<button class="card activity grouped" onclick="${go}">
-      <h2>${esc(act.name)}</h2>
-      <div class="meta">${tag}${groupTag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</div>
+    const thumb = act.videoFile
+      ? `<span class="media-thumb"><video src="${esc(act.videoFile)}" preload="metadata" muted playsinline tabindex="-1"></video><span class="media-play">${ICON.sbPlay || '▶'} demo</span></span>`
+      : `<span class="media-thumb missing"><span>${ICON.video} no demo filmed yet</span></span>`;
+    return `<button class="card-media" onclick="${go}">
+      ${thumb}
+      <span class="media-body"><h2>${esc(act.name)}</h2>
+        <span class="meta">${tag}${groupTag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</span></span>
     </button>`;
   }).join('');
   const lede = cat.description ? esc(cat.description) : 'Pick an activity to read the steps and record a result.';
