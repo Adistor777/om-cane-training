@@ -57,7 +57,7 @@ for d in audio sounds faces; do
     mkdir -p "www/$d" && cp -R "$d/." "www/$d/" && echo "OK  copied $d/ -> www/$d/"
   fi
 done
-for v in demo-*.mp4 help-*.jpg; do
+for v in demo-*.mp4 demo-*.jpg help-*.jpg; do
   if [ -f "$v" ]; then
     cp "$v" "www/$v" && echo "OK  copied $v -> www/"
   fi

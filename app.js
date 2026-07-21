@@ -98,6 +98,80 @@ const CATEGORY_ICONS = [
   ICON.catDots,       // 5 Other Activities
 ];
 function catIcon(i){ return CATEGORY_ICONS[i] || ICON.catDots; }
+/* ---------------------------------------------------------------------------
+   ACTIVITY STILL-LIFES — thumbnail scenes for the activity cards ("object
+   still-life" direction, picked 2026-07-21). Each scene draws the REAL
+   equipment of the session — the phone that plays the cue, the cane, the push
+   toy, the mats, the cone, the bell, the gift — flat, on a soft ground shadow.
+   Deliberately NO people (figures at thumbnail size read as clipart).
+   Colours ride the category CSS vars, so every scene auto-tints; the one
+   fixed accent is the app's semantic rust (= cane/marker, same as the
+   "With cane" tag). Keyed by activity id → category fallback → generic.
+   --------------------------------------------------------------------------- */
+const STILL_W = `xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"`;
+const _sBG    = `<rect width="320" height="120" fill="var(--cat-soft)"/>`;
+const _sShadow= (cx,rx)=>`<ellipse cx="${cx}" cy="101" rx="${rx}" ry="8" fill="var(--cat-deep)" opacity=".12"/>`;
+// The phone — the app itself is the sound source in most activities.
+const _sPhone = (x,y)=>`<rect x="${x-16}" y="${y-30}" width="32" height="58" rx="7" fill="var(--cat-deep)"/><rect x="${x-11}" y="${y-25}" width="22" height="42" rx="3" fill="var(--card,#fffdf8)"/><circle cx="${x}" cy="${y+22}" r="2.5" fill="var(--card,#fffdf8)"/>`;
+const _sArcsR = (x,y)=>`<g fill="none" stroke="var(--cat)" stroke-width="3" stroke-linecap="round"><path d="M${x} ${y-15} a22 22 0 0 1 0 30" opacity=".8"/><path d="M${x+13} ${y-25} a38 38 0 0 1 0 50" opacity=".45"/></g>`;
+const _sArcsL = (x,y)=>`<g fill="none" stroke="var(--cat)" stroke-width="3" stroke-linecap="round"><path d="M${x} ${y-15} a22 22 0 0 0 0 30" opacity=".8"/><path d="M${x-13} ${y-25} a38 38 0 0 0 0 50" opacity=".45"/></g>`;
+// The cane — white underlay so the rust dash reads on every tint.
+const _sCane  = (x1,y1,x2,y2)=>`<path d="M${x1} ${y1} L${x2} ${y2}" stroke="var(--card,#fffdf8)" stroke-width="7" stroke-linecap="round"/><path d="M${x1} ${y1} L${x2} ${y2}" stroke="#b5521f" stroke-width="7" stroke-linecap="round" stroke-dasharray="24 15"/><circle cx="${x2}" cy="${y2}" r="8" fill="var(--card,#fffdf8)" stroke="#8a3c12" stroke-width="3"/>`;
+const _sSweep = (x,y)=>`<path d="M${x} ${y} a30 13 0 0 1 50 -6" fill="none" stroke="#8a3c12" stroke-width="2.5" stroke-dasharray="2 7" stroke-linecap="round" opacity=".7"/>`;
+const _sCone  = (x)=>`<path d="M${x} 98 L${x-10} 66 a4 4 0 0 1 4 -5 h12 a4 4 0 0 1 4 5 L${x+20} 98 Z" transform="translate(-5 0)" fill="#b5521f"/><rect x="${x-20}" y="96" width="40" height="7" rx="3.5" fill="#8a3c12"/>`;
+const _sMat   = (x,w,fill)=>`<path d="M${x} 98 L${x+w} 98 L${x+w-10} 74 L${x+10} 74 Z" fill="${fill}" stroke="var(--cat)" stroke-width="2"/>`;
+const _sSteps = (x,y,n)=>{ let s=''; for(let i=0;i<n;i++){ const dx=x+i*30, dy=y+(i%2? -6:2); s+=`<ellipse cx="${dx}" cy="${dy}" rx="5.5" ry="9" transform="rotate(78 ${dx} ${dy})" fill="var(--cat-deep)" opacity="${.35+.13*i}"/>`; } return s; };
+const _sBell  = (x,y)=>`<path d="M${x-22} ${y} q-6 -34 14 -44 q6 -3 12 0 q20 10 14 44 Z" transform="translate(0 0)" fill="var(--cat)"/><path d="M${x-28} ${y} h56 a6 6 0 0 1 0 12 h-56 a6 6 0 0 1 0 -12" fill="var(--cat-deep)"/><circle cx="${x}" cy="${y+14}" r="5" fill="var(--card,#fffdf8)"/><path d="M${x} ${y-48} v-8 a8 8 0 0 1 8 -8" fill="none" stroke="var(--cat-deep)" stroke-width="4" stroke-linecap="round"/>`;
+const _sGift  = (x,y)=>`<rect x="${x-20}" y="${y-18}" width="40" height="34" rx="4" fill="var(--cat)"/><rect x="${x-23}" y="${y-24}" width="46" height="10" rx="3" fill="var(--cat-deep)"/><path d="M${x} ${y-24} v40 M${x-23} ${y-2} h46" stroke="var(--cat-soft)" stroke-width="4"/><path d="M${x-9} ${y-24} q9 -14 9 0 q0 -14 9 0" stroke="var(--cat-deep)" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+const STILL = {
+  // Sound — the bell, rung out of sight.
+  'sound-which': `<svg ${STILL_W}>${_sBG}${_sShadow(160,72)}${_sBell(160,88)}${_sArcsR(224,64)}${_sArcsL(96,64)}</svg>`,
+  // Sound — the phone is the source; where did it ring from?
+  'sound-source': `<svg ${STILL_W}>${_sBG}${_sShadow(112,54)}${_sPhone(112,64)}${_sArcsR(142,58)}<path d="M196 64 h66" stroke="var(--cat-deep)" stroke-width="3" stroke-dasharray="1 9" stroke-linecap="round" opacity=".7"/><circle cx="276" cy="64" r="6" fill="none" stroke="var(--cat-deep)" stroke-width="2.5" opacity=".7"/></svg>`,
+  // Direction — the compass, needle mid-swing.
+  'dir-basic-commands': `<svg ${STILL_W}>${_sBG}${_sShadow(160,58)}<circle cx="160" cy="58" r="38" fill="var(--card,#fffdf8)" stroke="var(--cat)" stroke-width="3"/><circle cx="160" cy="58" r="30" fill="none" stroke="var(--cat-line)" stroke-width="1.5"/><path d="M160 24 v8 M160 84 v8 M126 58 h8 M186 58 h8" stroke="var(--cat-deep)" stroke-width="2.5" stroke-linecap="round"/><path d="M172 40 L163 61 L148 76 L157 55 Z" fill="#b5521f"/><circle cx="160" cy="58" r="4" fill="var(--card,#fffdf8)" stroke="var(--cat-deep)" stroke-width="2"/></svg>`,
+  // Direction advanced — the full rose with lettered points.
+  'dir-advanced-commands': `<svg ${STILL_W}>${_sBG}${_sShadow(160,58)}<circle cx="160" cy="58" r="38" fill="var(--card,#fffdf8)" stroke="var(--cat)" stroke-width="3"/><path d="M160 26 L166 52 L160 58 L154 52 Z" fill="#b5521f"/><path d="M160 90 L154 64 L160 58 L166 64 Z M128 58 L154 52 L160 58 L154 64 Z M192 58 L166 64 L160 58 L166 52 Z" fill="var(--cat-deep)" opacity=".8"/><g font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="var(--cat-deep)" text-anchor="middle"><text x="160" y="18">N</text><text x="212" y="62">E</text><text x="160" y="112">S</text><text x="108" y="62">W</text></g></svg>`,
+  // Sound + Direction — near speaker loud, far speaker faint.
+  'snddir-nearfar': `<svg ${STILL_W}>${_sBG}${_sShadow(84,44)}${_sShadow(252,26)}${_sPhone(84,62)}${_sArcsR(114,56)}<g transform="translate(252,52) scale(.62)" opacity=".75"><rect x="-16" y="-30" width="32" height="58" rx="7" fill="var(--cat-deep)"/><rect x="-11" y="-25" width="22" height="42" rx="3" fill="var(--card,#fffdf8)"/></g><path d="M282 40 a16 16 0 0 1 0 22" fill="none" stroke="var(--cat)" stroke-width="2.5" stroke-linecap="round" opacity=".4"/></svg>`,
+  // Near/far with the cane along.
+  'snddir-nearfar-cane': `<svg ${STILL_W}>${_sBG}${_sShadow(76,40)}${_sShadow(230,60)}${_sPhone(76,60)}${_sArcsR(106,54)}${_sCane(178,34,252,94)}${_sSweep(206,102)}</svg>`,
+  // Steps to the sound — one footprint trail, phone waiting.
+  'snddir-steps-solo': `<svg ${STILL_W}>${_sBG}${_sShadow(262,40)}${_sSteps(52,72,5)}${_sPhone(262,64)}${_sArcsL(232,58)}</svg>`,
+  // Steps together — three trails, one phone.
+  'snddir-steps-group': `<svg ${STILL_W}>${_sBG}${_sShadow(268,38)}${_sSteps(44,44,4)}${_sSteps(56,72,4)}${_sSteps(44,96,4)}${_sPhone(268,62)}${_sArcsL(238,56)}</svg>`,
+  // SLT 1 — no cane yet: just the straight line to the sound.
+  'slt-nocane': `<svg ${STILL_W}>${_sBG}${_sShadow(258,40)}<path d="M28 96 H210" stroke="var(--card,#fffdf8)" stroke-width="7" stroke-linecap="round"/><path d="M28 96 H210" stroke="var(--cat)" stroke-width="7" stroke-linecap="round" stroke-dasharray="22 14"/>${_sPhone(258,62)}${_sArcsL(228,56)}</svg>`,
+  // SLT 2 — the push toy on the cane (the stigma-breaker).
+  'slt-withcane-toy': `<svg ${STILL_W}>${_sBG}${_sShadow(190,80)}${_sCane(96,26,208,86)}<rect x="196" y="70" width="44" height="22" rx="6" fill="var(--cat)"/><circle cx="208" cy="96" r="7" fill="var(--cat-deep)"/><circle cx="230" cy="96" r="7" fill="var(--cat-deep)"/><circle cx="208" cy="96" r="2.5" fill="var(--card,#fffdf8)"/><circle cx="230" cy="96" r="2.5" fill="var(--card,#fffdf8)"/><path d="M240 74 a14 14 0 0 1 8 -8" stroke="var(--cat-deep)" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`,
+  // SLT 3 — the cane alone, mid-sweep.
+  'slt-withcane': `<svg ${STILL_W}>${_sBG}${_sShadow(170,105)}${_sCane(62,98,237,32)}<circle cx="62" cy="99" r="9" fill="var(--card,#fffdf8)" stroke="#8a3c12" stroke-width="3"/>${_sSweep(96,106)}</svg>`,
+  // Terrain — three surfaces to meet.
+  'terrain-intro': `<svg ${STILL_W}>${_sBG}${_sShadow(160,105)}${_sMat(48,72,'var(--cat-line)')}${_sMat(132,72,'var(--card,#fffdf8)')}<g fill="var(--cat-deep)" opacity=".6"><circle cx="158" cy="86" r="2.2"/><circle cx="172" cy="90" r="2.2"/><circle cx="186" cy="84" r="2.2"/></g>${_sMat(216,72,'var(--card,#fffdf8)')}<path d="M232 88 q7 -8 14 0 t14 0 M236 80 q7 -8 14 0" stroke="var(--cat-deep)" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".6"/></svg>`,
+  // Terrain — walk the course: the long mat, the cone at the end.
+  'terrain-walk': `<svg ${STILL_W}>${_sBG}${_sShadow(150,110)}${_sMat(36,160,'var(--card,#fffdf8)')}<g fill="var(--cat-deep)" opacity=".5"><circle cx="80" cy="86" r="2.2"/><circle cx="112" cy="90" r="2.2"/><circle cx="144" cy="85" r="2.2"/><circle cx="170" cy="89" r="2.2"/></g>${_sCone(252)}</svg>`,
+  // Terrain — the obstacle sits mid-path.
+  'terrain-obstacle': `<svg ${STILL_W}>${_sBG}${_sShadow(160,110)}${_sMat(36,248,'var(--card,#fffdf8)')}<rect x="140" y="52" width="44" height="30" rx="5" fill="var(--cat-deep)"/><rect x="146" y="44" width="32" height="14" rx="4" fill="var(--cat)"/></svg>`,
+  // Other — the central sound: everyone gathers round.
+  'other-central-sound': `<svg ${STILL_W}>${_sBG}${_sShadow(160,44)}${_sPhone(160,58)}<circle cx="160" cy="58" r="46" fill="none" stroke="var(--cat)" stroke-width="2.5" stroke-dasharray="3 8" stroke-linecap="round" opacity=".65"/><g fill="var(--cat-deep)"><circle cx="160" cy="6" r="5"/><circle cx="206" cy="30" r="5"/><circle cx="206" cy="86" r="5"/><circle cx="160" cy="110" r="5"/><circle cx="114" cy="86" r="5"/><circle cx="114" cy="30" r="5"/></g></svg>`,
+  // Other — follow the gift.
+  'other-gift-follow': `<svg ${STILL_W}>${_sBG}${_sShadow(252,36)}<path d="M36 84 Q92 58 148 76 T232 72" stroke="var(--cat-deep)" stroke-width="3" fill="none" stroke-dasharray="1 9" stroke-linecap="round" opacity=".7"/>${_sGift(252,74)}</svg>`,
+  // Assessment — the score sheet and pencil.
+  'assess-procedure': `<svg ${STILL_W}>${_sBG}${_sShadow(160,58)}<rect x="118" y="10" width="84" height="94" rx="8" fill="var(--card,#fffdf8)" stroke="var(--cat)" stroke-width="2.5"/><rect x="146" y="4" width="28" height="12" rx="4" fill="var(--cat-deep)"/><path d="M132 36 l6 6 10 -12" stroke="var(--cat)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M158 38 h30" stroke="var(--cat-line)" stroke-width="3.5" stroke-linecap="round"/><path d="M132 60 l6 6 10 -12" stroke="var(--cat)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M158 62 h30" stroke="var(--cat-line)" stroke-width="3.5" stroke-linecap="round"/><circle cx="138" cy="86" r="5" stroke="var(--cat)" stroke-width="2.5" fill="none"/><path d="M158 86 h30" stroke="var(--cat-line)" stroke-width="3.5" stroke-linecap="round"/><path d="M226 96 L244 44 l8 3 -14 52 -7 6 Z" fill="#b5521f"/><path d="M244 44 l8 3 2 -7 a4 4 0 0 0 -7 -2 Z" fill="var(--cat-deep)"/></svg>`,
+};
+const STILL_CAT = {
+  'Direction':            ()=>STILL['dir-basic-commands'],
+  'Sound':                ()=>STILL['sound-which'],
+  'Sound + Direction':    ()=>STILL['snddir-steps-solo'],
+  'Straight Line Travel': ()=>STILL['slt-withcane'],
+  'Terrain Game':         ()=>STILL['terrain-intro'],
+  'Other Activities':     ()=>STILL['other-gift-follow'],
+};
+function activityStill(cat, act){
+  if(STILL[act.id]) return STILL[act.id];
+  const fb = STILL_CAT[cat && cat.category];
+  return fb ? fb() : STILL['assess-procedure'];
+}
 const CATEGORY_PALETTE = [
   { c:"#2f6f4e", deep:"#1f4d36", soft:"#e2efe5", line:"#cce0d1" },
   { c:"#1f6f86", deep:"#124a5b", soft:"#dceef2", line:"#c2e0e8" },
@@ -1357,9 +1431,12 @@ function showCategory(ci, dir){
     // record screen; everything else goes to the batch roster picker.
     const groupTag = act.group ? '<span class="tag neutral">Group</span>' : '';
     const go = act.group ? `showActivity(${ci},${ai},{dir:'fwd'})` : `showChildPicker(${ci},${ai},'fwd')`;
-    const thumb = act.videoFile
-      ? `<span class="media-thumb"><video src="${esc(act.videoFile)}" preload="metadata" muted playsinline tabindex="-1"></video><span class="media-play">${ICON.sbPlay || '▶'} demo</span></span>`
-      : `<span class="media-thumb missing"><span>${ICON.video} no demo filmed yet</span></span>`;
+    // STILL-LIFE thumbs on every card (video frames retired 2026-07-21 — the
+    // demos aren't final, and a designed scene stays stable while clips
+    // churn). Cards whose activity DOES have a demo keep the small ▶ badge,
+    // since the clip is one tap away behind the ?.
+    const thumb = `<span class="media-thumb still">${activityStill(cat, act)}${
+      act.videoFile ? `<span class="media-play">${ICON.sbPlay || '▶'} demo</span>` : ''}</span>`;
     return `<button class="card-media" onclick="${go}">
       ${thumb}
       <span class="media-body"><h2>${esc(act.name)}</h2>

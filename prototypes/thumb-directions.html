@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thumbnail directions — pick one</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  body{ margin:0; background:#f7f4ed; color:#22201b; font-family:Inter,system-ui,sans-serif; padding:40px 24px 80px; }
+  .wrap{ max-width:1150px; margin:0 auto; }
+  h1{ font-family:"Instrument Serif",Georgia,serif; font-weight:400; font-size:40px; margin:0 0 6px; }
+  .sub{ color:#6b6458; max-width:64ch; font-size:14.5px; margin:0 0 40px; }
+  h2{ font-family:"Instrument Serif",Georgia,serif; font-weight:400; font-size:27px; margin:52px 0 4px; }
+  .note{ color:#6b6458; font-size:13.5px; margin:0 0 18px; max-width:70ch; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:18px; }
+  .cell strong{ display:block; font-size:13.5px; margin-top:8px; }
+  .thumb{ height:104px; border-radius:14px; overflow:hidden; border:1px solid #e8e0d0; box-shadow:0 1px 2px rgba(60,45,15,.05); }
+  .thumb svg{ width:100%; height:100%; display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Thumbnail directions</h1>
+  <p class="sub">Three ways to give every activity card a designed, context-relevant thumbnail — no video frames, no figures that risk looking like clipart. Each direction is shown on four categories in their real palette colours. Tell me A, B or C and I'll implement it across the app.</p>
+
+  <!-- ============ DIRECTION A — editorial patterns ============ -->
+  <h2>A · Editorial patterns</h2>
+  <p class="note">Abstract but literal: sound is radiating arcs, direction is a compass field, straight-line travel is a lane converging on a point, terrain is layered ground texture. Quietest of the three — closest to the app's "field notebook" restraint.</p>
+  <div class="grid">
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="120" fill="#dceef2"/>
+        <g fill="none" stroke="#1f6f86" stroke-linecap="round">
+          <path d="M36 60 m18 0 a18 18 0 1 1 -36 0 a18 18 0 1 1 36 0" stroke-width="3" opacity=".9"/>
+          <path d="M36 60 m40 0 a40 40 0 1 1 -80 0 a40 40 0 1 1 80 0" stroke-width="3" opacity=".55"/>
+          <path d="M36 60 m64 0 a64 64 0 1 1 -128 0 a64 64 0 1 1 128 0" stroke-width="3" opacity=".32"/>
+          <path d="M36 60 m90 0 a90 90 0 1 1 -180 0 a90 90 0 1 1 180 0" stroke-width="3" opacity=".16"/>
+          <path d="M36 60 m118 0 a118 118 0 1 1 -236 0 a118 118 0 1 1 236 0" stroke-width="3" opacity=".08"/>
+        </g>
+        <circle cx="36" cy="60" r="7" fill="#124a5b"/>
+        <circle cx="252" cy="60" r="5" fill="none" stroke="#124a5b" stroke-width="2.5" opacity=".7"/>
+      </svg>
+    </div><strong>Sound — Which sound is it?</strong></div>
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="120" fill="#e2efe5"/>
+        <g stroke="#2f6f4e" stroke-width="1.5" opacity=".35">
+          <path d="M160 -20 V140 M60 -20 V140 M260 -20 V140 M-20 60 H340 M-20 20 H340 M-20 100 H340"/>
+        </g>
+        <circle cx="160" cy="60" r="40" fill="none" stroke="#1f4d36" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round"/>
+        <path d="M176 36 L164 64 L136 82 L149 53 Z" fill="#1f4d36"/>
+        <circle cx="160" cy="60" r="4.5" fill="#e2efe5" stroke="#1f4d36" stroke-width="2.5"/>
+        <text x="160" y="18" text-anchor="middle" font-family="Inter,sans-serif" font-weight="700" font-size="13" fill="#1f4d36" opacity=".8">N</text>
+      </svg>
+    </div><strong>Direction — Basic commands</strong></div>
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="120" fill="#f6e3d6"/>
+        <path d="M-10 128 L150 52 L310 128 Z" fill="#eccdb6" opacity=".8"/>
+        <path d="M40 120 L152 56 M280 120 L168 56" stroke="#b5521f" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+        <path d="M160 116 V64" stroke="#8a3c12" stroke-width="3.5" stroke-dasharray="9 9" stroke-linecap="round"/>
+        <circle cx="160" cy="46" r="9" fill="#8a3c12"/>
+        <g stroke="#8a3c12" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".75">
+          <path d="M174 38 a16 16 0 0 1 0 16 M180 32 a25 25 0 0 1 0 28 M146 38 a16 16 0 0 0 0 16 M140 32 a25 25 0 0 0 0 28"/>
+        </g>
+      </svg>
+    </div><strong>Straight Line Travel</strong></div>
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="120" fill="#f3ead0"/>
+        <path d="M-10 96 Q80 82 160 92 T330 88 V130 H-10 Z" fill="#e6d6a8"/>
+        <path d="M-10 104 Q90 94 180 102 T330 100" fill="none" stroke="#8a6f2b" stroke-width="2" opacity=".5"/>
+        <g fill="#5f4c1c" opacity=".55"><circle cx="52" cy="70" r="2.5"/><circle cx="74" cy="78" r="2.5"/><circle cx="63" cy="86" r="2.5"/><circle cx="90" cy="68" r="2.5"/></g>
+        <g stroke="#5f4c1c" stroke-width="2.5" stroke-linecap="round" opacity=".65">
+          <path d="M150 82 v-14 M162 84 v-18 M174 82 v-12 M186 84 v-16"/>
+        </g>
+        <path d="M236 84 q9 -10 18 0 t18 0 M236 72 q9 -10 18 0" stroke="#5f4c1c" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".65"/>
+      </svg>
+    </div><strong>Terrain Game</strong></div>
+  </div>
+
+  <!-- ============ DIRECTION B — object still-lifes ============ -->
+  <h2>B · Object still-lifes</h2>
+  <p class="note">The real equipment of each activity, drawn flat with soft shadows — the cane, the cone, the bell, the mat. No people at all (so nothing can look like bad clipart), but instantly recognisable to any teacher who has run the session.</p>
+  <div class="grid">
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="120" fill="#dceef2"/>
+        <ellipse cx="160" cy="98" rx="72" ry="9" fill="#124a5b" opacity=".12"/>
+        <path d="M138 88 q-6 -34 14 -44 q6 -3 12 0 q20 10 14 44 Z" fill="#1f6f86"/>
+        <path d="M132 88 h56 a6 6 0 0 1 0 12 h-56 a6 6 0 0 1 0 -12" fill="#124a5b"/>
+        <circle cx="160" cy="102" r="5" fill="#fffdf8"/>
+        <path d="M160 40 v-10 a8 8 0 0 1 8 -8" fill="none" stroke="#124a5b" stroke-width="4" stroke-linecap="round"/>
+        <g fill="none" stroke="#1f6f86" stroke-width="3" stroke-linecap="round">
+          <path d="M222 46 a22 22 0 0 1 0 30" opacity=".8"/>
+          <path d="M236 36 a38 38 0 0 1 0 50" opacity=".45"/>
+          <path d="M98 46 a22 22 0 0 0 0 30" opacity=".8"/>
+          <path d="M84 36 a38 38 0 0 0 0 50" opacity=".45"/>
+        </g>
+      </svg>
+    </div><strong>Sound — the bell</strong></div>
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="120" fill="#e2efe5"/>
+        <ellipse cx="160" cy="100" rx="76" ry="9" fill="#1f4d36" opacity=".12"/>
+        <circle cx="160" cy="58" r="38" fill="#fffdf8" stroke="#2f6f4e" stroke-width="3"/>
+        <circle cx="160" cy="58" r="30" fill="none" stroke="#cce0d1" stroke-width="1.5"/>
+        <path d="M160 24 v8 M160 84 v8 M126 58 h8 M186 58 h8" stroke="#1f4d36" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M172 40 L163 61 L148 76 L157 55 Z" fill="#b5521f"/>
+        <circle cx="160" cy="58" r="4" fill="#fffdf8" stroke="#1f4d36" stroke-width="2"/>
+      </svg>
+    </div><strong>Direction — the compass</strong></div>
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="120" fill="#f6e3d6"/>
+        <ellipse cx="170" cy="102" rx="110" ry="8" fill="#8a3c12" opacity=".12"/>
+        <path d="M60 100 L237 30" stroke="#fffdf8" stroke-width="7" stroke-linecap="round"/>
+        <path d="M60 100 L237 30" stroke="#b5521f" stroke-width="7" stroke-linecap="round" stroke-dasharray="26 16"/>
+        <path d="M237 30 a10 10 0 0 1 14 8" fill="none" stroke="#8a3c12" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="62" cy="101" r="9" fill="#fffdf8" stroke="#8a3c12" stroke-width="3"/>
+        <path d="M96 108 a30 14 0 0 1 52 -6" fill="none" stroke="#8a3c12" stroke-width="2.5" stroke-dasharray="2 7" stroke-linecap="round" opacity=".7"/>
+      </svg>
+    </div><strong>Straight Line Travel — the cane</strong></div>
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="120" fill="#f3ead0"/>
+        <ellipse cx="160" cy="104" rx="105" ry="8" fill="#5f4c1c" opacity=".12"/>
+        <path d="M62 100 L106 100 L98 84 L70 84 Z" fill="#e6d6a8" stroke="#8a6f2b" stroke-width="2"/>
+        <path d="M120 100 L200 100 L192 76 L128 76 Z" fill="#fffdf8" stroke="#8a6f2b" stroke-width="2"/>
+        <g fill="#8a6f2b" opacity=".6"><circle cx="146" cy="88" r="2.2"/><circle cx="162" cy="92" r="2.2"/><circle cx="178" cy="86" r="2.2"/></g>
+        <path d="M226 100 L216 68 a4 4 0 0 1 4 -5 h12 a4 4 0 0 1 4 5 L226 100 Z" fill="#b5521f"/>
+        <rect x="206" y="98" width="40" height="7" rx="3.5" fill="#8a3c12"/>
+      </svg>
+    </div><strong>Terrain — mat, gravel, cone</strong></div>
+  </div>
+
+  <!-- ============ DIRECTION C — big glyph duotone ============ -->
+  <h2>C · Big glyph, cropped</h2>
+  <p class="note">The category's own icon blown up huge and bled off the edge, duotone on the category colour. Boldest and most "designed app" of the three; zero new drawing to maintain — it reuses the icon set you already have.</p>
+  <div class="grid">
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="gs" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#dceef2"/><stop offset="1" stop-color="#c2e0e8"/></linearGradient></defs>
+        <rect width="320" height="120" fill="url(#gs)"/>
+        <g transform="translate(196,-14) scale(6.2)" fill="none" stroke="#1f6f86" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".9">
+          <path d="M11 5 6 9H2v6h4l5 4V5Z" fill="#1f6f86" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+        </g>
+        <circle cx="52" cy="76" r="5" fill="#124a5b"/>
+        <path d="M64 68 a20 20 0 0 1 0 16" stroke="#124a5b" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".6"/>
+      </svg>
+    </div><strong>Sound</strong></div>
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="gd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2efe5"/><stop offset="1" stop-color="#cce0d1"/></linearGradient></defs>
+        <rect width="320" height="120" fill="url(#gd)"/>
+        <g transform="translate(178,-32) scale(7.4)" fill="none" stroke="#2f6f4e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" opacity=".85"/><polygon points="16 8 10.5 10.5 8 16 13.5 13.5 16 8" fill="#1f4d36" stroke="none"/>
+        </g>
+        <path d="M36 84 h56" stroke="#1f4d36" stroke-width="2.5" stroke-dasharray="1 8" stroke-linecap="round" opacity=".7"/>
+      </svg>
+    </div><strong>Direction</strong></div>
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="gt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e3d6"/><stop offset="1" stop-color="#eccdb6"/></linearGradient></defs>
+        <rect width="320" height="120" fill="url(#gt)"/>
+        <path d="M-20 130 L340 -10" stroke="#b5521f" stroke-width="10" stroke-dasharray="34 22" stroke-linecap="round" opacity=".85"/>
+        <path d="M-20 150 L340 10" stroke="#8a3c12" stroke-width="4" stroke-dasharray="12 18" stroke-linecap="round" opacity=".4"/>
+        <circle cx="268" cy="22" r="12" fill="#8a3c12"/>
+      </svg>
+    </div><strong>Straight Line Travel</strong></div>
+    <div class="cell"><div class="thumb">
+      <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3ead0"/><stop offset="1" stop-color="#e6d6a8"/></linearGradient></defs>
+        <rect width="320" height="120" fill="url(#gg)"/>
+        <path d="M-20 92 Q60 70 140 88 T330 80 V130 H-20 Z" fill="#8a6f2b" opacity=".25"/>
+        <path d="M-20 104 Q70 86 160 100 T340 94 V130 H-20 Z" fill="#5f4c1c" opacity=".3"/>
+        <g fill="#5f4c1c" opacity=".7"><circle cx="220" cy="46" r="3"/><circle cx="244" cy="38" r="3"/><circle cx="268" cy="48" r="3"/><circle cx="232" cy="58" r="3"/><circle cx="256" cy="60" r="3"/></g>
+        <g stroke="#5f4c1c" stroke-width="3" stroke-linecap="round" opacity=".7"><path d="M56 60 v-18 M72 62 v-24 M88 60 v-16"/></g>
+      </svg>
+    </div><strong>Terrain Game</strong></div>
+  </div>
+</div>
+</body>
+</html>
