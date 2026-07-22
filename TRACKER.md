@@ -1,5 +1,44 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-07-21 (design-overhaul session wrapped)_
+_Last updated: 2026-07-21 pm (sidebar drawer + record color code + Android back fix)_
+## STATE (2026-07-21 pm) — sidebar drawer, record color code, Android back fix
+Follow-on session after the design overhaul. Sound `?` help COMMITTED
+(`ab59713`); the app-shell changes (drawer + color code + back fix) are in the
+working tree with ONE commit still PENDING on Aditya's Mac — the sandbox can't
+write git lock files (see standing reminders). Headlines: the ⋮ overflow menu
+became a left slide-in ☰ DRAWER (teacher identity head · About/FAQs/Settings ·
+sign-out + build-number foot; renders only on the signed-in landing, moved to
+the leading header edge). NEW SCREENS — FAQs (6 draft Q&A, content-team owned)
+and Settings (narration language, sets audioLang app-wide + disables untranslated
+langs · Show-tips-again · Manage data · Export). About gained a "who's behind
+this" panel (IIT Delhi + NCAHT pilot) + a version line. RECORD-FORM semantic
+COLOR CODE (Draft 1, tinted blocks): amber counts · green judgment (result +
+mastery) · blue notes · plum video — via buildField so batch/group inherit;
+forms, checkboxes, Save left uncoded. ANDROID BACK FIX: `@capacitor/app` 8.1.1
+installed + backButton listener routes system back through in-app nav (dialog →
+help → drawer → chevron; double-press-exit on Home). Root cause: innerHTML
+screen swaps = no webview history + Capacitor 8 predictive-back doesn't walk it +
+the plugin was never installed → back exited the app. The popstate history
+sentinel (first attempt) failed on device; kept as web-preview fallback only.
+Verified: 40/40 suite, parse OK, 8/8 color assertions, contrast 6.2–9.7:1.
+APP_VERSION → 0.9.0 (21 Jul 2026).
+## NEXT (2026-07-21 pm refresh) — in order
+- [ ] **Aditya, Mac:** finish the app-shell commit from the REPO ROOT (`cd
+      ~/Desktop/om-app`, NOT android/): `rm -f .git/index.lock .git/HEAD.lock`
+      then `git add app.js styles.css index.html package.json package-lock.json
+      && git commit -m "app shell (2026-07-21): drawer, record color code,
+      android back fix"`. Confirm with `git log --oneline -3`.
+- [ ] **Aditya, Mac:** `./scripts/build.sh` then `cd android && ./gradlew clean
+      installDebug` (CLEAN — new native plugin). Walk a deep record screen →
+      system back retraces each step → Home → toast → second press exits; back
+      also cancels an open confirm dialog.
+- [ ] **Aditya:** `git push origin main` (refreshes the project-knowledge sync).
+- [ ] **Aditya:** fresh `assembleDebug` APK → Mansi (drawer + Settings/FAQs +
+      color code + back fix; batch flow already in her last drop).
+- [ ] **Content:** verify FAQ copy + the Sound `help[]` wording (both drafts);
+      "Other Activities" still has no help[] — add if wanted.
+- [ ] Still open from prior sessions: narrated welcome (Sarvam script), run
+      `generate-thumbs.sh` on the Mac, Hindi SOP verify, focus-flow 350ms timing
+      check with real teachers (details in the design-overhaul NEXT below).
 ## STATE (2026-07-21) — full UX overhaul landed; batch flow replaces single-child
 Big design session, all committed on main (through `0efdedb`), working tree
 clean, ~6 commits ahead of origin at wrap-up (push may already be done).
@@ -337,4 +376,9 @@ Debug key = only Aditya's Mac can build over-installing updates.
 - Feature commits stay focused — MEMORY/TRACKER committed separately.
 - **Verify `git log` / `git status` before writing "done / pushed"** — the
   soundboard "pushed" claim was false for a week (2026-07-14 lesson).
+- **Git commits happen on Aditya's Mac, not the sandbox.** The mounted repo
+  blocks file DELETION anywhere under `.git`, so git can't clear its own lock
+  files: one commit per sandbox run at most (the second aborts on an orphan
+  `.lock`), and any leftover `.git/index.lock` / `.git/HEAD.lock` must be
+  `rm`'d on the Mac — from the REPO ROOT, not `android/`.
 - `.env` holds `SARVAM_API_KEY` (gitignored).

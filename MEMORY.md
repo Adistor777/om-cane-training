@@ -1,5 +1,60 @@
 # MEMORY.md — O&M Cane Training
-_Last updated: 2026-07-21 (design overhaul session: batch focus-flow, popups, thumbnails, onboarding, Arimo)_
+_Last updated: 2026-07-21 pm (sidebar drawer, record color code, Android system-back fix)_
+## Sidebar + back-fix session (2026-07-21 pm) — drawer, color code, Android back
+Follow-on to the design overhaul. Sound `?` help committed alone (`ab59713`);
+the drawer + color code + back fix are still in the working tree, one commit
+PENDING on Aditya's Mac (sandbox can't rm git lock files).
+- **App drawer (the ☰).** The ⋮ overflow popover became a LEFT slide-in drawer:
+  teacher identity head (avatar initial + name + school, rebuilt each open for
+  shared tablets), nav = About · FAQs · Settings, foot = Sign out + version line
+  (`v${APP_VERSION} (${APP_BUILD})` = 0.9.0 / 21 Jul 2026 — BUMP per APK). Trigger
+  renders ONLY on the signed-in landing (setMenuVisible), moved to the LEADING
+  header edge (before the brand) with a hamburger icon. Motion reuses the popup
+  grammar (.34s in / .22s out; double-rAF so the slide-in actually runs); scrim
+  tap / × / Escape close; body scroll locked while open. Funcs: ensureDrawer /
+  buildDrawer / toggleMenu / openMenu / closeMenu(instant) in app.js.
+- **New Settings screen** (`showSettings`) — real preferences only: narration
+  language (AUDIO_LANGS seg; `setAudioLangDefault` writes AUDIO_LANG_KEY, applies
+  everywhere the ? sheet narrates; langs without a verified translation render
+  DISABLED via `langHasContent`), "Show tips again" (`resetTips` clears the
+  per-teacher onboarding flags), Manage data, Export records. showManageData's
+  back now returns to Settings (its only entry point now), not Home.
+- **New FAQs screen** (`showFAQs`, `FAQ_ITEMS`) — 6 teacher-facing Q&A in
+  disclosure rows (sign-in, offline, ?/demo location, multi-student, video
+  consent, export/backup). COPY IS DRAFT — content-team owned, like SOP text.
+- **About** gained a "Who is behind this" panel (IIT Delhi + NCAHT research
+  pilot, partner schools) + a version line that survives a screenshot.
+- **Record-form semantic COLOR CODE (Draft 1 — tinted blocks).** Every record
+  block wears its meaning's hue: `fc-count` amber (measurement), `fc-judge`
+  green (result + mastery), `fc-notes` blue (teacherNotes + legacy notes),
+  `fc-video` plum (evidence, locked + unlocked). Applied in buildField +
+  videoUploadMarkup so batch focus-flow + group screens inherit it. Checkboxes,
+  child bar, past results, Save, and all profile/login/consent forms LEFT
+  uncoded on purpose — the code belongs to the record surface only. Selected
+  judgment button pinned to a fixed green (not the category hue). Contrast
+  6.2–9.7:1, 8/8 assertions. Draft 3 (header-band) is a CSS-only swap if the
+  tints feel loud — the classes won't move.
+- **ANDROID SYSTEM-BACK FIX (the real one).** Symptom: hardware/gesture back
+  closed the app from any screen (indistinguishable from Home). Root-cause
+  chain: app swaps screens with innerHTML → webview has NO history; Capacitor
+  8's predictive back does NOT walk webview history; and `@capacitor/app` was
+  NEVER installed → back just finishes the activity. Fix: installed
+  `@capacitor/app` 8.1.1 (package.json + lock) and registered its `backButton`
+  listener → Capacitor hands every back press to `systemBack()`, which routes in
+  visual priority: confirm dialog → help popup → drawer → header back chevron;
+  on Home/login, first press toasts, second `exitApp()`. A popstate history
+  SENTINEL (armSystemBack, re-armed on every paint) was the FIRST attempt — it
+  works on web but Capacitor 8 ignores it on device, so it's kept only as the
+  web-preview fallback. LESSON: the sentinel-only fix "passed tests" yet failed
+  on the emulator — native back needs the plugin, not webview history.
+- **Sound category `help[]`** — added DRAFT help[] + `helpVideo:
+  'demo-sound.mp4'` to the Sound category (a pilot category that shipped with no
+  ? because it had no help[]). Content team verifies wording. "Other Activities"
+  still has none. Committed alone as `ab59713`.
+- **Verification:** 40/40 suite, parse OK ×2, 8/8 color assertions, contrast
+  checks — but www/ sync + the git commits happen on Aditya's Mac (the sandbox
+  blocks file deletion anywhere under `.git`, so it can't clear git lock files;
+  only ONE commit lands per sandbox run — the second aborts on an orphan lock).
 ## Design overhaul session (2026-07-21) — big UX pass, all landed in working tree
 - **BATCH FLOW replaced the single-child flow entirely.** Activity → roster
   multi-select face grid (`rosterSel`/`batchRoster`, Select all, "Start with N
