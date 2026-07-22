@@ -31,15 +31,14 @@
   <button class="back" id="backBtn" aria-label="Go back" style="display:none;">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
+  <div class="hmenu" id="hmenu" style="display:none;">
+    <button class="hmenu-btn" id="hmenuBtn" aria-label="Open menu" aria-haspopup="dialog" aria-expanded="false" onclick="toggleMenu(event)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
   <div>
     <p class="brand" id="brand">O&amp;M Cane Training</p>
     <div class="crumb" id="crumb">Choose an activity category</div>
-  </div>
-  <div class="hmenu" id="hmenu" style="display:none;">
-    <button class="hmenu-btn" id="hmenuBtn" aria-label="More options" aria-haspopup="true" aria-expanded="false" onclick="toggleMenu(event)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
-    </button>
-    <div class="hmenu-pop" id="hmenuPop" role="menu" hidden></div>
   </div>
 </header>
 <main class="wrap"><div id="screen"></div></main>

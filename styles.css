@@ -66,6 +66,18 @@
        identical everywhere. */
     --ring-active:0 0 0 3px var(--cat-soft);
     --ease:cubic-bezier(.22,.61,.36,1);
+    /* RECORD-FORM COLOR CODE (2026-07-21, "tinted blocks"). Color = the
+       FIELD'S MEANING, constant across every activity: amber = counting,
+       green = judgment (result/mastery), blue = written reflection, plum =
+       video evidence. FIXED hues on purpose — they must not follow --cat, or
+       the code would change per category and teach nothing. Low-chroma tints
+       so the category hue keeps the header; rust stays cane/danger only.
+       Deep stops pass WCAG AA on their tints; hue is never the sole carrier
+       (label + control always say the same thing). */
+    --code-count-bg:#f6ecd4; --code-count-line:#e4d2a8; --code-count-deep:#6d5210;
+    --code-judge-bg:#e2efe5; --code-judge-line:#cce0d1; --code-judge-deep:#1f4d36;
+    --code-notes-bg:#e4edf4; --code-notes-line:#c9dcea; --code-notes-deep:#1f4a68;
+    --code-video-bg:#ece5f0; --code-video-line:#d8c9e0; --code-video-deep:#4f3560;
   }
   *{box-sizing:border-box;}
   svg{ max-width:100%; }
@@ -93,9 +105,11 @@
   /* home-dot removed 2026-07-21 — it duplicated the back chevron's job. */
   .brand{ font-size:var(--t-bodysm); margin:0; font-weight:600; line-height:1.2; color:var(--ink); letter-spacing:-.01em; }
   .crumb{ font-size:var(--t-caption); margin-top:1px; color:var(--cat-deep); font-weight:500; }
-  /* Header overflow menu — utilities (Export, Manage, About, Sign out) that
-     aren't the primary task. Pushed to the far right; the popover hangs below. */
-  .hmenu{ margin-left:auto; position:relative; flex:0 0 auto; }
+  /* Header menu trigger (☰) — opens the app drawer. Renders only on the
+     signed-in landing (setMenuVisible), so task screens keep a clean header.
+     LEADING edge (before the brand), matching the side the drawer slides in
+     from — it shares the slot with the back chevron, which is hidden on Home. */
+  .hmenu{ position:relative; flex:0 0 auto; }
   .hmenu-btn{ width:42px; height:42px; border-radius:12px; background:transparent; border:1px solid var(--line);
     color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center;
     transition:background .15s, border-color .15s, color .15s; }
@@ -103,20 +117,57 @@
   @media (hover:hover){ .hmenu-btn:hover{ background:var(--cat-soft); color:var(--cat-deep); border-color:var(--cat-line); } }
   .hmenu-btn:active{ background:var(--cat-soft); color:var(--cat-deep); }
   .hmenu-btn:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
-  .hmenu-pop{ position:absolute; right:0; top:calc(100% + 8px); min-width:212px; z-index:40;
-    background:var(--card); border:1px solid var(--line); border-radius:var(--r-md);
-    box-shadow:var(--shadow-lift); padding:6px; }
-  .hmenu-pop[hidden]{ display:none; }
-  .hmenu-item{ display:flex; align-items:center; gap:11px; width:100%; text-align:left; font:inherit;
-    font-size:var(--t-bodysm); font-weight:500; color:var(--ink); background:transparent; border:0; cursor:pointer;
-    padding:11px 12px; border-radius:var(--r-sm); min-height:44px; }
-  .hmenu-item svg{ width:19px; height:19px; flex:0 0 auto; color:var(--ink-soft); }
-  @media (hover:hover){ .hmenu-item:hover{ background:var(--cat-soft); } }
-  .hmenu-item:active{ background:var(--cat-soft); }
-  .hmenu-item:focus-visible{ outline:3px solid var(--cat); outline-offset:-2px; }
-  .hmenu-sep{ height:1px; background:var(--line-soft); margin:6px 4px; }
-  .hmenu-item.danger{ color:#8a3c12; }
-  .hmenu-item.danger svg{ color:#8a3c12; }
+  /* App drawer — left slide-in panel (replaced the ⋮ overflow popover,
+     2026-07-21). Teacher identity on top, destinations in the middle,
+     sign-out + version pinned to the foot. Motion mirrors the help popup:
+     .34s settle in, .22s accelerate out; scrim fades in step. z-index 70 sits
+     UNDER the popup/confirm layer (80) so dialogs opened from here stack. */
+  .drawer-overlay{ --pop-in:cubic-bezier(.32,.72,0,1); --pop-out:cubic-bezier(.55,.06,.68,.19);
+    position:fixed; inset:0; z-index:70; background:rgba(34,32,27,.42);
+    opacity:0; transition:opacity .34s var(--pop-in); }
+  .drawer-overlay[hidden]{ display:none; }
+  .drawer-overlay.open{ opacity:1; }
+  .drawer-overlay.closing{ transition:opacity .22s var(--pop-out); }
+  .drawer{ position:absolute; top:0; bottom:0; left:0; width:min(320px, 86vw);
+    background:var(--card); border-right:1px solid var(--line); box-shadow:var(--shadow-lift);
+    display:flex; flex-direction:column; padding-top:env(safe-area-inset-top);
+    transform:translateX(-102%); transition:transform .34s var(--pop-in); }
+  .drawer-overlay.open .drawer{ transform:none; }
+  .drawer-overlay.closing .drawer{ transition:transform .22s var(--pop-out); }
+  .drawer-head{ display:flex; align-items:center; gap:13px; padding:var(--s3) var(--s3) var(--s2);
+    border-bottom:1px solid var(--line-soft); }
+  .drawer-avatar{ width:46px; height:46px; border-radius:50%; background:var(--ink); color:var(--card);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:var(--t-title); flex:0 0 auto; }
+  .drawer-who{ flex:1; min-width:0; }
+  .drawer-who strong{ display:block; font-size:var(--t-bodysm); font-weight:700; color:var(--ink); letter-spacing:-.005em; }
+  .drawer-who small{ display:block; font-size:var(--t-caption); color:var(--ink-soft); line-height:1.35; margin-top:2px; }
+  .drawer-close{ width:38px; height:38px; flex:0 0 auto; border:none; background:transparent; color:var(--ink-soft);
+    cursor:pointer; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+  .drawer-close svg{ width:19px; height:19px; }
+  @media (hover:hover){ .drawer-close:hover{ background:var(--cat-soft); color:var(--cat-deep); } }
+  .drawer-close:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .drawer-items{ padding:var(--s2) 10px; display:flex; flex-direction:column; gap:2px; }
+  .drawer-item{ display:flex; align-items:center; gap:13px; width:100%; text-align:left; font:inherit;
+    font-size:var(--t-bodysm); font-weight:600; color:var(--ink); background:transparent; border:0; cursor:pointer;
+    padding:14px 13px; border-radius:12px; letter-spacing:-.005em; min-height:48px; }
+  .drawer-item svg{ width:20px; height:20px; flex:0 0 auto; color:var(--ink-soft); }
+  @media (hover:hover){ .drawer-item:hover{ background:var(--cat-soft); } }
+  .drawer-item:active{ background:var(--cat-soft); }
+  .drawer-item:focus-visible{ outline:3px solid var(--cat); outline-offset:-2px; }
+  .drawer-foot{ margin-top:auto; padding:var(--s1) 10px calc(var(--s2) + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line-soft); }
+  .drawer-item.danger{ color:#8a3c12; }
+  .drawer-item.danger svg{ color:#8a3c12; }
+  .drawer-version{ margin:6px 13px 0; font-size:var(--t-micro); color:var(--ink-faint); }
+  @media (prefers-reduced-motion:reduce){
+    .drawer-overlay, .drawer, .drawer-overlay.closing, .drawer-overlay.closing .drawer{ transition:none; }
+  }
+  /* Drawer destinations — small extras on About / FAQs / Settings. */
+  .faq-a{ padding:0 var(--s3) var(--s3); font-size:var(--t-bodysm); color:var(--ink-soft); line-height:1.55; }
+  .faq-a strong{ color:var(--ink); }
+  .about-body{ margin:0; font-size:var(--t-bodysm); color:var(--ink-soft); line-height:1.55; }
+  .about-version{ margin:var(--s2) 0 0; font-size:var(--t-caption); color:var(--ink-faint); }
+  .setting-sub{ margin:0 0 var(--s2); font-size:var(--t-bodysm); color:var(--ink-soft); }
   .back{ width:42px; height:42px; flex:0 0 auto; background:transparent; border:1px solid var(--line);
     color:var(--ink-soft); cursor:pointer; border-radius:12px; display:flex; align-items:center; justify-content:center;
     transition:background .15s ease, transform .15s ease, color .15s ease, border-color .15s; }
@@ -413,6 +464,34 @@
   .checkrow{ display:flex; align-items:center; gap:12px; }
   .checkrow input{ width:24px; height:24px; accent-color:var(--cat); }
   .checkrow label{ margin:0; font-weight:600; font-size:var(--t-bodysm); color:var(--ink); }
+  /* ---- Record-form color code — the tinted blocks themselves. Only fields
+     on the RECORD surface carry an fc-* class (buildField / videoUploadMarkup /
+     tnotes); profile, login and consent forms stay uncoded on purpose. ---- */
+  .field.fc-count, .field.fc-judge, .field.fc-notes, .field.fc-video{
+    border:1px solid; border-radius:var(--r-md); padding:13px 14px; }
+  .field.fc-count{ background:var(--code-count-bg); border-color:var(--code-count-line); }
+  .field.fc-count > label{ color:var(--code-count-deep); }
+  .field.fc-count input{ border-color:var(--code-count-line); }
+  .field.fc-judge{ background:var(--code-judge-bg); border-color:var(--code-judge-line); }
+  .field.fc-judge > label{ color:var(--code-judge-deep); }
+  /* Inside a coded block the seg's selected state pins to the FIXED judgment
+     green — .seg elsewhere (profile forms) keeps following the category hue. */
+  .field.fc-judge .seg button{ border-color:var(--code-judge-line); }
+  .field.fc-judge .seg button[aria-pressed="true"]{ background:var(--code-judge-deep); border-color:var(--code-judge-deep); }
+  .field.fc-notes{ background:var(--code-notes-bg); border-color:var(--code-notes-line); }
+  .field.fc-notes > label{ color:var(--code-notes-deep); }
+  .field.fc-notes textarea{ border-color:var(--code-notes-line); }
+  .field.fc-video{ background:var(--code-video-bg); border-color:var(--code-video-line); }
+  .field.fc-video > label{ color:var(--code-video-deep); }
+  .field.fc-video > label .field-hint{ color:var(--code-video-deep); opacity:.75; }
+  .field.fc-video .video-slot{ border-color:var(--code-video-line); }
+  /* Teacher's notes disclosure wears the notes blue. */
+  .tnotes.fc-notes{ background:var(--code-notes-bg); border-color:var(--code-notes-line); }
+  .tnotes.fc-notes summary{ color:var(--code-notes-deep); }
+  .tnotes.fc-notes summary svg{ color:var(--code-notes-deep); }
+  .tnotes.fc-notes .tnotes-opt{ color:var(--code-notes-deep); opacity:.7; }
+  .tnotes.fc-notes[open] summary{ border-bottom-color:var(--code-notes-line); }
+  .tnotes.fc-notes textarea{ background:#fff; }
   .save{ background:var(--cat); color:#fff; border:none; border-radius:var(--r-sm); padding:16px 24px;
     font-size:var(--t-body); font-weight:600; cursor:pointer; font-family:"Arimo",Arial,sans-serif; width:100%;
     letter-spacing:-.005em; transition:transform .12s, filter .15s, background .15s; margin-top:var(--s1); }

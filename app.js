@@ -10,42 +10,141 @@ const backBtn = document.getElementById('backBtn');
 // the element didn't need forty call-site edits.
 const homeDot = document.getElementById('homeDot') || { innerHTML:'' };
 
-// ---- Header overflow menu (utilities) -------------------------------------
+// ---- App drawer (the header ☰) --------------------------------------------
+// ONE menu surface. The ⋮ overflow popover grew into a left slide-in drawer
+// (2026-07-21 sidebar session): teacher identity on top, three quiet
+// destinations (About · FAQs · Settings), sign-out + the build number pinned
+// to the foot. The trigger still renders ONLY on the signed-in landing via
+// setMenuVisible() — task screens keep a clean header, same rule as before.
+// Motion matches the popup system (.34s settle in, .22s accelerate out) so
+// the app keeps a single animation grammar.
 const hmenuEl  = document.getElementById('hmenu');
 const hmenuBtn = document.getElementById('hmenuBtn');
-const hmenuPop = document.getElementById('hmenuPop');
-// Show the menu only on the signed-in landing; hide everywhere else so it never
-// competes on task screens. Called by each screen via setMenuVisible().
+// Shown in the drawer foot + About. BUMP with every APK that leaves the team —
+// it is how "which build do you have?" gets answered in the review loop.
+const APP_VERSION = '0.9.0';
+const APP_BUILD   = '21 Jul 2026';
 function setMenuVisible(on){
   hmenuEl.style.display = on ? '' : 'none';
-  if(!on) closeMenu();
+  if(!on) closeMenu(true); // navigating away — drop the drawer instantly
 }
-function buildMenuItems(){
-  hmenuPop.innerHTML = `
-    <button class="hmenu-item" role="menuitem" onclick="menuGo(exportCSV)">${ICON.download}Export records</button>
-    <button class="hmenu-item" role="menuitem" onclick="menuGo(()=>showManageData('fwd'))">${ICON.shield}Manage data</button>
-    <button class="hmenu-item" role="menuitem" onclick="menuGo(()=>showAbout('fwd'))">${ICON.info}About this app</button>
-    <div class="hmenu-sep"></div>
-    <button class="hmenu-item danger" role="menuitem" onclick="menuGo(handleLogout)">${ICON.logout}Sign out</button>
-  `;
+function ensureDrawer(){
+  let ov = document.getElementById('drawerOverlay');
+  if(ov) return ov;
+  ov = document.createElement('div');
+  ov.id = 'drawerOverlay'; ov.className = 'drawer-overlay'; ov.hidden = true;
+  ov.innerHTML = `<aside class="drawer" role="dialog" aria-modal="true" aria-label="Menu"></aside>`;
+  // Tap the dimmed backdrop (not the panel) to dismiss.
+  ov.addEventListener('click', e=>{ if(e.target === ov) closeMenu(); });
+  document.body.appendChild(ov);
+  return ov;
+}
+// Rebuilt on every open so the head always shows the CURRENT session teacher
+// (shared tablets — a colleague may have signed in since last time).
+function buildDrawer(){
+  const t = getSessionTeacher() || {};
+  const s = getSessionSchool() || {};
+  const initial = (t.name || '?').trim().charAt(0).toUpperCase();
+  return `
+    <div class="drawer-head">
+      <span class="drawer-avatar" aria-hidden="true">${esc(initial)}</span>
+      <span class="drawer-who"><strong>${esc(t.name || 'Teacher')}</strong><small>${esc(s.name || '')}</small></span>
+      <button type="button" class="drawer-close" aria-label="Close menu" onclick="closeMenu()">${ICON.close}</button>
+    </div>
+    <nav class="drawer-items" aria-label="Menu">
+      <button type="button" class="drawer-item" onclick="menuGo(()=>showAbout('fwd'))">${ICON.info}About</button>
+      <button type="button" class="drawer-item" onclick="menuGo(()=>showFAQs('fwd'))">${ICON.faq}FAQs</button>
+      <button type="button" class="drawer-item" onclick="menuGo(()=>showSettings('fwd'))">${ICON.gear}Settings</button>
+    </nav>
+    <div class="drawer-foot">
+      <button type="button" class="drawer-item danger" onclick="menuGo(handleLogout)">${ICON.logout}Sign out</button>
+      <p class="drawer-version">O&amp;M Cane Training · v${APP_VERSION} (${APP_BUILD})</p>
+    </div>`;
 }
 function toggleMenu(e){
   if(e) e.stopPropagation();
-  hmenuPop.hidden ? openMenu() : closeMenu();
+  const ov = document.getElementById('drawerOverlay');
+  if(!ov || ov.hidden){ openMenu(); } else { closeMenu(); }
 }
 function openMenu(){
-  buildMenuItems();
-  hmenuPop.hidden = false;
+  const ov = ensureDrawer();
+  ov.querySelector('.drawer').innerHTML = buildDrawer();
+  ov.hidden = false;
+  // Double-rAF: the panel must paint once at translateX(-102%) before .open
+  // lands, or the slide-in transition never runs.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>ov.classList.add('open')));
   hmenuBtn.setAttribute('aria-expanded','true');
+  document.body.style.overflow = 'hidden';
+  const first = ov.querySelector('.drawer-item');
+  if(first) first.focus({preventScroll:true});
 }
-function closeMenu(){
-  hmenuPop.hidden = true;
+function closeMenu(instant){
+  const ov = document.getElementById('drawerOverlay');
+  if(!ov || ov.hidden) return;
+  document.body.style.overflow = '';
   hmenuBtn.setAttribute('aria-expanded','false');
+  if(instant){ ov.classList.remove('open','closing'); ov.hidden = true; return; }
+  ov.classList.remove('open'); ov.classList.add('closing');
+  setTimeout(()=>{ ov.classList.remove('closing'); ov.hidden = true; }, 240);
+  // Staying on Home (scrim / Escape / ×) — hand focus back to the trigger.
+  // On navigation, paint()'s lede focus takes over instead.
+  if(hmenuEl.style.display !== 'none') hmenuBtn.focus({preventScroll:true});
 }
 function menuGo(fn){ closeMenu(); fn(); }
-// Dismiss on outside click / Escape.
-document.addEventListener('click', e=>{ if(!hmenuPop.hidden && !hmenuEl.contains(e.target)) closeMenu(); });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !hmenuPop.hidden) closeMenu(); });
+// Escape dismisses the drawer.
+document.addEventListener('keydown', e=>{
+  const ov = document.getElementById('drawerOverlay');
+  if(e.key==='Escape' && ov && !ov.hidden) closeMenu();
+});
+
+// ---- ANDROID SYSTEM BACK (2026-07-21) --------------------------------------
+// The app swaps screens with innerHTML, so the webview has NO history — and
+// Capacitor's default for the hardware/gesture back is: goBack() if the
+// webview can, otherwise EXIT. That exited the app from any screen. Fix, no
+// plugin needed: keep exactly ONE sentinel history entry armed; the system
+// back then pops it (firing popstate instead of exiting), and we route that
+// pop through the app's own back logic. Priority mirrors what the eye sees:
+// confirm dialog → help popup → drawer → the header back chevron. On Home /
+// login there is nothing to go back to: first press toasts, second press
+// finds no history and Capacitor exits — the standard double-press pattern.
+let backArmed = false;
+function armSystemBack(){
+  if(backArmed) return;
+  try{ history.pushState({om:1}, ''); backArmed = true; }catch(e){}
+}
+function systemBack(){
+  const conf = document.getElementById('confirmOverlay');
+  if(conf){ const c = conf.querySelector('#confirmCancel'); if(c){ c.click(); return true; } }
+  const help = document.getElementById('helpOverlay');
+  if(help && !help.hidden){ closeRefSheet(); return true; }
+  const dr = document.getElementById('drawerOverlay');
+  if(dr && !dr.hidden && !dr.classList.contains('closing')){ closeMenu(); return true; }
+  if(backBtn.style.display !== 'none' && typeof backBtn.onclick === 'function'){ backBtn.onclick(); return true; }
+  return false; // Home / login — let the next press leave the app
+}
+window.addEventListener('popstate', ()=>{
+  backArmed = false;
+  if(systemBack()){ armSystemBack(); } // handled in-app — re-arm the sentinel
+  else if(typeof toast === 'function'){ toast('Press back again to close the app.'); }
+});
+// NATIVE PATH (the one Android actually uses): the history sentinel above is
+// only consulted on web. Capacitor 8's predictive back does NOT walk webview
+// history — without the @capacitor/app plugin it simply finishes the
+// activity, which is exactly the "back closes the app" bug. With the plugin
+// installed, registering a backButton listener makes Capacitor hand every
+// system back press to us instead. Same routing, explicit exit on Home.
+let exitArmed = false;
+(function wireNativeBack(){
+  const AppP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if(!AppP || !AppP.addListener) return; // web preview → popstate fallback above
+  AppP.addListener('backButton', ()=>{
+    if(systemBack()) return;
+    if(exitArmed){ AppP.exitApp(); return; }
+    exitArmed = true;
+    toast('Press back again to close the app.');
+    setTimeout(()=>{ exitArmed = false; }, 2000);
+  });
+})();
 const toastEl = document.getElementById('toast');
 let state = { category:null, activity:null };
 const ICON = {
@@ -67,6 +166,8 @@ const ICON = {
   shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"/></svg>',
   logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/></svg>',
   close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.2 12c0-.4 0-.8-.1-1.2l2-1.5-2-3.4-2.3 1a7.2 7.2 0 0 0-2.1-1.2L14.3 3h-4l-.4 2.7a7.2 7.2 0 0 0-2.1 1.2l-2.3-1-2 3.4 2 1.5c-.1.4-.1.8-.1 1.2s0 .8.1 1.2l-2 1.5 2 3.4 2.3-1c.6.5 1.3.9 2.1 1.2l.4 2.7h4l.4-2.7a7.2 7.2 0 0 0 2.1-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></svg>',
+  faq:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.2a2.7 2.7 0 0 1 5.2.9c0 1.8-2.6 2.4-2.6 3.6"/><path d="M12 17h.01"/></svg>',
   // ---- sound library (soundboard) media-player controls -------------------
   sbPlay:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.87l11-6.8a1 1 0 0 0 0-1.74l-11-6.8A1 1 0 0 0 8 5.2Z"/></svg>',
   sbPause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>',
@@ -906,6 +1007,9 @@ function paint(html, dir, stagger, opts){
   if(typeof closeRefSheet === 'function') closeRefSheet(true);
   // Default: utilities menu is hidden. The signed-in landing re-shows it.
   if(typeof setMenuVisible === 'function') setMenuVisible(false);
+  // Every screen change re-arms the system-back sentinel (idempotent), so the
+  // hardware back always pops in-app instead of exiting. See armSystemBack.
+  if(typeof armSystemBack === 'function') armSystemBack();
   if(dir === 'none'){
     screen.removeAttribute('data-dir'); screen.classList.remove('stagger'); screen.style.animation = 'none'; screen.innerHTML = html;
   } else {
@@ -1111,8 +1215,8 @@ async function handleLogout(){
   showLogin('back');
 }
 
-// Read-only "about" — same content as the first-run welcome, but reachable any
-// time from Home, so it carries a back button (unlike the one-time welcome).
+// Read-only "about" — the welcome copy, plus who is behind the pilot and the
+// version line (the drawer foot shows it too; here it survives a screenshot).
 function showAbout(dir){
   state = { category:null, activity:null };
   crumbEl.textContent = 'About';
@@ -1123,7 +1227,111 @@ function showAbout(dir){
   paint(`
     <div class="welcome-mark">${ICON.compass}</div>
     <h1 class="lede">O&amp;M Cane Training<small>A calm space for teachers to set up a child, run orientation &amp; mobility activities, and record how each session goes — all on this device.</small></h1>
+    <div class="panel quiet">
+      <h2 class="panel-title">Who is behind this</h2>
+      <p class="about-body">Built as part of a research pilot by IIT Delhi and NCAHT, working with partner schools for the blind. Teachers run the sessions; the app keeps the record.</p>
+    </div>
+    <p class="about-version">Version ${APP_VERSION} · ${APP_BUILD}</p>
   `, dir || 'fwd', false);
+}
+
+/* ---------------------------------------------------------------------------
+   FAQs — teacher-facing quick answers, reached from the drawer. COPY IS DRAFT:
+   teacher-facing text is content-team owned; they verify or rewrite these
+   (and translated versions ride the same pipeline as SOP text). Answers must
+   stay grounded in what the app actually does — no aspirational features.
+   --------------------------------------------------------------------------- */
+const FAQ_ITEMS = [
+  { q:'How do I sign in?',
+    a:'Pick your school, type the login ID your coordinator gave you, and enter your password. If it says the login is incorrect, check the school and the ID first — that is the usual cause.' },
+  { q:'Does the app need the internet?',
+    a:'No. Activities, scoring, audio and saved results all work fully offline, and everything stays on this device.' },
+  { q:'Where are the steps and demo video for an activity?',
+    a:'Tap the <strong>?</strong> button on an activity screen. It holds the step-by-step guide, the demo video where one exists, and spoken narration with a language switch.' },
+  { q:'Can I run one activity with several students?',
+    a:'Yes. After choosing an activity, tick every student taking part and tap Start. You score one student at a time; skip anyone you did not observe — skipped students get no record.' },
+  { q:'Can I record a video of a session?',
+    a:'Only for children whose guardian has given video consent. Without consent on file the video control stays locked — that is deliberate, not a fault.' },
+  { q:'How do I back up or share results?',
+    a:'Open Settings and tap Export records. It creates a CSV of every saved session — the CSV is the only backup, so export before clearing anything.' },
+];
+function showFAQs(dir){
+  state = { category:null, activity:null };
+  crumbEl.textContent = 'FAQs';
+  backBtn.style.display = 'flex';
+  backBtn.onclick = ()=>showHome('back');
+  homeDot.innerHTML = ICON.home;
+  resetTheme();
+  const items = FAQ_ITEMS.map(f=>`
+    <details class="disclosure">
+      <summary><span class="disclosure-label">${f.q}</span><span class="chev">${ICON.chevron}</span></summary>
+      <div class="faq-a">${f.a}</div>
+    </details>`).join('');
+  paint(`
+    <h1 class="lede">FAQs<small>Quick answers to the questions teachers ask most.</small></h1>
+    ${items}
+  `, dir || 'fwd', false);
+}
+
+/* ---------------------------------------------------------------------------
+   SETTINGS — the drawer's working destination. Real preferences only (a
+   settings screen with nothing to set teaches people not to open it):
+   narration language (the same audioLang the ? sheet uses — set here, applies
+   everywhere), tips reset (clears this teacher's onboarding flags), and the
+   two data tools. Languages with no verified translation render disabled —
+   they light up the release after the content team delivers text.
+   --------------------------------------------------------------------------- */
+function langHasContent(code){
+  if(code === 'en') return true; // English narrates sop[] itself
+  try{
+    return ACTIVITY_DATA.some(c=>(c.activities||[]).some(a=>a.sopTranslations && a.sopTranslations[code] && a.sopTranslations[code].length));
+  }catch(e){ return false; }
+}
+function showSettings(dir){
+  state = { category:null, activity:null };
+  crumbEl.textContent = 'Settings';
+  backBtn.style.display = 'flex';
+  backBtn.onclick = ()=>showHome('back');
+  homeDot.innerHTML = ICON.home;
+  resetTheme();
+  const cur = getAudioLang();
+  const langBtns = AUDIO_LANGS.map(l=>{
+    const has = langHasContent(l.code);
+    return `<button type="button" onclick="setAudioLangDefault('${l.code}', this)" aria-pressed="${l.code===cur}" ${has?'':'disabled'}>${l.label}</button>`;
+  }).join('');
+  paint(`
+    <h1 class="lede">Settings<small>Preferences for this device, and your data tools.</small></h1>
+    <div class="panel">
+      <h2 class="panel-title">${ICON.audio} Narration language</h2>
+      <p class="setting-sub">The language spoken when you play an activity's step-by-step guide. More languages arrive as translations are verified.</p>
+      <div class="seg" role="group" aria-label="Narration language">${langBtns}</div>
+    </div>
+    <button class="action-row" onclick="resetTips()" style="margin-bottom:var(--s2)">
+      <span class="action-ic">${ICON.info}</span>
+      <span class="action-text"><strong>Show tips again</strong><small>Bring back the first-run hints and the ? callout</small></span>
+    </button>
+    <button class="action-row" onclick="showManageData('fwd')" style="margin-bottom:var(--s2)">
+      <span class="action-ic">${ICON.shield}</span>
+      <span class="action-text"><strong>Manage data</strong><small>Children saved on this device, and the danger zone</small></span>
+      <span class="action-go">${ICON.chevronRight}</span>
+    </button>
+    <button class="action-row" onclick="exportCSV()">
+      <span class="action-ic">${ICON.download}</span>
+      <span class="action-text"><strong>Export records</strong><small>Download every saved session as a CSV — your only backup</small></span>
+    </button>
+  `, dir || 'fwd', false);
+}
+async function setAudioLangDefault(code, btn){
+  await Store.setString(AUDIO_LANG_KEY, code);
+  [...btn.parentElement.children].forEach(b=>b.setAttribute('aria-pressed','false'));
+  btn.setAttribute('aria-pressed','true');
+  const l = AUDIO_LANGS.find(x=>x.code===code);
+  toast(`Narration set to ${l ? l.label : code}.`);
+}
+async function resetTips(){
+  await Store.setJSON(_obKey(HINTS_KEY), {});
+  await Store.setString(_obKey(HELP_USED_KEY), '');
+  toast('Tips will show again as you use the app.');
 }
 
 function showWelcome(dir){
@@ -1218,7 +1426,9 @@ function showManageData(dir){
   state = { category:null, activity:null };
   crumbEl.textContent = 'Stored data';
   backBtn.style.display = 'flex';
-  backBtn.onclick = ()=>showHome('back');
+  // Reached from Settings (its only entry since the drawer landed) — back
+  // returns there, not Home.
+  backBtn.onclick = ()=>showSettings('back');
   homeDot.innerHTML = ICON.home;
   resetTheme();
   const profiles = loadProfiles();
@@ -2678,7 +2888,7 @@ function videoUploadMarkup(){
   // this just keeps the teacher from staging a clip that would be refused.
   const child = getActiveProfile();
   if(!child || !child.videoConsent){
-    return `<div class="field video-field">
+    return `<div class="field video-field fc-video">
       <label>Video evidence <span class="field-hint">— optional; filmed by you, sent to researchers</span></label>
       <div class="video-slot video-slot--locked">
         <span class="video-name">Locked — no guardian video-consent on file for this child.</span>
@@ -2688,7 +2898,7 @@ function videoUploadMarkup(){
   }
   const has = !!pendingVideo;
   const label = has ? esc(pendingVideo.displayName) : 'No video attached';
-  return `<div class="field video-field">
+  return `<div class="field video-field fc-video">
       <label>Video evidence <span class="field-hint">— optional; filmed by you, sent to researchers</span></label>
       <div class="video-slot" id="videoSlot">
         <span class="video-name" id="videoName">${label}</span>
@@ -2773,9 +2983,13 @@ async function commitPendingVideo(researchId){
 function buildField(f, sfx){
   sfx = sfx || '';
   const fid = `f_${f.id}${sfx}`;
-  if(f.type === 'count'){ return `<div class="field"><label for="${fid}">${esc(f.label)}</label><input type="number" id="${fid}" min="0" placeholder="0"></div>`; }
+  // FIELD COLOR CODE (2026-07-21): every block wears its MEANING's hue —
+  // fc-count amber (measurement), fc-judge green (result/mastery), fc-notes
+  // blue (written reflection), fc-video plum (evidence). Constant across all
+  // activities so the code transfers between screens; tints live in styles.css.
+  if(f.type === 'count'){ return `<div class="field fc-count"><label for="${fid}">${esc(f.label)}</label><input type="number" id="${fid}" min="0" placeholder="0"></div>`; }
   if(f.type === 'result'){
-    return `<div class="field"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label><div class="seg" id="${fid}" data-value="" role="group" aria-labelledby="lbl_${f.id}${sfx}">${['Independent','Prompted','Unable'].map(v=>`<button type="button" onclick="pickSeg('${fid}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
+    return `<div class="field fc-judge"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label><div class="seg" id="${fid}" data-value="" role="group" aria-labelledby="lbl_${f.id}${sfx}">${['Independent','Prompted','Unable'].map(v=>`<button type="button" onclick="pickSeg('${fid}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
   }
   // 'mastery' — the one-tap scale for simple drills. Plain-language version of
   // the support-level scoring O&M inventories use (independent / prompted /
@@ -2783,19 +2997,19 @@ function buildField(f, sfx){
   // a repeat; Not yet = couldn't do it this time (and that's fine — it's a
   // snapshot, not a verdict).
   if(f.type === 'mastery'){
-    return `<div class="field"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label><div class="seg" id="${fid}" data-value="" role="group" aria-labelledby="lbl_${f.id}${sfx}">${['Got it','With help','Not yet'].map(v=>`<button type="button" onclick="pickSeg('${fid}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
+    return `<div class="field fc-judge"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label><div class="seg" id="${fid}" data-value="" role="group" aria-labelledby="lbl_${f.id}${sfx}">${['Got it','With help','Not yet'].map(v=>`<button type="button" onclick="pickSeg('${fid}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
   }
   // 'teacherNotes' — progressive disclosure: the score is the required tap,
   // the note is optional and stays folded until the teacher wants it. The
   // placeholder prompts what's actually useful to write.
   if(f.type === 'teacherNotes'){
-    return `<details class="tnotes">
+    return `<details class="tnotes fc-notes">
       <summary>${ICON.edit}<span class="tnotes-title">${esc(f.label)}</span><span class="tnotes-opt">optional</span></summary>
       <textarea id="${fid}" placeholder="Anything worth remembering — what helped, what surprised you, what to try next session."></textarea>
     </details>`;
   }
   if(f.type === 'checkbox'){ return `<div class="field"><div class="checkrow"><input type="checkbox" id="${fid}"><label for="${fid}">${esc(f.label)}</label></div></div>`; }
-  return `<div class="field"><label for="${fid}">${esc(f.label)}</label><textarea id="${fid}" placeholder="Type any observations..."></textarea></div>`;
+  return `<div class="field fc-notes"><label for="${fid}">${esc(f.label)}</label><textarea id="${fid}" placeholder="Type any observations..."></textarea></div>`;
 }
 function pickSeg(groupId, value, btn){
   const group = document.getElementById(groupId);
