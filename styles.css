@@ -1003,3 +1003,58 @@
     .panel{ padding:var(--s3); }
     .card{ padding:var(--s3); }
   }
+
+  /* ============================================================================
+     SECTION COLOR ZONES (2026-07-22, "block filling" — Draft 2)
+     Manager brief: each region of the record screen is a full-colour BAND, not
+     white space between floating cards. The accessible --code-* palette is
+     REMAPPED from field-types to SECTIONS: amber = who (child bar), blue =
+     listen (sound/command board), green = score (form), plum = history (past
+     results). The field-level cognitive code is PRESERVED inside the green form
+     as a colour left-edge (not a full tint — tint-on-tint muddies contrast).
+     Scoped to record-screen selectors only; other screens' .panel styling is
+     untouched. Deep text stops all pass WCAG AA on their band.
+     REVERT = delete this whole block. ========================================= */
+
+  /* tighter gutters — bands nearly touch (record screen only) */
+  .activechild, #soundboardPanel, #commandBoardPanel, #formPanel{ margin-bottom:var(--s1); }
+  #soundboardPanel, #commandBoardPanel, #formPanel{ padding:var(--s3); }
+
+  /* ZONE: who — amber child bar */
+  .activechild{ background:var(--code-count-bg); border-color:var(--code-count-line); padding:14px 16px; }
+  .activechild .avatar{ background:var(--code-count-line); color:var(--code-count-deep); }
+  .activechild .who{ color:var(--code-count-deep); }
+  .activechild .who small{ color:#977a2e; }
+  .activechild .swap{ color:var(--code-count-deep); border-color:var(--code-count-line); }
+
+  /* ZONE: listen — blue sound + command board. Recolour the player's category
+     accents (active pad, play button, progress, tabs) to blue via --cat vars,
+     so the whole surface reads blue, not green-on-blue. */
+  #soundboardPanel, #commandBoardPanel{
+    background:var(--code-notes-bg); border-color:var(--code-notes-line);
+    --cat:#3a6b91; --cat-deep:var(--code-notes-deep); --cat-soft:#d3e2f0; --cat-line:var(--code-notes-line); }
+  #soundboardPanel .panel-title, #commandBoardPanel .panel-title{ color:var(--code-notes-deep); }
+  #soundboardPanel .panel-title svg, #commandBoardPanel .panel-title svg{ color:var(--code-notes-deep); }
+
+  /* ZONE: score — green form (stays the elevated hero, guardrail #2) */
+  #formPanel{ background:var(--code-judge-bg); border-color:var(--code-judge-line); }
+  #formPanel .panel-title{ color:var(--code-judge-deep); }
+  #formPanel .panel-title svg{ color:var(--code-judge-deep); }
+
+  /* field cognitive code INSIDE the green block: inset near-white card + a 4px
+     colour left-edge that carries the meaning (amber count / green judgment /
+     blue notes / plum video). Overrides the full-tint rules above. */
+  .field.fc-count, .field.fc-judge, .field.fc-notes, .field.fc-video, .tnotes.fc-notes{
+    background:#fbf7ee; border:1px solid var(--line-soft); border-left-width:4px;
+    border-radius:0 var(--r-md) var(--r-md) 0; }
+  .field.fc-count{ border-left-color:#c99a1e; }
+  .field.fc-judge{ border-left-color:#2f6f4e; }
+  .field.fc-notes, .tnotes.fc-notes{ border-left-color:#3a6b91; }
+  .field.fc-video{ border-left-color:#7a5a92; }
+
+  /* ZONE: history — plum past results (scoped via .results so other .panel.quiet
+     surfaces, e.g. the About panel, keep their flat transparent styling). */
+  .panel.quiet.results{ background:var(--code-video-bg); border:1px solid var(--code-video-line);
+    border-radius:var(--r-lg); padding:var(--s3); margin-bottom:var(--s1); }
+  .panel.quiet.results .panel-title{ color:var(--code-video-deep); }
+  .panel.quiet.results .panel-title svg{ color:var(--code-video-deep); }

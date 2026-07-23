@@ -2859,7 +2859,7 @@ function showActivity(catIndex, actIndex, opts){
       <h2 class="panel-title">${ICON.edit} ${isGroup || solo ? 'Record a result' : 'Score each student'}</h2>
       <form id="dataForm" onsubmit="return false;"><fieldset><legend class="visually-hidden">Record a result for ${esc(act.name)}</legend>${formInner}${saveBtnHtml}</fieldset></form>
     </div>
-    <div class="panel quiet"><h2 class="panel-title">${ICON.list} Past results</h2><div id="recordList">${recHtml}</div></div>
+    <div class="panel quiet results"><h2 class="panel-title">${ICON.list} Past results</h2><div id="recordList">${recHtml}</div></div>
   `, opts.dir || 'fwd', false, { skipLedeFocus: !!opts.focusForm });
   if(!isGroup && !solo) batchFlowInit(act);
   if(opts.focusForm){
