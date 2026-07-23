@@ -1,5 +1,48 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-07-21 pm (sidebar drawer + record color code + Android back fix)_
+_Last updated: 2026-07-22 (backend P0 audit + section color zones Draft 2)_
+## STATE (2026-07-22) — repo audit + "block filling" color redesign
+Two threads this session, both mostly hand-off-to-Mac.
+**(1) Section color zones (Draft 2)** — manager wants COMPLETE BLOCK FILLING,
+not white gutters: each record-screen region is now a full-colour band. The
+accessible `--code-*` palette is REMAPPED from field-types to SECTIONS: amber =
+who (`.activechild`), blue = listen (`#soundboardPanel`/`#commandBoardPanel`,
+recoloured by overriding `--cat` so the player accents turn blue too), green =
+score (`#formPanel`, stays the elevated hero), plum = history (past results,
+scoped via a new `.results` class so the About panel's `.panel.quiet` is
+untouched). Draft-1 field code PRESERVED inside the green form as a 4px colour
+LEFT-EDGE on inset near-white cards (not a full tint — tint-on-tint muddies
+contrast). 55-line scoped CSS block at the END of styles.css (revert = delete
+the block) + one-word class hook in app.js. `activities.js` untouched.
+Committed on `feat/section-color-zones` as `b705487` — PENDING emulator verify.
+Tests 40/40, app.js parses, CSS braces balanced. NOT built/merged/pushed.
+**(2) Backend P0 audit** — deferred by Aditya to a later chat, findings captured
+in MEMORY. Headline: the `Cloud` seam has ONLY `signIn`+`enrolChild` — records
+and video have NO client cloud path (confirmed: no `.upload(`/`storage.from` in
+source), while `schema.sql` already has the `records` table + `videos` bucket
+ready. Plus two un-backfillables (offline-enrolled children are un-syncable by
+FK; stale `shell-login-home` branch pre-dates the file split — delete it).
+## NEXT (2026-07-22) — in order
+- [ ] **Aditya, Mac — finish this session's git (sandbox hit the lock wall):**
+      `cd ~/Desktop/om-app && rm -f .git/index.lock .git/HEAD.lock` then
+      `git checkout -- app.js styles.css` (discard the messy working copies —
+      they're safe in commit `b705487`), `git reset`, then `git checkout main`
+      (carries the MEMORY/TRACKER edits onto main), `git add MEMORY.md TRACKER.md
+      && git commit -m "MEMORY/TRACKER: 2026-07-22 wrap"` and
+      `git push origin main feat/section-color-zones`. `git log --oneline -3` to confirm.
+- [ ] **Aditya, Mac — verify the color zones:** `git checkout feat/section-color-zones`,
+      `./scripts/build.sh`, `cd android && ./gradlew installDebug`. Open a
+      SOUNDBOARD activity (Counting Steps) to see all four bands at once. Check
+      the blue player accents, the green form with edge-accent fields, plum past
+      results. If it reads well → `git checkout main && git merge feat/section-color-zones`,
+      delete the branch. Tweak hues first if the manager wants.
+- [ ] **Later (deferred): backend P0** — solve order 3→2→1: cloud-first enrolment
+      + `backfill_child` RPC for existing local kids; device-test matrix (esp.
+      cross-school RLS); then `Cloud.syncRecords()` + `Cloud.uploadVideo()` +
+      `syncPending` + delete-everywhere. Two schema gaps to fix: group records
+      (research_id NOT NULL blocks them) and teacher_id FK (resolve server-side).
+- [ ] **Also delete** the stale `shell-login-home` branch (local + origin) once
+      its BYOD/child-id research is confirmed captured in MEMORY — merging it
+      would revert the file split.
 ## STATE (2026-07-21 pm) — sidebar drawer, record color code, Android back fix
 Follow-on session after the design overhaul. Sound `?` help COMMITTED
 (`ab59713`); the app-shell changes (drawer + color code + back fix) are in the

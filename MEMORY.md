@@ -1,5 +1,57 @@
 # MEMORY.md — O&M Cane Training
-_Last updated: 2026-07-21 pm (sidebar drawer, record color code, Android system-back fix)_
+_Last updated: 2026-07-22 (backend P0 audit + section color zones Draft 2)_
+## Session 2026-07-22 — repo audit + "block filling" color redesign
+- **Section color zones (Draft 2), `feat/section-color-zones` `b705487`, PENDING
+  emulator verify.** Manager wanted complete BLOCK FILLING (no white gutters):
+  each record-screen region is a full-colour band. Reused the accessible
+  `--code-*` palette but REMAPPED it from field-types → SECTIONS: amber = who
+  (`.activechild`), blue = listen (`#soundboardPanel`/`#commandBoardPanel`),
+  green = score (`#formPanel`, still the elevated hero), plum = history (past
+  results). Clever bit: the sound panels turn blue by OVERRIDING `--cat` inside
+  the panel, so the player's category accents (active pad, play button, progress,
+  tabs) go blue too — no green-on-blue clash. Draft-1 field code kept INSIDE the
+  green form as a 4px colour left-edge on inset near-white cards (not full tint —
+  tint-on-tint hurts contrast). All in a 55-line scoped block at the END of
+  styles.css (revert = delete it); one-word `.results` class hook added to the
+  past-results panel in app.js so the About panel's `.panel.quiet` stays flat.
+  `activities.js` untouched. Tests 40/40, parse OK, CSS balanced. Not built/merged.
+- **Draft 1 (shipped) = per-FIELD tints** (amber count/green judge/blue notes/
+  plum video via buildField); Draft 2 keeps that meaning but subordinates it to
+  the section bands. If drafts ever need re-showing: they were rendered live from
+  the `styles.css` `--code-*` values (the source of truth) — the old chat's
+  inline visuals did NOT carry into the workspace, only notes + code did.
+- **Backend P0 audit (deferred to a later chat by Aditya).** Read the real repo
+  (not the stale cached docs). Key findings, code-confirmed:
+  1. **No records/video cloud path.** `Cloud` seam (store.js) = `signIn` +
+     `enrolChild` ONLY. No `.upload(`/`storage.from` anywhere. But `schema.sql`
+     already has the `records` table (client-UUID `id`, both analysis indexes,
+     `video_path`) + `videos` bucket policy. Backend ready, client half missing.
+     Fix = `Cloud.syncRecords()` (idempotent `.upsert` on `id`) + `Cloud.uploadVideo()`
+     (re-check consent, fail closed) + a `syncPending()` orchestrator + delete-everywhere.
+  2. **Offline-enrolled children are un-syncable by FK** — `newResearchId()` mints
+     locally when flag OFF (app.js ~1960); `records.research_id` FK → `children`,
+     so a local-minted child has no cloud parent and their records can never sync.
+     Fix = go cloud-first for enrolment + a `backfill_child(p_research_id,...)`
+     security-definer RPC (inserts with the CLIENT's id, `on conflict do nothing`).
+     Un-backfillable → decide before more real enrolment. Caveat: backfill can't
+     MERGE a child enrolled offline on two devices (two ids = two rows).
+  3. **Two schema gaps** surfaced: group records can't enter `records`
+     (`research_id NOT NULL` + FK; group saves have none — make nullable or keep
+     CSV-only); `teacher_id` FK ≠ local `teacherRosterId` (resolve server-side
+     from `auth.uid()`, don't send it).
+  4. **`shell-login-home` branch is a footgun** — pre-dates the file split
+     (deletes store.js/styles.css/schema.sql/build.sh, +1803 to index.html).
+     Merging it reverts the whole architecture. Delete after confirming its
+     BYOD/child-id research is captured here.
+  5. `.git` is 199 MB (many revisions of the old monolithic index.html/app.js —
+     no giant media blob tracked; media is properly gitignored). Optional cleanup.
+  6. Reproducibility/bus-factor: `audio/`(28) `sounds/`(22) `faces/`(2) + all
+     `*.mp4` + `help-*.jpg` gitignored → a fresh clone builds a broken app; only
+     Aditya's Mac has assets + debug key. Fix = LFS or a committed restore script.
+- **Env note:** sandbox STILL can't rm `.git/*.lock` on the mount (`Operation not
+  permitted`) — the feature commit `b705487` landed, but the follow-up
+  `checkout main` failed mid-way, leaving stale locks + a `MM` index state. The
+  MEMORY/TRACKER edits are on disk; the recovery + push sequence is TRACKER NEXT #1.
 ## Sidebar + back-fix session (2026-07-21 pm) — drawer, color code, Android back
 Follow-on to the design overhaul. Sound `?` help committed alone (`ab59713`);
 the drawer + color code + back fix are still in the working tree, one commit
