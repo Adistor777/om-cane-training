@@ -1621,12 +1621,28 @@ async function enterFromWelcome(){
   await Store.setString(WELCOME_SEEN, '1');
   showHome('fwd');
 }
+/* A profile's `photo` is a PATH into the bundle (`faces/aditya.jpg`), not image
+   data — so the file can be absent while the profile still claims a photo. That
+   happens for real: `faces/` is gitignored (a fresh clone has none), and a
+   consent-clean build for an outside tester ships with it deliberately emptied.
+   Without a fallback the app renders a broken-image icon in place of a child's
+   face on every screen. `avatarFallback` swaps in the initial instead — the
+   same thing a photo-less profile already shows. */
+function avatarFallback(img){
+  const span = document.createElement('span');
+  span.className = img.className;
+  span.setAttribute('aria-hidden', 'true');   // the name is always adjacent
+  span.textContent = img.dataset.initial || '?';
+  img.replaceWith(span);
+}
 function avatarFor(p, cls){
   cls = cls || 'avatar-img';
-  if(p && p.photo) return `<img class="${cls}" src="${p.photo}" alt="">`;
   const initial = (p && p.name ? p.name : '?').trim().charAt(0).toUpperCase();
-  if(cls==='avatar-img') return `<span class="blob">${esc(initial)}</span>`;
-  return `<span class="${cls}">${esc(initial)}</span>`;
+  if(p && p.photo){
+    return `<img class="${cls}" src="${esc(p.photo)}" alt="" data-initial="${esc(initial)}" onerror="avatarFallback(this)">`;
+  }
+  if(cls==='avatar-img') return `<span class="blob" aria-hidden="true">${esc(initial)}</span>`;
+  return `<span class="${cls}" aria-hidden="true">${esc(initial)}</span>`;
 }
 
 /* ---------------------------------------------------------------------------
@@ -2477,9 +2493,10 @@ function showChildPicker(catIndex, actIndex, dir, opts){
     // alt="" is right: the photo is a VISUAL shortcut for a sighted teacher and
     // the name sits directly beneath it. A described face would be both useless
     // and a privacy problem in a screen reader's spoken output.
+    const initial = esc((p.name||'?').trim().charAt(0).toUpperCase());
     const face = p.photo
-      ? `<img class="face" src="${p.photo}" alt="">`
-      : `<span class="face" aria-hidden="true">${esc((p.name||'?').trim().charAt(0).toUpperCase())}</span>`;
+      ? `<img class="face" src="${esc(p.photo)}" alt="" data-initial="${initial}" onerror="avatarFallback(this)">`
+      : `<span class="face" aria-hidden="true">${initial}</span>`;
     const sel = rosterSel.includes(p.id);
     const isNew = opts.newId === p.id;
     // "Vaishu, student 3 of 12" — the position is the whole point; this grid is

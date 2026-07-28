@@ -103,9 +103,22 @@ done
 #          root). All gitignored; previously copied by hand (the step everyone
 #          forgets) — now the build owns it. cp -R dir/. preserves subfolders
 #          (audio/commands/).
+#          MIRROR, don't merge. `cp -R` alone only ADDS: a file deleted from
+#          audio/ or faces/ would linger in www/ and keep shipping in the APK.
+#          That is not hypothetical — a consent-clean build for an outside
+#          tester works by emptying faces/, and with a merge-only copy the
+#          child photos would still have gone out. rsync --delete makes www/
+#          a true mirror; the fallback keeps this working without rsync.
 for d in audio sounds faces; do
   if [ -d "$d" ]; then
-    mkdir -p "www/$d" && cp -R "$d/." "www/$d/" && echo "OK  copied $d/ -> www/$d/"
+    mkdir -p "www/$d"
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a --delete --exclude '.DS_Store' "$d/" "www/$d/"
+    else
+      rm -rf "www/$d" && mkdir -p "www/$d" && cp -R "$d/." "www/$d/"
+      find "www/$d" -name '.DS_Store' -delete 2>/dev/null || true
+    fi
+    echo "OK  mirrored $d/ -> www/$d/ ($(ls -1 "$d" | grep -v '^\.DS_Store$' | wc -l | tr -d ' ') files)"
   fi
 done
 for v in demo-*.mp4 demo-*.jpg help-*.jpg; do

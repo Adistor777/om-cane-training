@@ -92,12 +92,25 @@ failure there is the thing your tester would have hit.
 TalkBack on the emulator is not a fair test: the gestures do not map cleanly and
 the speech timing is wrong. A blind tester needs a real device.
 
-Plug the phone in, enable USB debugging, then:
+**First time on a given phone**, get it talking to the Mac:
+
+1. Settings → About phone → tap **Build number** seven times.
+2. Settings → System → Developer options → **USB debugging** on.
+3. Plug into the Mac. Tap **Allow** on the phone's prompt.
+4. `adb devices` — the phone must show as `device`. `unauthorized` means you
+   missed the prompt; unplug, replug, and accept it.
+
+Then:
 
 ```bash
 cd android
 ./gradlew clean installDebug
 ```
+
+> `No connected devices!` means exactly that — no phone plugged in and no
+> emulator running. The build itself already succeeded; only the install step
+> had nowhere to go. Either connect a device, or use `assembleDebug` below and
+> sideload.
 
 `clean` matters — a native config changed (`forceDarkAllowed`), and a stale
 install is the classic way to spend an hour debugging code that is already
@@ -107,11 +120,17 @@ correct.
 
 ### Sending an APK instead (for Mansi, or a tester you can't plug in)
 
+This needs no device attached at all, and is the simplest path when you are
+handing the phone to someone rather than debugging on it.
+
 ```bash
 cd android
 ./gradlew assembleDebug
 open app/build/outputs/apk/debug/
 ```
+
+**Check the file's timestamp.** An older `app-debug.apk` may already be sitting
+at that path from a previous session, and it is easy to send the wrong one.
 
 Rename it with the date (`om-cane-2026-07-28.apk`) and send it over WhatsApp
 **as a document**, or via Drive. First install on their phone needs
@@ -169,21 +188,54 @@ produces wrong data that looks right.
 
 ---
 
-## Before it leaves the building
+## Before it leaves the building — the consent-clean build
 
-`faces/` ships inside every APK: two bundled demo-child photos (Aditya, Vaishu).
-MEMORY has flagged since 2026-07-13 that bundled real-child photos need guardian
-consent on file before a build leaves the team. If this tester is outside the
-team, either confirm that consent or build them a copy with `faces/` emptied:
+`faces/` ships inside every APK: two bundled demo-child photos (`aditya.jpg`,
+`vaishu.jpg`). MEMORY has flagged since 2026-07-13 that bundled real-child
+photos need guardian consent on file before a build leaves the team.
+
+**If the tester is outside the team**, either confirm that consent or build them
+a copy with `faces/` emptied:
 
 ```bash
-mv faces /tmp/faces-backup && mkdir faces
-./scripts/build.sh && cd android && ./gradlew clean assembleDebug
-cd .. && rm -rf faces && mv /tmp/faces-backup faces
+cd ~/Desktop/om-app
+mv faces/*.jpg /tmp/                     # keep them; they are gitignored, not in git
+./scripts/build.sh
+cd android && ./gradlew clean assembleDebug
+open app/build/outputs/apk/debug/
 ```
 
-The app seeds demo children with initials instead of photos when `faces/` is
-empty — nothing else changes.
+Verify before sending — this is the check that matters:
+
+```bash
+unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -c faces/
+# expect: 0
+```
+
+Then put them back:
+
+```bash
+cd ~/Desktop/om-app && mv /tmp/aditya.jpg /tmp/vaishu.jpg faces/
+./scripts/build.sh
+```
+
+### Two things had to be fixed for that to actually work (2026-07-28)
+
+Worth knowing, because the obvious version of this recipe silently failed:
+
+1. **`build.sh` used `cp -R`, which only ADDS.** Emptying `faces/` left the
+   photos sitting in `www/faces/`, and `cap sync` carried them into the APK
+   anyway — a consent-clean build that still shipped the photos. Step 3b now
+   mirrors with `rsync --delete` (with a plain-`cp` fallback), so a file
+   deleted from `audio/`, `sounds/` or `faces/` really does leave the build.
+2. **A profile's `photo` is a PATH (`faces/aditya.jpg`), not image data.** With
+   the file absent, the app rendered a broken-image icon on every screen
+   showing that child. `avatarFor` now attaches an `onerror` that swaps in the
+   child's initial — the same thing a photo-less profile already shows. This
+   also covers a fresh clone, where `faces/` is gitignored and simply absent.
+
+The `unzip -l` check above exists because assumption (1) is exactly the kind of
+thing that looks done and isn't.
 
 ---
 
@@ -197,6 +249,9 @@ empty — nothing else changes.
 | Build fails on an a11y gate | a real regression | read the failing assertion; do not skip the gate |
 | No audio in the app | media missing from `www/` | check `ls www/audio www/sounds`, then rebuild |
 | `JAVA_HOME` errors from gradle | wrong JDK | `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"` |
+| `No connected devices!` on `installDebug` | nothing plugged in, no emulator running | Connect a phone (see step 3), or use `./gradlew assembleDebug` and sideload the APK. The build already passed — only the install had nowhere to go. |
+| `adb devices` shows `unauthorized` | the phone's USB-debugging prompt was missed | Unplug, replug, tap **Allow** on the phone |
+| Want a quick look without a phone | emulator is fine for eyeballing, NOT for TalkBack | `~/Library/Android/sdk/emulator/emulator -list-avds` then `emulator -avd <name> &`, wait for boot, re-run `installDebug` |
 
 ---
 
@@ -205,11 +260,12 @@ empty — nothing else changes.
 ```bash
 cd ~/Desktop/om-app
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
-rm -f .git/index.lock .git/HEAD.lock
-git add app.js index.html styles.css scripts/ docs/ package.json package-lock.json .gitignore
-git commit -F docs/a11y-commit-msg.txt
 ./scripts/build.sh
-cd android && ./gradlew clean installDebug
+cd android && ./gradlew assembleDebug        # no device needed
+open app/build/outputs/apk/debug/            # check the timestamp
 ```
+
+Swap the last two lines for `./gradlew clean installDebug` if a phone or
+emulator is connected.
 
 Then sign in as `saksham01` with any password.
