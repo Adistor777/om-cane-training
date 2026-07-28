@@ -1,5 +1,178 @@
 # MEMORY.md — O&M Cane Training
-_Last updated: 2026-07-22 (backend P0 audit + section color zones Draft 2)_
+_Last updated: 2026-07-28 (accessibility pass — blind-teacher operable)_
+## Session 2026-07-28 — full accessibility pass, `feat/a11y-blind-teacher`
+**Scope decision (Aditya, this session):** the app's users are still sighted
+teachers — but the TEAM requires it to be fully operable by a blind person.
+So: TalkBack-native (semantic HTML + ARIA + focus management, using the user's
+OWN screen reader), NOT self-voicing via Sarvam. Children still never operate
+the app → the Play Store 18+ target-audience declaration is UNCHANGED, and
+Designed-for-Families still should not trigger.
+- **Audit first (axe-core 4.12 over all 21 screens in jsdom).** Baseline was
+  genuinely good — ZERO div-onclick (all 63 handlers on real `<button>`),
+  `paint()` already focused `.lede`, help sheet already had a focus trap +
+  Escape + focus restore, fieldset/legend, role=tablist/tab/tabpanel/slider,
+  7 reduced-motion blocks. Total axe damage: ONE minor violation. The real
+  defects were the ones axe cannot see.
+- **P0 fixes**
+  1. **Language buttons were unreadable.** `हिन्दी / தமிழ் / বাংলা` rendered with
+     NO `lang` attribute inside `<html lang="en">` → an English TalkBack voice
+     reads noise or nothing, so a blind teacher can't find the narration
+     switcher at all. AUDIO_LANGS now carries `lang` (BCP-47) + `name` (Latin);
+     `langBtnAttrs()` is shared by the ? sheet and Settings so they can't drift.
+     aria-label uses the Latin name → works even with no Devanagari voice pack,
+     which is the normal state of a school tablet. Disabled langs say WHY.
+     (Note: on-screen SOP text is English-only; sopTranslations feed the audio
+     generator, so the Devanagari never reaches the DOM except these buttons.)
+  2. **`showChildDetail` had no `.lede`** → paint()'s focus move found nothing,
+     focus fell to `<body>`, screen announced nothing. Fixed with a
+     `visually-hidden` h1 (look unchanged) + `moveScreenFocus()`, which now
+     falls back h1 → first heading → `#screen` labelled from the crumb.
+  3. **Modals didn't hide the background.** `aria-modal` is a hint Android
+     WebView ignores — swiping past the last control walked out into the page
+     behind the scrim. Added `setBackgroundInert()` (depth-COUNTED, because the
+     confirm dialog can open on top of the help sheet) on drawer + help sheet +
+     confirm. Confirm also now restores focus to its opener.
+- **P1 fixes**: all 32 ICON glyphs get `aria-hidden`+`focusable=false` via a
+  ONE-PASS loop over the map (not 32 hand-edits — future icons are hardened
+  automatically; STILL_W already had it). `#sbLive`/`#cmdLive` assertive →
+  **polite** (assertive interrupted TalkBack *while the drill sound played* —
+  that sound IS the activity). Seek slider gained `aria-valuetext` ("0:02 of
+  0:04" not "37 percent") and **ArrowUp/Down handling — TalkBack's slider
+  gesture sends up/down, so the slider was unusable by touch gesture**, the
+  only way a blind teacher reaches it. Crumb is now `aria-hidden` (the focused
+  heading already says the same words — it was stuttering every screen name).
+- **LOW VISION (the other half).** Type + spacing tokens px → **rem**
+  (`--s1..--s5`, `--t-display..--t-micro`; 1x renders identically), and
+  `html{font-size:calc(100% * var(--text-scale,1))}`. New **Settings →
+  Display**: text size (Standard/Large/Larger/Largest), **High contrast**
+  (~19:1, black-on-white, borders replace shadows, category hues survive as
+  darkened versions), **Dark background** (photophobia — common with albinism/
+  aniridia/achromatopsia). Persisted through the Store, applied in `boot()`
+  BEFORE first paint. All in ONE appended block at the END of styles.css —
+  revert = delete from the banner to EOF (same escape hatch as section colours).
+  `android:forceDarkAllowed=false` in styles.xml (BOTH themes — NoActionBar has
+  an explicit parent so it does NOT inherit AppTheme): force-dark would
+  algorithmically invert the warm-paper palette into sludge. **android/ is
+  gitignored — re-apply if regenerated, like allowBackup=false.**
+- **TOTAL BLINDNESS pass (third round, after Aditya pushed on it).** The first
+  two rounds were mechanical a11y — every control labelled, focus managed. That
+  passes an audit and still leaves a blind teacher lost, because EVERY
+  collection in this app is a `<div>` of `<button>`s: categories, activities,
+  the child picker, the sound pads, saved records. A sighted teacher reads the
+  SHAPE of a grid; a blind one gets nothing. "How many students are in this
+  picker?" meant swiping to the end and counting, every single time.
+  - Fix: containers get `role="group"` + `aria-label="12 students"`; items get
+    their position in the accessible NAME ("Vaishu, student 3 of 12") via
+    `posLabel()`/`groupAttrs()`. **Chose this over role=list/listitem
+    deliberately** — `role="listitem"` on a `<button>` destroys the button
+    role, a wrapper div breaks the CSS grid (the wrapper becomes the grid
+    item), and `display:contents` is still unreliable in an Android WebView's
+    a11y tree. Accessible-name approach = zero DOM change, zero CSS change.
+  - Composed labels where the screen was speaking fragments: the count pill
+    ("2") now reads "2 activities"; cane/group tags ride with the title; a
+    saved record is ONE sentence ("Vaishu. 2 July. Steps: 8, Result: Got it.")
+    with `.vals` aria-hidden so nothing is said twice. Delete buttons name
+    their own row — a column of identical "Delete this result" is unusable.
+  - **Child photos keep `alt=""` on purpose** and there is an assertion so
+    nobody "fixes" it: a described face is useless AND a privacy leak in spoken
+    output. The name below the photo is the real label.
+  - Silent demo clips now SAY they are silent and point at the written steps,
+    instead of being the first thing a blind teacher swipes into.
+  - **Documented, not solved: filming video evidence has no non-visual
+    equivalent.** A blind teacher can't frame it, can't verify it, and filming
+    a child you can't see is a consent question too. Options + a recommendation
+    are in TRACKER; deliberately NOT decided unilaterally.
+  - Verdict worth remembering: the CORE WORKFLOW was never visual (sign in →
+    pick child → hear SOP → play sounds → score → save → read back), so this
+    app is far more amenable to blind use than most. 29/29 assertions.
+- **DEFAULT LOOK IS UNCHANGED — and proven.** First draft of the a11y CSS block
+  applied its large-text repairs at EVERY scale and silently changed three
+  things at 1x: `.action-row/.rowbtn/.drawer-item` alignment (center →
+  flex-start), `.linklike` forced to a 44px inline-flex block (it sits
+  mid-sentence), and a blanket `button{min-height:44px}` that raised `.sb-tab`
+  off its deliberate 40px. NONE were needed — every control already clears the
+  WCAG 2.2 AA 24×24 target minimum (smallest is that 40px tab). Now gated
+  behind `data-text-scale="up"`, set only above 1x. `scripts/a11y-nochange.js`
+  enforces it: rem tokens must still compute to their old px, and no rule in
+  the block may escape a mode gate / focus state / media query. **Aditya asked
+  "have you changed the entire UI?" — that question is why this guard exists.**
+- **PRE-HANDOVER BUG HUNT (fourth pass — Aditya: "I'm giving this to a blind
+  person, I don't want fuckups"). Six real defects, ALL of which had passed the
+  static audit**, because all six are about CHANGE rather than resting state:
+  1. **My own third-pass fix had made record values UNREADABLE.** The composed
+     summary went into an `aria-label` on a roleless `<span>`. ARIA 1.2
+     PROHIBITS aria-label on `role=generic` — it is dropped — and the visible
+     chips were already aria-hidden. On a device: name + date read, **scores
+     silently gone**. axe's `aria-prohibited-attr` did NOT catch it because
+     that rule only fires when the element has no text content at all.
+     **STANDING RULE: if a screen reader must hear it, it goes in the DOM as
+     real text (`.visually-hidden`), never as aria-label on a div/span.**
+  2. **Login stranded you on screen one** — `onSchoolPick` injects the ID and
+     password fields with zero announcement. Focus now moves into `#lg_id`.
+  3. **"Saved" was never spoken.** Every toast is followed by a repaint; the
+     repaint's focus move pre-empts the pending polite announcement on Android.
+     Fixed CENTRALLY in `toast()`: visible half sync, spoken half on a later
+     frame via a separate `#srStatus` region, cleared first so two identical
+     messages both announce. Not patched at the 5 call sites — a 6th would
+     have regressed it.
+  4. **The batch flow swapped children SILENTLY** (only a `hidden` toggle, no
+     nav event). A blind teacher would keep scoring into the NEXT child's form
+     — data that looks valid and is not, which in a research pilot is worse
+     than no data. `.bcard-head` is now an `<h2>` and `batchShow()` focuses it;
+     same on `batchReview()`.
+  5. **Two layout regressions I introduced** (caught by reading the CSS, not by
+     any test): `.sumrow` is `display:flex` with `.sumres{flex:1}` and my
+     aria-hiding wrapper collapsed three flex children into one; `.bcard-head`
+     became an h2 without resetting the browser default 1.5em/bold/.83em
+     margin. **LESSON: aria-hide flex/grid children INDIVIDUALLY, never with a
+     wrapper. Retagging an element means resetting its new UA defaults.**
+  6. **`pickSeg`/`handleSave` had no null guard** — a tap racing a re-render
+     threw, and a thrown handler here is SILENT (the control just stops
+     working). That race is MORE likely with a screen reader: double-tap to
+     activate is laggier than a direct tap.
+  Two new gates: `a11y-flows.js` (23/23, drives sign-in / save / batch / dialogs)
+  and `a11y-smoke.js` (**546 controls activated, 0 exceptions**; needs a jsdom
+  `VirtualConsole` or the first thrown handler kills the process and hides the
+  rest). **Handover state: 40/40 · 22/22 · 55/55 · 23/23 · 31/31 · 21 screens
+  axe-clean · 0 exceptions.**
+- **CONSENT-CLEAN BUILD — two silent failures found while writing the recipe.**
+  The obvious version ("empty `faces/`, rebuild") shipped the photos anyway:
+  1. **`build.sh` step 3b used `cp -R`, which only ADDS.** Deleting a file from
+     `faces/`/`audio/`/`sounds/` left it in `www/`, and `cap sync` carried it
+     into the APK. Now mirrors with `rsync --delete` (plain-`cp` fallback).
+     **Any future "remove an asset" task must go through the mirror, not a cp.**
+  2. **`profile.photo` is a PATH (`faces/aditya.jpg`), NOT image data.** A
+     missing file rendered a broken-image icon on every screen showing that
+     child — `avatarFor` only checked `if(p.photo)`, which is a truthy string
+     even when the file is gone. Now `onerror="avatarFallback(this)"` swaps in
+     the initial. Also fixes a FRESH CLONE, where `faces/` is gitignored.
+  Runbook verifies with `unzip -l app-debug.apk | grep -c faces/` → expect 0.
+  LESSON: "emptied the folder" is not evidence; check the artefact.
+- **Seven new scripts, and the build now ENFORCES them** (build.sh step 2b):
+  - `scripts/a11y-audit.js` — boots every screen in jsdom, axe sweep + 18
+    app-specific regression assertions. **21 screens CLEAN, 29/29 assertions.**
+  - `scripts/a11y-contrast.js` — parses the palettes out of styles.css and
+    computes real WCAG ratios for all four modes. **55 pass / 0 fail / 1
+    advisory.** It caught a real bug in the dark palette I had just written
+    (`--line` at 1.54:1) → raised to #6a6458.
+  - `scripts/a11y-preview.js` → `docs/a11y-preview.html` — renders REAL app
+    markup in 5 screens × 6 modes for eyeballing / sending to the designer.
+  - `scripts/a11y-nochange.js` — defends the DESIGN, not the accessibility:
+    rem token parity + no unscoped rule in the a11y block. 18/18.
+  - `docs/A11Y-TALKBACK-TESTS.md` — the 20-minute manual script (screen
+    curtain ON), plus an honest "what a blind teacher still cannot do"
+    section. Automation cannot tell you if the app is USABLE.
+- **Gotcha for future test harnesses:** `showActivity()` bounces to the child
+  picker unless **`batchRoster`** is populated (not just an active profile) —
+  seed `batchRoster` to reach a real record screen. Also `ACTIVITY_DATA`/`Store`
+  are classic-script consts and never land on `window` — reach them via
+  `w.eval(...)`, which shares the global lexical scope.
+- **Backticks inside a template literal terminate it** — cost one parse error
+  writing an HTML comment inside a `${}` block. Don't quote identifiers with
+  backticks inside template strings.
+- Tests 40/40 still green. `cap sync` still fails in the sandbox (EPERM on the
+  mount) — the a11y gates, parse check and www copy all ran; **Aditya runs
+  `./scripts/build.sh` on the Mac.**
 ## Session 2026-07-22 — repo audit + "block filling" color redesign
 - **Section color zones (Draft 2), `feat/section-color-zones` `b705487`, PENDING
   emulator verify.** Manager wanted complete BLOCK FILLING (no white gutters):
