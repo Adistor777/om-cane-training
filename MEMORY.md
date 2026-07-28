@@ -148,6 +148,14 @@ Designed-for-Families still should not trigger.
      the initial. Also fixes a FRESH CLONE, where `faces/` is gitignored.
   Runbook verifies with `unzip -l app-debug.apk | grep -c faces/` → expect 0.
   LESSON: "emptied the folder" is not evidence; check the artefact.
+  **VERIFIED ON THE MAC 2026-07-28:** build printed
+  `mirrored faces/ -> www/faces/ (0 files)`, BUILD SUCCESSFUL.
+- **zsh does NOT honour `#` comments interactively.** Aditya's shell is zsh, and
+  a pasted `... | grep -c faces/   # expect 0` passed `#`, `expect`, `0` to grep
+  as filenames. `interactive_comments` is off by default in interactive zsh
+  (it IS on in scripts, which is why build.sh is unaffected). **Never put an
+  inline `#` comment on a command line meant to be pasted** — put expected
+  values on the line below. All RUNBOOK snippets were rewritten this way.
 - **Seven new scripts, and the build now ENFORCES them** (build.sh step 2b):
   - `scripts/a11y-audit.js` — boots every screen in jsdom, axe sweep + 18
     app-specific regression assertions. **21 screens CLEAN, 29/29 assertions.**

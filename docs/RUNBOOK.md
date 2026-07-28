@@ -9,12 +9,20 @@ each with a check. If a check fails, stop there — do not continue.
 
 ## 0. Before you start (30 seconds)
 
+> **Note on the snippets below.** You are on zsh, and **interactive zsh does not
+> treat `#` as a comment** — a trailing `# expect: 0` gets passed to the command
+> as arguments. So no snippet here has an inline comment; expected values are
+> written underneath instead. (If you want inline comments to work in your
+> shell: `setopt interactive_comments`, or add it to `~/.zshrc`.)
+
 ```bash
 cd ~/Desktop/om-app
-git branch --show-current      # expect: feat/a11y-blind-teacher
-node -v                        # expect: v22 or later
-ls audio sounds faces | wc -l  # expect a non-zero count
+git branch --show-current
+node -v
+ls audio sounds faces | wc -l
 ```
+
+Expect: `feat/a11y-blind-teacher` · `v22` or later · a non-zero count.
 
 Media (`audio/`, `sounds/`, `faces/`, `demo-*.mp4`) is gitignored, so it only
 exists on this Mac. It is all present right now — 28 narration files, 22 sounds,
@@ -25,8 +33,10 @@ If `JAVA_HOME` is not set in this shell:
 
 ```bash
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
-java -version                  # expect: 21.x
+java -version
 ```
+
+Expect: `21.x`.
 
 ---
 
@@ -197,27 +207,37 @@ photos need guardian consent on file before a build leaves the team.
 **If the tester is outside the team**, either confirm that consent or build them
 a copy with `faces/` emptied:
 
+The photos are gitignored, so moving them out of the way loses nothing.
+
 ```bash
 cd ~/Desktop/om-app
-mv faces/*.jpg /tmp/                     # keep them; they are gitignored, not in git
+mv faces/*.jpg /tmp/
 ./scripts/build.sh
 cd android && ./gradlew clean assembleDebug
-open app/build/outputs/apk/debug/
 ```
 
-Verify before sending — this is the check that matters:
+Watch for `mirrored faces/ -> www/faces/ (0 files)` in the build output — that
+is the mirror doing its job.
+
+**Verify before sending. This is the check that matters:**
 
 ```bash
-unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -c faces/
-# expect: 0
+unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -c faces/
 ```
+
+Expect `0`. (`grep -c` exits non-zero when the count is zero — that is normal;
+the printed number is the answer.) If it prints anything above 0, do not send
+the file.
 
 Then put them back:
 
 ```bash
-cd ~/Desktop/om-app && mv /tmp/aditya.jpg /tmp/vaishu.jpg faces/
+cd ~/Desktop/om-app
+mv /tmp/aditya.jpg /tmp/vaishu.jpg faces/
 ./scripts/build.sh
 ```
+
+Expect `mirrored faces/ -> www/faces/ (2 files)`.
 
 ### Two things had to be fixed for that to actually work (2026-07-28)
 
@@ -248,6 +268,7 @@ thing that looks done and isn't.
 | `git` says another process is running | leftover lock file | `rm -f .git/index.lock .git/HEAD.lock` |
 | Build fails on an a11y gate | a real regression | read the failing assertion; do not skip the gate |
 | No audio in the app | media missing from `www/` | check `ls www/audio www/sounds`, then rebuild |
+| `grep: #: No such file or directory` | interactive zsh does not honour `#` comments | Drop the inline comment, or `setopt interactive_comments` |
 | `JAVA_HOME` errors from gradle | wrong JDK | `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"` |
 | `No connected devices!` on `installDebug` | nothing plugged in, no emulator running | Connect a phone (see step 3), or use `./gradlew assembleDebug` and sideload the APK. The build already passed — only the install had nowhere to go. |
 | `adb devices` shows `unauthorized` | the phone's USB-debugging prompt was missed | Unplug, replug, tap **Allow** on the phone |
@@ -261,9 +282,11 @@ thing that looks done and isn't.
 cd ~/Desktop/om-app
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ./scripts/build.sh
-cd android && ./gradlew assembleDebug        # no device needed
-open app/build/outputs/apk/debug/            # check the timestamp
+cd android && ./gradlew assembleDebug
+open app/build/outputs/apk/debug/
 ```
+
+No device needed for `assembleDebug`. Check the APK's timestamp before sending.
 
 Swap the last two lines for `./gradlew clean installDebug` if a phone or
 emulator is connected.
