@@ -128,6 +128,36 @@ correct.
 
 **Check:** "O&M Cane Training" launches and shows the Sign in screen.
 
+### On the emulator (fine for eyeballing, NOT for the TalkBack run)
+
+The emulator has to be **booted first** — `installDebug` only installs, it does
+not start anything. `No connected devices!` is what you get otherwise.
+
+Easiest path: Android Studio → **Device Manager** → ▶ next to your AVD. Or from
+the terminal:
+
+```bash
+~/Library/Android/sdk/emulator/emulator -list-avds
+~/Library/Android/sdk/emulator/emulator -avd Pixel_10_Pro_XL &
+```
+
+Substitute whatever name `-list-avds` printed. Then wait for it to finish
+booting — this blocks until it is genuinely ready, which is later than the home
+screen appearing:
+
+```bash
+~/Library/Android/sdk/platform-tools/adb wait-for-device shell 'while [ -z "$(getprop sys.boot_completed)" ]; do sleep 1; done'
+```
+
+Then install:
+
+```bash
+cd ~/Desktop/om-app/android && ./gradlew installDebug
+```
+
+`clean` is not needed here if you already ran it — the native side is unchanged
+since that build.
+
 ### Sending an APK instead (for Mansi, or a tester you can't plug in)
 
 This needs no device attached at all, and is the simplest path when you are

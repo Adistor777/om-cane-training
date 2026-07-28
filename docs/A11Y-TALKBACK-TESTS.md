@@ -198,6 +198,73 @@ read or hear the full SOP, play sounds from the library, run the command board,
 score every field, save, and read back saved results. The core workflow was
 never visual — that is worth knowing.
 
+---
+
+## Appendix — checking on the emulator
+
+The emulator cannot tell you whether the app is *usable* with a screen reader.
+It can tell you whether the accessibility tree is right, which is the half
+jsdom only approximates. Two techniques, in order of value.
+
+### 1. The real Chromium accessibility tree (best emulator check)
+
+The app is a WebView, so Chrome on the Mac can inspect it directly — and unlike
+jsdom, this is the **actual** tree Android hands to TalkBack.
+
+1. With the app running on the emulator, open `chrome://inspect#devices` in
+   Chrome on the Mac.
+2. Find `org.omcane.trainer` and click **inspect**.
+3. In DevTools: **Elements → Accessibility** pane (or ⌘⇧P → "Show Accessibility").
+4. Tick **"Enable full-page accessibility tree"** and click the icon at the top
+   right of the Elements pane to see the whole tree.
+
+What to look for:
+
+- Select a category tile — the **Computed name** must read
+  `Direction, category 1 of 6, 2 activities`, not `Direction 2`.
+- Select a child tile in the picker — `Vaishu, student 3 of 12`.
+- Open the drawer, then check `<main>`: it should be **ignored** (that is `inert`
+  working — the single most WebView-version-dependent fix in this pass).
+- Select a saved record — the summary sentence must be a **text node in the
+  tree**, not an ignored generic. This is the one that would have gone silent.
+- The 32 icons should not appear in the tree at all.
+
+If a computed name is empty or reads as fragments, that is a real bug and you
+have found it without needing a blind tester's time.
+
+### 2. Tab through it
+
+In the same DevTools session, click into the app and press **Tab** repeatedly.
+Focus order is the order a screen-reader user meets things. Watch for: focus
+jumping backwards, landing on something invisible, or getting stuck inside a
+closed disclosure. Press **Escape** inside the `?` sheet — focus must return to
+the `?` button.
+
+### 3. TalkBack on the emulator — possible, but read the caveat
+
+Only if your AVD uses a **Google APIs / Play Store** system image; AOSP images
+have no TalkBack. Fastest way to toggle it:
+
+```bash
+adb shell settings put secure enabled_accessibility_services com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService
+adb shell settings put secure accessibility_enabled 1
+```
+
+Off again:
+
+```bash
+adb shell settings put secure accessibility_enabled 0
+adb shell settings put secure enabled_accessibility_services ""
+```
+
+**The caveat.** Explore-by-touch with a mouse is nothing like a finger on glass:
+swipe gestures are unreliable, and the speech timing is wrong in both
+directions. It is genuinely useful for one thing — hearing whether an
+announcement happens **at all** (does "Saved" speak? does the batch flow name
+the next child?). It is useless for judging pace, verbosity, or whether the app
+is pleasant to use. Do not conclude anything from it beyond "that was silent
+when it should not have been".
+
 ## What nothing covers yet
 
 - **Braille display.** Nobody has tried one. If any pilot teacher uses one, test
