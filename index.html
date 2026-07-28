@@ -29,20 +29,35 @@
 <body>
 <header>
   <button class="back" id="backBtn" aria-label="Go back" style="display:none;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
   <div class="hmenu" id="hmenu" style="display:none;">
     <button class="hmenu-btn" id="hmenuBtn" aria-label="Open menu" aria-haspopup="dialog" aria-expanded="false" onclick="toggleMenu(event)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
   </div>
   <div>
     <p class="brand" id="brand">O&amp;M Cane Training</p>
-    <div class="crumb" id="crumb">Choose an activity category</div>
+    <!-- The crumb is the app's "where am I". It is decorative for a screen
+         reader BECAUSE the same words are already spoken by the screen title
+         that paint() focuses on every navigation — announcing both makes every
+         screen change stutter its own name twice. Sighted-only on purpose. -->
+    <div class="crumb" id="crumb" aria-hidden="true">Choose an activity category</div>
   </div>
 </header>
-<main class="wrap"><div id="screen"></div></main>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<main class="wrap" id="main">
+  <!-- paint() moves focus to each screen's heading on navigation, so this
+       region is what a screen reader lands in. Labelled so jumping by landmark
+       says something useful. -->
+  <div id="screen"></div>
+</main>
+<!-- The VISIBLE toast. aria-hidden on purpose: it is the sighted half only.
+     Announcements go through #srStatus below, which is written on a later
+     frame — see toast() in app.js for why the two are separated. -->
+<div class="toast" id="toast" aria-hidden="true"></div>
+<!-- The SPOKEN half. A polite live region (never assertive — it fires while
+     drill audio is playing, and that sound is the whole activity). -->
+<div class="visually-hidden" id="srStatus" role="status" aria-live="polite"></div>
 <script src="activities.js"></script>
 <!-- Vendored supabase-js UMD (exposes window.supabase). Local file, NO CDN —
      the app must boot fully offline. Loaded BEFORE store.js: the Cloud seam

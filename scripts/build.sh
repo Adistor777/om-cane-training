@@ -39,6 +39,57 @@ try { new Function(body); console.log("OK  JS parse (store.js + app.js)"); }
 catch (e) { console.error("BUILD FAILED: JS parse error: " + e.message); process.exit(1); }
 '
 
+# ---- 2b. Accessibility gates ---------------------------------------------------
+# This app is used BY teachers who are themselves blind or low vision, at
+# schools for the blind. Accessibility is not a polish pass here — it is the
+# product working at all — so it is enforced by the build, not by memory.
+#
+#   a11y-contrast.js  computes real WCAG ratios for all four colour modes.
+#   a11y-audit.js     boots every screen in jsdom, runs axe-core, then asserts
+#                     the app-specific behaviours (screen-change focus, lang
+#                     tags, inert modals, polite live regions).
+#
+# axe-core is a dev-only dependency and may be absent on a fresh clone — the
+# contrast check has no dependencies and always runs; the axe sweep skips with
+# a warning rather than blocking a build.
+node scripts/a11y-contrast.js > /tmp/a11y-contrast.log 2>&1 \
+  || { cat /tmp/a11y-contrast.log; fail "contrast check failed — see the pairs above"; }
+echo "OK  contrast (all four colour modes)"
+
+# a11y-nochange.js defends the DESIGN, not the accessibility: it asserts the
+# rem tokens still compute to their old px values, and that no rule in the
+# appended a11y block escapes its mode gate into the default look. The first
+# draft of that block changed three things at 1x; this is why.
+node scripts/a11y-nochange.js > /tmp/a11y-nochange.log 2>&1 \
+  || { cat /tmp/a11y-nochange.log; fail "the a11y block is leaking into the default design"; }
+echo "OK  default look unchanged (token parity + rule scoping)"
+
+# a11y-flows.js drives the real FLOWS, not the resting states: picking a school
+# injects the login fields, saving repaints and eats the confirmation, the batch
+# flow swaps which child you are scoring. Every bug found in the pre-handover
+# check on 2026-07-28 was of that kind, and every one passed the static audit.
+node scripts/a11y-flows.js > /tmp/a11y-flows.log 2>&1 \
+  || { cat /tmp/a11y-flows.log; fail "an accessibility FLOW is broken — see above"; }
+echo "OK  screen-reader flows (sign in, save, batch scoring, dialogs)"
+
+# a11y-smoke.js activates every non-destructive control on every screen. A
+# thrown handler in this app is SILENT — the control just stops working, with
+# nothing announced. A sighted teacher sees nothing happen and works around it;
+# someone using a screen reader cannot tell that apart from having misheard
+# which button they were on.
+node scripts/a11y-smoke.js > /tmp/a11y-smoke.log 2>&1 \
+  || { cat /tmp/a11y-smoke.log; fail "a control throws — see above"; }
+echo "OK  smoke (every control on every screen, nothing throws)"
+
+if node -e "require.resolve('axe-core')" >/dev/null 2>&1; then
+  node scripts/a11y-audit.js > /tmp/a11y-audit.log 2>&1 \
+    || { cat /tmp/a11y-audit.log; fail "accessibility audit failed — see above"; }
+  echo "OK  accessibility audit (axe sweep + regression assertions)"
+else
+  echo "WARN  axe-core not installed — skipping the axe sweep."
+  echo "      npm install --save-dev axe-core   to enable it."
+fi
+
 # ---- 3. Copy web assets to www/ ------------------------------------------------
 # index.html always; the split files (styles.css, store.js, app.js),
 # activities.js, and vendored supabase.js whenever they exist at root.

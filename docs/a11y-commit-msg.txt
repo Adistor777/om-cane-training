@@ -1,0 +1,117 @@
+a11y: make the app fully operable by a blind teacher (TalkBack-native)
+
+Scope decision: users remain sighted teachers, but the app must be fully
+operable by a blind person. TalkBack-native (the user's own screen reader),
+not self-voicing. Children still never operate the app, so the Play Store
+18+ target-audience declaration is unchanged.
+
+Screen reader
+- lang (BCP-47) + Latin-name aria-label on the narration language buttons.
+  Devanagari/Tamil/Bengali inside <html lang="en"> were read by an English
+  voice as noise, so a blind teacher could not find the switcher at all.
+- moveScreenFocus(): .lede -> first heading -> #screen labelled from the
+  crumb, so no screen change is silent. showChildDetail gains a
+  visually-hidden lede (it was the one screen with no focus target).
+- setBackgroundInert(): depth-counted inert on the drawer, help sheet and
+  confirm dialog. aria-modal alone lets TalkBack swipe out behind the scrim.
+- The confirm dialog now restores focus to whatever opened it.
+- All 32 ICON glyphs get aria-hidden + focusable=false via a one-pass loop
+  over the map, so future icons are hardened automatically.
+- #sbLive / #cmdLive assertive -> polite. They fired while the drill sound
+  was playing and interrupted it; that sound is the whole activity.
+- Seek slider: aria-valuetext ("0:02 of 0:04", not "37 percent") and
+  ArrowUp/Down handling, which is the gesture TalkBack sends for sliders.
+- Crumb is aria-hidden: the focused heading already speaks the same words.
+- Drawer <aside role="dialog"> -> <div> (landmark/role conflict).
+
+Low vision
+- Type and spacing tokens px -> rem; html font-size keyed to --text-scale.
+  At 1x this renders identically to before.
+- New Settings > Display: text size (Standard/Large/Larger/Largest),
+  High contrast, Dark background. Persisted through the Store and applied
+  in boot() before the first paint.
+- android:forceDarkAllowed=false on both themes. Force-dark inverts the
+  warm-paper palette algorithmically into low-contrast sludge.
+  NOTE: android/ is gitignored, so that change lives only on the Mac --
+  re-apply if android/ is ever regenerated, like allowBackup=false.
+
+Verification, enforced by build.sh step 2b
+- scripts/a11y-audit.js    axe-core over 21 screens + 18 regression asserts
+- scripts/a11y-contrast.js real WCAG ratios across all four colour modes
+- scripts/a11y-preview.js  5 screens x 6 modes -> docs/a11y-preview.html
+- docs/A11Y-TALKBACK-TESTS.md  the manual run, screen curtain on
+
+21 screens axe-clean, 18/18 assertions, 55/55 contrast pairs, tests 40/40.
+The contrast script caught a real bug in the dark palette while it was
+being written (--line at 1.54:1, raised to #6a6458).
+
+Second pass — keep the default look byte-identical
+- The large-text repairs were applying at every scale and changed three
+  things at 1x: action-row/rowbtn/drawer-item alignment (center ->
+  flex-start), .linklike forced to a 44px inline-flex block (it sits
+  mid-sentence), and a blanket button{min-height:44px} that raised .sb-tab
+  off its deliberate 40px. None were needed — every control already clears
+  the WCAG 2.2 AA 24x24 target minimum.
+- They are now gated behind data-text-scale="up", set by applyDisplayPrefs()
+  only above 1x. At 1x the attribute is absent and no rule matches.
+- scripts/a11y-nochange.js proves it on every build: the rem tokens still
+  compute to their old px values, and no rule in the a11y block escapes a
+  mode gate, focus state, or media query.
+
+Third pass — total blindness, not just screen-reader mechanics
+Every collection was a <div> of labelled <button>s: an audit passes, but a
+sighted teacher reads the SHAPE of a grid and a blind one gets nothing.
+"How many students are in this picker?" required swiping to the end and
+counting, every time.
+- Containers are role="group" with their size ("12 students"); items carry
+  their position ("Vaishu, student 3 of 12"). Chosen over role=list/listitem
+  because listitem on a <button> destroys the button role, and a wrapper div
+  breaks the CSS grid (display:contents is still unreliable in the a11y tree
+  of an Android WebView). No DOM or CSS change, so no layout risk.
+- Category tiles, activity cards, the child picker: one composed label each.
+  The bare count pill ("2") now speaks as "2 activities"; cane/group tags
+  arrive attached to the title instead of as loose fragments after it.
+- Saved records read as ONE sentence, not five fragments, and their value
+  chips are aria-hidden so nothing is spoken twice. Delete buttons name
+  their own row -- a column of identical "Delete this result" is unusable
+  when you cannot see which row you are on.
+- The silent demo clip now says it is silent and points at the written
+  steps, instead of being a dead end a blind teacher swipes into first.
+- Child photos stay alt="" deliberately: a described face would be useless
+  and a privacy leak in spoken output. Asserted, so nobody "fixes" it.
+29/29 regression assertions, 21 screens axe-clean.
+
+Documented honestly rather than solved: filming video evidence has no
+non-visual equivalent. Flagged in TRACKER as a decision for Aditya + Mansi.
+
+Fourth pass — pre-handover bug hunt (before a blind tester gets the build)
+Six real defects, all of which passed the static audit, because all six are
+about CHANGE rather than resting state:
+- Record values were about to be UNREADABLE: the third-pass summary sat in
+  an aria-label on a roleless span. ARIA 1.2 prohibits that on role=generic
+  so the label is DROPPED, and the visible chips were already aria-hidden.
+  On a device: name and date read, scores silently gone. Now real
+  visually-hidden text, which needs no role.
+- Login stranded you: picking a school injects the ID/password fields with
+  no announcement. Focus now moves into the login ID field.
+- "Saved" was never spoken: every toast is followed by a repaint, and the
+  focus move pre-empts the pending polite announcement. Fixed centrally in
+  toast() -- visible half sync, spoken half deferred, region cleared first
+  so two identical messages both announce.
+- The batch flow swapped children SILENTLY (only a `hidden` toggle). A
+  teacher who cannot see the swap keeps scoring into the next child's form
+  -- data that looks valid and is not. Card heads are now h2 and batchShow()
+  focuses them; same on the review screen.
+- Two layout regressions I introduced: .sumrow is flex with .sumres{flex:1}
+  and my aria-hiding wrapper collapsed three flex children into one;
+  .bcard-head became an h2 without resetting browser default margin/size.
+  Both fixed and now guarded.
+- pickSeg/handleSave had no null guard. A tap racing a re-render threw, and
+  a thrown handler here is silent. That race is likelier with a screen
+  reader (double-tap is laggier than a direct tap).
+
+New gates in build.sh: a11y-flows.js (23/23, real flows) and a11y-smoke.js
+(546 controls across every screen, nothing throws).
+
+Handover state: 40/40 tests · 22/22 default-look · 55/55 contrast ·
+23/23 flows · 31/31 a11y assertions · 21 screens axe-clean · 0 exceptions.

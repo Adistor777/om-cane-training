@@ -10,6 +10,126 @@ const backBtn = document.getElementById('backBtn');
 // the element didn't need forty call-site edits.
 const homeDot = document.getElementById('homeDot') || { innerHTML:'' };
 
+/* ---------------------------------------------------------------------------
+   A11Y — MODAL BACKGROUND (2026-07-28)
+   `aria-modal="true"` is a HINT, and Android WebView + TalkBack does not
+   reliably honour it: a teacher swiping forward past the last control in a
+   dialog silently walks out into the page behind it, still visually covered by
+   the scrim. They then operate controls they cannot see. `inert` is the real fix —
+   it removes a subtree from the accessibility tree AND the focus order in one
+   attribute (WebView 105+ / Chrome 102+; Capacitor 8 ships well above that).
+
+   Kept as a counter, not a boolean: the confirm dialog can open ON TOP of the
+   help sheet ("delete this result?" from inside a reference sheet), and the
+   inner one closing must not un-inert the page while the outer is still up.
+   --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   DISPLAY PREFERENCES (2026-07-28) — text size, contrast, dark.
+   Why these live in the APP and not "just use the Android settings":
+   the pilot tablets are SHARED. A teacher with low vision cannot own a
+   system-wide font scale on a device three colleagues use next period, and
+   nobody wants to re-set Android display options at the start of every
+   session. These persist per install through the Store seam and apply on boot,
+   before the first screen paints, so the app is never briefly unreadable.
+
+   They stack with, rather than replace, the system settings — Android's own
+   font scale still multiplies in (see html{} in styles.css).
+   --------------------------------------------------------------------------- */
+const TEXT_SCALE_KEY = 'a11yTextScale';
+const CONTRAST_KEY   = 'a11yContrast';
+const THEME_KEY      = 'a11yTheme';
+// Labelled in plain language, not percentages — "Larger" is what a teacher
+// picks; "125%" is what a developer writes.
+const TEXT_SCALES = [
+  { v:'1',    label:'Standard' },
+  { v:'1.25', label:'Large'    },
+  { v:'1.5',  label:'Larger'   },
+  { v:'2',    label:'Largest'  },
+];
+function getTextScale(){
+  const v = Store.getString(TEXT_SCALE_KEY, '1');
+  return TEXT_SCALES.some(s=>s.v===v) ? v : '1';
+}
+function getContrastMode(){ return Store.getString(CONTRAST_KEY, '') === 'high' ? 'high' : 'normal'; }
+function getThemeMode(){    return Store.getString(THEME_KEY,    '') === 'dark' ? 'dark' : 'light'; }
+/* One place that writes the three attributes styles.css keys off. Called at
+   boot and after every change — never inline, so the three modes can never
+   drift out of sync with what is stored. */
+function applyDisplayPrefs(){
+  const root = document.documentElement;
+  const scale = getTextScale();
+  root.style.setProperty('--text-scale', scale);
+  // data-text-scale="up" gates the large-text layout repairs in styles.css.
+  // At 1x the attribute is ABSENT and none of those rules match, so the
+  // default design is untouched — see the note above that CSS block.
+  if(scale !== '1') root.setAttribute('data-text-scale','up');
+  else              root.removeAttribute('data-text-scale');
+  if(getContrastMode() === 'high') root.setAttribute('data-contrast','high');
+  else                             root.removeAttribute('data-contrast');
+  if(getThemeMode() === 'dark')    root.setAttribute('data-theme','dark');
+  else                             root.removeAttribute('data-theme');
+}
+async function setTextScale(v, btn){
+  await Store.setString(TEXT_SCALE_KEY, v);
+  applyDisplayPrefs();
+  if(btn){ [...btn.parentElement.children].forEach(b=>b.setAttribute('aria-pressed','false'));
+           btn.setAttribute('aria-pressed','true'); }
+  const s = TEXT_SCALES.find(x=>x.v===v);
+  toast(`Text size: ${s ? s.label : v}.`);
+}
+async function toggleContrast(on){
+  await Store.setString(CONTRAST_KEY, on ? 'high' : 'normal');
+  applyDisplayPrefs();
+  toast(on ? 'High contrast on.' : 'High contrast off.');
+}
+async function toggleTheme(on){
+  await Store.setString(THEME_KEY, on ? 'dark' : 'light');
+  applyDisplayPrefs();
+  toast(on ? 'Dark background on.' : 'Dark background off.');
+}
+
+/* ---------------------------------------------------------------------------
+   A11Y — "WHERE AM I IN THIS LIST?" (2026-07-28, second pass)
+
+   Every collection in this app — categories, activities, the child picker, the
+   sound pads, saved records — is a <div> of <button>s. Each button has a fine
+   label, so an audit passes. But a sighted teacher learns something from the
+   SHAPE of the grid that a blind teacher never gets: how many there are, and
+   how far through them they are. Without it the only way to answer "how many
+   students are in this picker?" is to swipe to the end and count, every time.
+
+   The obvious fix is role="list" + role="listitem". It is the wrong one here:
+   role="listitem" on a <button> destroys the button role, and wrapping each
+   button in a listitem div breaks the CSS grid (the wrapper becomes the grid
+   item, not the button). `display:contents` on the wrapper is the usual dodge
+   and is still unreliable in the accessibility tree of an Android WebView.
+
+   So: put the position in the accessible NAME, and label the container as a
+   group with its size. No DOM change, no CSS change, no layout risk.
+     container -> role="group" aria-label="12 students"
+     item      -> aria-label="Vaishu, 3 of 12"
+   TalkBack then announces the group on entry and the position on every swipe.
+   --------------------------------------------------------------------------- */
+function posLabel(name, i, total, noun){
+  // `noun` is optional; it reads well on entry to a mixed screen ("Direction,
+  // category 1 of 6") and is pure noise when the group label already said it.
+  return `${name}, ${noun ? noun + ' ' : ''}${i + 1} of ${total}`;
+}
+function groupAttrs(total, singular, plural){
+  const noun = total === 1 ? singular : (plural || singular + 's');
+  return `role="group" aria-label="${esc(total + ' ' + noun)}"`;
+}
+
+let _inertDepth = 0;
+function setBackgroundInert(on){
+  _inertDepth = Math.max(0, _inertDepth + (on ? 1 : -1));
+  const shouldInert = _inertDepth > 0;
+  document.querySelectorAll('body > header, body > main').forEach(el=>{
+    if(shouldInert) el.setAttribute('inert', '');
+    else            el.removeAttribute('inert');
+  });
+}
+
 // ---- App drawer (the header ☰) --------------------------------------------
 // ONE menu surface. The ⋮ overflow popover grew into a left slide-in drawer
 // (2026-07-21 sidebar session): teacher identity on top, three quiet
@@ -33,7 +153,11 @@ function ensureDrawer(){
   if(ov) return ov;
   ov = document.createElement('div');
   ov.id = 'drawerOverlay'; ov.className = 'drawer-overlay'; ov.hidden = true;
-  ov.innerHTML = `<aside class="drawer" role="dialog" aria-modal="true" aria-label="Menu"></aside>`;
+  // <div>, not <aside>: role="dialog" on a landmark element is a role conflict
+  // (axe `aria-allowed-role`) — the dialog role wins and the complementary
+  // landmark is silently lost, so screen-reader landmark lists showed a phantom
+  // entry. A plain div carries role="dialog" cleanly.
+  ov.innerHTML = `<div class="drawer" role="dialog" aria-modal="true" aria-label="Menu"></div>`;
   // Tap the dimmed backdrop (not the panel) to dismiss.
   ov.addEventListener('click', e=>{ if(e.target === ov) closeMenu(); });
   document.body.appendChild(ov);
@@ -75,6 +199,7 @@ function openMenu(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>ov.classList.add('open')));
   hmenuBtn.setAttribute('aria-expanded','true');
   document.body.style.overflow = 'hidden';
+  setBackgroundInert(true);   // page behind the drawer leaves the a11y tree
   const first = ov.querySelector('.drawer-item');
   if(first) first.focus({preventScroll:true});
 }
@@ -82,6 +207,7 @@ function closeMenu(instant){
   const ov = document.getElementById('drawerOverlay');
   if(!ov || ov.hidden) return;
   document.body.style.overflow = '';
+  setBackgroundInert(false);
   hmenuBtn.setAttribute('aria-expanded','false');
   if(instant){ ov.classList.remove('open','closing'); ov.hidden = true; return; }
   ov.classList.remove('open'); ov.classList.add('closing');
@@ -183,6 +309,26 @@ const ICON = {
   catTerrain:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8c3-2 5-2 9 0s6 2 9 0"/><path d="M3 13c3-2 5-2 9 0s6 2 9 0"/><path d="M3 18c3-2 5-2 9 0s6 2 9 0"/></svg>',
   catDots:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="1.6"/><circle cx="12" cy="7" r="1.6"/><circle cx="17" cy="7" r="1.6"/><circle cx="7" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="17" cy="12" r="1.6"/><circle cx="7" cy="17" r="1.6"/><circle cx="12" cy="17" r="1.6"/><circle cx="17" cy="17" r="1.6"/></svg>'
 };
+/* ---------------------------------------------------------------------------
+   A11Y (2026-07-28) — EVERY ICON IS DECORATION, SO SAY SO, ONCE.
+   These glyphs never carry information on their own: each one sits beside text
+   that already says the same thing (the ☰ has aria-label="Open menu", the trash
+   sits in a labelled delete button, the chevron just points). Left unmarked,
+   a screen reader stops on them and announces a bare "image" or "graphic"
+   between every real control — on the record screen that is a dozen dead stops
+   between the teacher and the Save button.
+
+   Done as ONE pass over the map instead of 32 hand-edits so the rule cannot be
+   forgotten: any icon the content or design work adds later is hardened
+   automatically the moment it lands in ICON.
+     aria-hidden  — take it out of the accessibility tree.
+     focusable    — belt and braces; some engines put SVG in the tab order.
+   STILL/STILL_W (the per-activity illustrations) already carry aria-hidden in
+   their shared attribute string — same rule, applied at their source.
+   --------------------------------------------------------------------------- */
+for(const k of Object.keys(ICON)){
+  ICON[k] = ICON[k].replace(/<svg\b(?![^>]*aria-hidden)/g, '<svg aria-hidden="true" focusable="false"');
+}
 /* Per-category icons are POSITIONAL — keyed by category index, exactly like
    CATEGORY_PALETTE. If the content team reorders categories in activities.js,
    the icon follows the slot, not the name. Index past the end falls back to a
@@ -960,7 +1106,37 @@ async function exportCSV(includePII){
   setTimeout(()=>URL.revokeObjectURL(url), 1000);
   toast(`Exported ${rows.length} ${rows.length===1?'record':'records'}.`);
 }
-function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'), 1800); }
+/* ---------------------------------------------------------------------------
+   TOAST — visible and spoken halves, deliberately decoupled (a11y 2026-07-28).
+
+   The bug this fixes: almost every toast in this app is followed IMMEDIATELY by
+   a screen change — `toast('Saved'); showActivity(...)`, `toast('Result
+   deleted'); showChildDetail(...)`. The repaint moves focus, and on Android a
+   focus event pre-empts a pending POLITE live-region announcement. So the
+   confirmation was routinely never spoken: a blind teacher tapped Save and
+   heard a form field. For someone who cannot see the toast, that message is
+   the ONLY evidence the work landed.
+
+   Fixed centrally rather than at the five call sites, so a sixth added later
+   cannot reintroduce it:
+     · the visible toast updates synchronously — no perceptible lag;
+     · the live region is written on a LATER frame, after any synchronous
+       re-render and focus move in the same call stack have settled.
+   The region is also cleared first: writing identical text twice running is
+   not a change, and a screen reader will not announce it. Two saves in a row
+   must both say "Saved".
+   --------------------------------------------------------------------------- */
+const srStatusEl = document.getElementById('srStatus');
+let _srTimer = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(()=>toastEl.classList.remove('show'), 1800);
+  if(!srStatusEl) return;
+  clearTimeout(_srTimer);
+  srStatusEl.textContent = '';                        // force a real change
+  _srTimer = setTimeout(()=>{ srStatusEl.textContent = msg; }, 150);
+}
 
 /* Age is derived from date of birth, never stored as a fixed number — so a
    record never shows a stale age. Returns '' if no/invalid DOB. */
@@ -1017,10 +1193,42 @@ function paint(html, dir, stagger, opts){
     screen.style.animation = 'none'; void screen.offsetWidth; screen.style.animation = '';
     screen.classList.toggle('stagger', !!stagger); screen.innerHTML = html;
   }
-  if(!opts.skipLedeFocus){
-    const h1 = screen.querySelector('.lede');
-    if(h1){ h1.setAttribute('tabindex','-1'); h1.focus({preventScroll:true}); }
+  if(!opts.skipLedeFocus) moveScreenFocus(opts);
+}
+/* ---------------------------------------------------------------------------
+   A11Y — SCREEN CHANGE ANNOUNCEMENT (2026-07-28)
+   innerHTML swaps have no navigation event, so a screen reader has nothing to
+   announce and its reading cursor collapses to <body> — a blind teacher taps
+   "Students" and hears silence, then has to swipe from the top of the app to
+   find out where they landed. The fix is to move real DOM focus into the new
+   screen, which is what makes TalkBack read it.
+
+   Order of preference for the focus target:
+     1. .lede            — the screen's own h1 (14 of 17 screens have one).
+     2. the first heading — covers screens that use h2 as their opener.
+     3. #screen itself    — last resort, labelled from the header crumb so the
+                            announcement is still the screen's name, never "".
+   Every target gets tabindex="-1" so it is focusable programmatically but
+   never lands in the Tab order. styles.css already suppresses the .lede
+   outline; the fallbacks reuse the same rule.
+   --------------------------------------------------------------------------- */
+function moveScreenFocus(opts){
+  opts = opts || {};
+  const target = screen.querySelector('.lede')
+              || screen.querySelector('h1, h2')
+              || screen;
+  if(target === screen){
+    // No heading on this screen — borrow the crumb so the announcement is
+    // still meaningful ("Stored data" rather than an unnamed region).
+    const label = (crumbEl && crumbEl.textContent.trim()) || 'Screen';
+    screen.setAttribute('aria-label', label);
+    screen.setAttribute('role', 'region');
+  } else {
+    screen.removeAttribute('aria-label');
+    screen.removeAttribute('role');
   }
+  target.setAttribute('tabindex','-1');
+  target.focus({preventScroll:true});
 }
 /* ===========================================================================
    THREE-PAGE FLOW
@@ -1090,6 +1298,23 @@ function credentialFormMarkup(schoolId){
 function onSchoolPick(id){
   loginSelSchoolId = id;
   document.getElementById('lg_teacherArea').innerHTML = credentialFormMarkup(id);
+  /* A11Y (2026-07-28) — the worst stranding point in the whole app.
+     Picking a school INJECTS the login ID and password fields below the
+     dropdown. Nothing announces it, so a teacher using a screen reader chooses
+     their school, hears nothing, and has no reason to believe anything
+     appeared — on the very first screen, before they can do anything else.
+
+     Focus is moved into the login ID field rather than merely announced: it
+     both reports the change and puts them where they need to type. The soft
+     keyboard opening is correct here, not a side effect — typing is the next
+     step either way. */
+  const idEl = document.getElementById('lg_id');
+  if(idEl){
+    const s = schoolById(id);
+    toast(`${s ? s.name : 'School'} selected. Enter your login ID and password.`);
+    // One frame, so the freshly-injected field is really in the tree first.
+    requestAnimationFrame(()=>{ try{ idEl.focus({preventScroll:true}); }catch(_){} });
+  }
 }
 
 async function handleLogin(schoolId){
@@ -1254,6 +1479,15 @@ const FAQ_ITEMS = [
     a:'Only for children whose guardian has given video consent. Without consent on file the video control stays locked — that is deliberate, not a fault.' },
   { q:'How do I back up or share results?',
     a:'Open Settings and tap Export records. It creates a CSV of every saved session — the CSV is the only backup, so export before clearing anything.' },
+  // Added 2026-07-28 with the accessibility pass. A setting nobody can find is
+  // a setting nobody has — and on a shared tablet the teacher who needs these
+  // most is the least likely to go hunting through menus for them.
+  { q:'The text is too small — can I make it bigger?',
+    a:'Yes. Open <strong>Settings → Display</strong> and pick a text size: Standard, Large, Larger or Largest. The whole app grows with it, spacing included. It stays set on this device, and works on top of your phone’s own font size — so if you have already made text bigger in Android, the two add up.' },
+  { q:'Can I make the app easier to see?',
+    a:'<strong>Settings → Display</strong> has two more switches. <strong>High contrast</strong> gives black text on white with heavier outlines and no soft shadows. <strong>Dark background</strong> gives light text on a dark page, which helps if bright screens are uncomfortable. You can use either, or both together.' },
+  { q:'Does the app work with a screen reader?',
+    a:'Yes — it is built to be run entirely by TalkBack. Every button says what it is and what state it is in, each screen announces itself when you arrive, and the sound library never talks over the sound you are playing for the child. If something reads wrongly or reads nothing, please report it: that is a bug worth fixing.' },
 ];
 function showFAQs(dir){
   state = { category:null, activity:null };
@@ -1297,10 +1531,43 @@ function showSettings(dir){
   const cur = getAudioLang();
   const langBtns = AUDIO_LANGS.map(l=>{
     const has = langHasContent(l.code);
-    return `<button type="button" onclick="setAudioLangDefault('${l.code}', this)" aria-pressed="${l.code===cur}" ${has?'':'disabled'}>${l.label}</button>`;
+    return `<button type="button" onclick="setAudioLangDefault('${l.code}', this)" ${langBtnAttrs(l, l.code===cur, has)}>${l.label}</button>`;
   }).join('');
+  // ---- Display / accessibility controls (2026-07-28) ----
+  const curScale = getTextScale();
+  const scaleBtns = TEXT_SCALES.map(s=>
+    `<button type="button" onclick="setTextScale('${s.v}', this)" aria-pressed="${s.v===curScale}">${s.label}</button>`
+  ).join('');
+  const highOn = getContrastMode() === 'high';
+  const darkOn = getThemeMode()    === 'dark';
+  // Real checkboxes, not styled divs — a screen reader gets "checked/not
+  // checked" and the switch-access / keyboard behaviour for free.
+  const displayPanel = `
+    <div class="panel">
+      <h2 class="panel-title">${ICON.info} Display</h2>
+      <p class="setting-sub">These stay on this device for everyone who signs in, and work alongside your phone's own display settings.</p>
+
+      <p class="setting-sub" id="textSizeLabel" style="font-weight:600;color:var(--ink)">Text size</p>
+      <div class="seg" role="group" aria-labelledby="textSizeLabel">${scaleBtns}</div>
+
+      <div class="checkrow" style="margin-top:var(--s3)">
+        <input type="checkbox" id="a11yContrast" ${highOn?'checked':''}
+               onchange="toggleContrast(this.checked)"
+               aria-describedby="a11yContrastHelp">
+        <label for="a11yContrast">High contrast</label>
+      </div>
+      <p class="setting-sub" id="a11yContrastHelp">Black text on white, heavier outlines, no soft shadows.</p>
+      <div class="checkrow" style="margin-top:var(--s2)">
+        <input type="checkbox" id="a11yDark" ${darkOn?'checked':''}
+               onchange="toggleTheme(this.checked)"
+               aria-describedby="a11yDarkHelp">
+        <label for="a11yDark">Dark background</label>
+      </div>
+      <p class="setting-sub" id="a11yDarkHelp">Light text on a dark page — easier if bright screens hurt your eyes.</p>
+    </div>`;
   paint(`
     <h1 class="lede">Settings<small>Preferences for this device, and your data tools.</small></h1>
+    ${displayPanel}
     <div class="panel">
       <h2 class="panel-title">${ICON.audio} Narration language</h2>
       <p class="setting-sub">The language spoken when you play an activity's step-by-step guide. More languages arrive as translations are verified.</p>
@@ -1326,7 +1593,9 @@ async function setAudioLangDefault(code, btn){
   [...btn.parentElement.children].forEach(b=>b.setAttribute('aria-pressed','false'));
   btn.setAttribute('aria-pressed','true');
   const l = AUDIO_LANGS.find(x=>x.code===code);
-  toast(`Narration set to ${l ? l.label : code}.`);
+  // Toast goes through the polite live region — use the LATIN name so it is
+  // spoken correctly by an English screen-reader voice.
+  toast(`Narration set to ${l ? l.name : code}.`);
 }
 async function resetTips(){
   await Store.setJSON(_obKey(HINTS_KEY), {});
@@ -1509,7 +1778,9 @@ function showChildDetail(profileId, opts){
          <span class="action-go">${ICON.chevronRight}</span>
        </button>`;
   paint(`
-    <div class="activechild" style="margin-bottom:var(--s3)">${avatarFor(p,'avatar')}<span class="who">${esc(p.name)}<small>${esc(childSub(p) || 'No demographics')}</small></span></div>
+    <h1 class="lede visually-hidden">${esc(p.name)}<small>Student details and saved results.</small></h1>
+    <div class="activechild" style="margin-bottom:var(--s3)">${avatarFor(p,'avatar')}<span class="who" aria-hidden="true">${esc(p.name)}<small>${esc(childSub(p) || 'No demographics')}</small></span></div>
+    <p class="visually-hidden">${esc(childSub(p) || 'No demographics recorded')}.</p>
     ${filledLine}
     ${consentLine}
     ${activateRow}
@@ -1536,8 +1807,20 @@ function childRecordRow(r, resultLabels, activityId){
   const entries = Object.entries(r.values||{}).filter(([k,v])=>v && v!=='' && v!=='—');
   entries.sort((a,b)=>{ const ar = resultLabels.includes(a[0])?0:1; const br = resultLabels.includes(b[0])?0:1; return ar-br; });
   const pills = entries.map(([k,v])=>{ const isResult = resultLabels.includes(k); return `<span class="${isResult?'val-result':''}">${esc(k)}: ${esc(v)}</span>`; }).join('');
-  const del = r.id ? `<button type="button" class="rec-del" aria-label="Delete this result" onclick="confirmDeleteRecordFromChild('${esc(activityId)}','${esc(r.id)}','${esc(r.profileId||'')}')">${ICON.trash}</button>` : '';
-  return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="when">${esc(fmtWhen(r))}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}</div></div>`;
+  const del = r.id ? `<button type="button" class="rec-del" aria-label="Delete the result from ${esc(fmtWhen(r))}" onclick="confirmDeleteRecordFromChild('${esc(activityId)}','${esc(r.id)}','${esc(r.profileId||'')}')">${ICON.trash}</button>` : '';
+  // One composed sentence, same reasoning as renderRecord. The child is already
+  // the page here, so this row leads with the date instead of the name. The
+  // delete button names its date too — a column of identical "Delete this
+  // result" buttons is unusable when you cannot see which row you are on.
+  const spoken = [
+    fmtWhen(r),
+    entries.length ? entries.map(([k,v])=>`${k}: ${v}`).join(', ') : 'no values recorded',
+  ].join('. ');
+  // Real text, not aria-label — see the note in renderRecord.
+  return `<div class="record">`
+    + `<p class="visually-hidden">${esc(spoken)}</p>`
+    + `<div class="rec-head"><span class="rec-meta" aria-hidden="true"><span class="when">${esc(fmtWhen(r))}</span></span>${del}</div>`
+    + `<div class="vals" aria-hidden="true">${pills || '<span>(no values)</span>'}</div></div>`;
 }
 // Delete a result from the child-detail screen, then re-render that screen in
 // place (not the activity screen, where the sibling delete returns).
@@ -1593,20 +1876,26 @@ function showActivityList(dir){
   backBtn.onclick = ()=>showHub('back');
   homeDot.innerHTML = ICON.home;
   resetTheme();
-  const tiles = [];
-  ACTIVITY_DATA.forEach((cat,ci)=>{
-    if(!cat.activities || !cat.activities.length) return; // hide empty categories
+  const shown = ACTIVITY_DATA.filter(c=>c.activities && c.activities.length); // empty categories are hidden
+  const tiles = shown.map((cat,i)=>{
+    const ci  = ACTIVITY_DATA.indexOf(cat);
     const col = catColor(ci);
     const n = cat.activities.length;
     const sub = cat.description ? esc(cat.description) : `${n} ${n===1?'activity':'activities'}`;
-    tiles.push(`<button class="action-row cat-tile" style="--tile:${col}" onclick="showCategory(${ci},'fwd')">
+    // The count pill is a NUMBER on screen — meaningless read aloud on its own
+    // ("Direction, 2"), so the whole tile carries one composed label instead
+    // and the visible parts are hidden from the reader.
+    const label = `${posLabel(cat.category, i, shown.length, 'category')}, ${n} ${n===1?'activity':'activities'}`;
+    return `<button class="action-row cat-tile" style="--tile:${col}" aria-label="${esc(label)}" onclick="showCategory(${ci},'fwd')">
       <span class="action-ic">${catIcon(ci)}</span>
-      <span class="action-text"><strong>${esc(cat.category)}</strong><small>${sub}</small></span>
-      <span class="count-pill">${n}</span>
+      <span class="action-text" aria-hidden="true"><strong>${esc(cat.category)}</strong><small>${sub}</small></span>
+      <span class="count-pill" aria-hidden="true">${n}</span>
       <span class="action-go">${ICON.chevronRight}</span>
-    </button>`);
+    </button>`;
   });
-  paint(`<h1 class="lede">Activities<small>Pick a category to see its activities.</small></h1><div class="cat-grid">${tiles.join('')}</div>`, dir || 'fwd', true);
+  paint(`<h1 class="lede">Activities<small>Pick a category to see its activities.</small></h1>`
+      + `<div class="cat-grid" ${groupAttrs(shown.length,'category','categories')}>${tiles.join('')}</div>`,
+      dir || 'fwd', true);
 }
 // SCREEN 3b — ONE CATEGORY. Lists only the activities inside the chosen type,
 // themed to that category. Reuses the neutral grouped-card markup (cane tag +
@@ -1642,9 +1931,20 @@ function showCategory(ci, dir){
     // demos aren't final, and a designed scene stays stable while clips
     // churn). No play badge: the demo lives behind the ? on the next screens.
     const thumb = `<span class="media-thumb still">${activityStill(cat, act)}</span>`;
-    return `<button class="card-media" onclick="${go}">
+    // Composed label: the tags are colour-and-shape signals on screen; spoken
+    // one at a time after the title they arrive as disconnected fragments.
+    // Position included — a category can hold four near-identically named
+    // drills ("Counting Steps — Group" / "— Individual") and a blind teacher
+    // needs to know which of them they are standing on.
+    const label = [
+      posLabel(act.name, ai, cat.activities.length, null),
+      act.withCane ? 'with cane' : 'without cane',
+      act.group ? 'whole group' : null,
+      n ? `${n} saved ${n===1?'result':'results'}` : 'no results yet',
+    ].filter(Boolean).join(', ');
+    return `<button class="card-media" aria-label="${esc(label)}" onclick="${go}">
       ${thumb}
-      <span class="media-body"><h2>${esc(act.name)}</h2>
+      <span class="media-body" aria-hidden="true"><h2>${esc(act.name)}</h2>
         <span class="meta">${tag}${groupTag}${ n ? `<span class="pill saved">${n} saved</span>` : '' }</span></span>
     </button>`;
   }).join('');
@@ -1681,7 +1981,7 @@ function showCategory(ci, dir){
       ${helpBtn}
     </div>
     ${helpSheet}
-    <div class="cat-cards">${cards}</div>
+    <div class="cat-cards" ${groupAttrs(cat.activities.length,'activity','activities')}>${cards}</div>
   </section>`, dir || 'fwd', true);
 }
 async function selectChild(id){
@@ -2059,14 +2359,32 @@ async function handleProfileSave(existingId){
      3. neither → the dashed placeholder.
    The chosen language is remembered through the Store seam (key 'audioLang').
    --------------------------------------------------------------------------- */
+// A11Y (2026-07-28): each entry carries THREE things, and all three are load-
+// bearing for a blind teacher.
+//   label   what a sighted teacher reads — the language in its own script.
+//   lang    the BCP-47 tag, stamped onto the button as lang="…". Without it a
+//           screen reader set to English hits Devanagari/Tamil/Bengali with an
+//           English voice and reads noise (or silence). This is the difference
+//           between "हिन्दी" being a usable control and being an unlabelled box.
+//   name    the English endonym-in-Latin, used as the aria-label. TalkBack
+//           announces THIS, so the control is findable even when the device has
+//           no voice pack installed for that script — which is the common case
+//           on a school tablet.
 const AUDIO_LANGS = [
   // English first = the DEFAULT narration. It is spoken from the on-screen
   // sop[] itself (no translation needed), so every activity can have it.
-  { code:'en', label:'English' },
-  { code:'hi', label:'हिन्दी' },   // Hindi
-  { code:'ta', label:'தமிழ்' },    // Tamil
-  { code:'bn', label:'বাংলা' },    // Bengali
+  { code:'en', label:'English', lang:'en',    name:'English' },
+  { code:'hi', label:'हिन्दी',    lang:'hi-IN', name:'Hindi'   },
+  { code:'ta', label:'தமிழ்',     lang:'ta-IN', name:'Tamil'   },
+  { code:'bn', label:'বাংলা',      lang:'bn-IN', name:'Bengali' },
 ];
+/* Shared markup for one language button, so the ? sheet and Settings can never
+   drift apart on the accessibility attributes. `disabled` alone is not enough
+   information for a screen reader — say WHY the language is unavailable. */
+function langBtnAttrs(l, isCurrent, has){
+  const why = has ? '' : ' — not available yet, translation pending';
+  return `lang="${l.lang}" aria-label="${esc(l.name + why)}" aria-pressed="${isCurrent}"${has ? '' : ' disabled'}`;
+}
 const AUDIO_LANG_KEY = 'audioLang';
 function getAudioLang(){
   const v = Store.getString(AUDIO_LANG_KEY, '');
@@ -2085,7 +2403,7 @@ function buildAudioHtml(act){
       const has = l.code==='en' ? !!(act.sop && act.sop.length)
                                 : !!(tr[l.code] && tr[l.code].length);
       // Languages with no translation text yet are shown disabled (no audio file will exist).
-      return `<button type="button" onclick="switchAudioLang('${act.id}','${l.code}',this)" aria-pressed="${l.code===cur}" ${has?'':'disabled'}>${l.label}</button>`;
+      return `<button type="button" onclick="switchAudioLang('${act.id}','${l.code}',this)" ${langBtnAttrs(l, l.code===cur, has)}>${l.label}</button>`;
     }).join('');
     const src = audioPathFor(act.id, cur);
     // onerror → if the derived file isn't bundled yet, fall back to the placeholder text in-place.
@@ -2155,17 +2473,24 @@ function showChildPicker(catIndex, actIndex, dir, opts){
   // No children yet → drop straight into the add form, same as the Students screen.
   const formOpen = !!opts.addForm || profiles.length === 0;
 
-  const tiles = profiles.map(p=>{
+  const tiles = profiles.map((p,i)=>{
+    // alt="" is right: the photo is a VISUAL shortcut for a sighted teacher and
+    // the name sits directly beneath it. A described face would be both useless
+    // and a privacy problem in a screen reader's spoken output.
     const face = p.photo
       ? `<img class="face" src="${p.photo}" alt="">`
-      : `<span class="face">${esc((p.name||'?').trim().charAt(0).toUpperCase())}</span>`;
+      : `<span class="face" aria-hidden="true">${esc((p.name||'?').trim().charAt(0).toUpperCase())}</span>`;
     const sel = rosterSel.includes(p.id);
     const isNew = opts.newId === p.id;
+    // "Vaishu, student 3 of 12" — the position is the whole point; this grid is
+    // the one place a teacher genuinely needs to know how many children there
+    // are and where they have got to. "New" is visual-only otherwise.
+    const label = posLabel(p.name, i, profiles.length, 'student') + (isNew ? ', just added' : '');
     return `<button type="button" class="pick-tile roster-tile${sel?' sel':''}" id="tile_${p.id}"
-      aria-pressed="${sel}" onclick="rosterToggle('${p.id}')">
+      aria-pressed="${sel}" aria-label="${esc(label)}" onclick="rosterToggle('${p.id}')">
       ${face}<span class="roster-tick" aria-hidden="true">${ICON.check}</span>
-      ${isNew ? '<span class="roster-new">New</span>' : ''}
-      <span class="pick-name">${esc(p.name)}</span>
+      ${isNew ? '<span class="roster-new" aria-hidden="true">New</span>' : ''}
+      <span class="pick-name" aria-hidden="true">${esc(p.name)}</span>
     </button>`;
   }).join('');
 
@@ -2197,7 +2522,7 @@ function showChildPicker(catIndex, actIndex, dir, opts){
         <span class="roster-count" id="rosterCount" aria-live="polite"></span>
         <button type="button" class="roster-all" id="rosterAllBtn" onclick="rosterSelectAll()">Select all</button>
       </div>
-      <div class="picker-grid">${tiles}</div>` : ''}
+      <div class="picker-grid" ${groupAttrs(profiles.length,'student')}>${tiles}</div>` : ''}
     ${addForm}
     ${profiles.length ? `<button type="button" class="save roster-cta" id="rosterCta" onclick="startBatch(${catIndex},${actIndex})"></button>` : ''}
   `, dir || 'fwd', true, { skipLedeFocus: !!opts.skipLedeFocus });
@@ -2268,12 +2593,23 @@ async function startBatch(catIndex, actIndex){
    --------------------------------------------------------------------------- */
 function buildRefSheet(act, domId){
   const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
+  // A11Y (2026-07-28): the demo clip has no narration track — it is a silent
+  // recording of a drill. A teacher who cannot see it gets NOTHING from it, and
+  // it is the first thing in this sheet, so they would swipe into a video
+  // player before reaching anything useful. We do not fake an audio
+  // description; we say plainly what it is and point at the equivalent that
+  // does exist (the steps below, which the Sarvam narration also speaks).
+  // If the content team ever records narrated demos, delete this note.
+  const videoNote = act.videoFile
+    ? `<p class="visually-hidden">This demonstration is a silent video. The written steps and the spoken narration below cover the same procedure.</p>`
+    : '';
   const noteHtml = act.facilitatorNote ? `<div class="note"><strong>Facilitator note</strong>${esc(act.facilitatorNote)}</div>` : '';
   const audioHtml = buildAudioHtml(act);
   const demoVideoHtml = act.videoFile
     ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(act.videoFile)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
     : `<div class="ref-block"><span class="section-label">Demonstration</span><div class="media-slot">${ICON.video}<span>Demo video slot — add a filename in activities.js (videoFile) when available.</span></div></div>`;
   return `<div class="ref-src" id="${domId}" data-help-title="${esc(act.name)}" hidden>
+        ${videoNote}
         ${demoVideoHtml}
         <h2 class="section-label">Sequence of procedure</h2><ol class="sop-list">${sopSteps}</ol>
         ${noteHtml}
@@ -2421,10 +2757,18 @@ function askConfirm(opts){
         </div>
       </div>`;
     document.body.appendChild(ov);
+    // Where focus was BEFORE the dialog opened, so it can go back there. Without
+    // this a screen-reader user is dumped at the top of the page after every
+    // confirm and has to re-find the row they were acting on.
+    const opener = document.activeElement;
     const settle = val=>{
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
+      setBackgroundInert(false);
       ov.classList.remove('open'); ov.classList.add('closing');
+      if(opener && document.contains(opener) && typeof opener.focus === 'function'){
+        opener.focus({preventScroll:true});
+      }
       setTimeout(()=>{ ov.remove(); resolve(val); }, 240);
     };
     const onKey = e=>{ if(e.key === 'Escape') settle(false); };
@@ -2438,6 +2782,7 @@ function askConfirm(opts){
     }
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
+    setBackgroundInert(true);   // see setBackgroundInert — aria-modal is not enough
     requestAnimationFrame(()=> requestAnimationFrame(()=> ov.classList.add('open')));
     ov.querySelector('#confirmCancel').focus({preventScroll:true}); // safe default
   });
@@ -2493,6 +2838,7 @@ function toggleRefSheet(btn, domId){
   // Two-frame open so the transition actually runs from the hidden state.
   requestAnimationFrame(()=> requestAnimationFrame(()=> ov.classList.add('open')));
   document.body.style.overflow = 'hidden'; // page behind must not scroll
+  setBackgroundInert(true);                // ...and must not be swipe-reachable
   btn.setAttribute('aria-expanded','true');
   document.addEventListener('keydown', helpKeyListener);
   const closeBtn = ov.querySelector('.help-close');
@@ -2504,6 +2850,7 @@ function closeRefSheet(instant){
   // Silence any demo video / narration before it goes back to its hidden home.
   ov.querySelectorAll('video,audio').forEach(m=>{ try{ m.pause(); }catch(_){} });
   document.body.style.overflow = '';
+  setBackgroundInert(false);
   document.removeEventListener('keydown', helpKeyListener);
   const opener = helpPopupState && helpPopupState.opener;
   if(opener && document.contains(opener)){
@@ -2561,8 +2908,13 @@ function buildSoundboard(act){
         </div>
         <div class="sb-seek">
           <span class="t" id="sbElapsed">0:00</span>
+          <!-- aria-valuetext is what a screen reader actually speaks for a
+               slider. Without it TalkBack says "37 percent", which tells a
+               blind teacher nothing about a 4-second animal sound. With it:
+               "0:02 of 0:04". Kept in sync in SB._onTime / _onMeta. -->
           <div class="sb-progress" id="sbProgress" role="slider" tabindex="0"
                aria-label="Seek position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+               aria-valuetext="0:00 of 0:00"
                onclick="SB.seekFromClient(event.clientX)" onkeydown="SB.seekKey(event)">
             <div class="fill" id="sbFill"></div><div class="knob" id="sbKnob"></div>
           </div>
@@ -2576,7 +2928,12 @@ function buildSoundboard(act){
           <button type="button" class="sb-tbtn toggle" id="sbRepeat" aria-label="Repeat off" onclick="SB.cycleRepeat()">${ICON.sbRepeat}<span class="badge" id="sbRepeatBadge" hidden>1</span></button>
         </div>
       </div>
-      <span class="visually-hidden" aria-live="assertive" id="sbLive"></span>
+      <!-- POLITE, not assertive (2026-07-28). These announcements fire at the
+           exact moment a sound starts playing, when the teacher and the child
+           are both listening. Assertive interrupts the screen reader
+           mid-sentence and talks over the drill audio, which is the one sound
+           the activity is actually about. Polite queues instead. -->
+      <span class="visually-hidden" aria-live="polite" id="sbLive"></span>
     </div>`;
 }
 /* Media-player controller for the Sound Library. One <audio> element; the
@@ -2654,28 +3011,57 @@ const SB = {
     const r = bar.getBoundingClientRect();
     let ratio = (clientX - r.left) / r.width; ratio = Math.max(0, Math.min(1, ratio));
     try{ a.currentTime = ratio * a.duration; }catch(e){}
-    SB._fill(ratio*100);
+    SB._fill(ratio*100); SB._seekAria(ratio*100);
   },
+  /* TalkBack adjusts a slider with swipe-UP / swipe-DOWN, which arrive as
+     ArrowUp / ArrowDown — not the Left/Right a desktop keyboard sends. Handling
+     only Left/Right made this slider unusable by touch screen-reader gesture,
+     which is the ONLY way a blind teacher would ever reach it. Home/End added
+     for completeness (APG slider pattern). */
   seekKey(e){
     const a = SB.audio;
     if(e.key===' '||e.key==='Enter'){ SB.toggle(); e.preventDefault(); return; }
     if(!a || !a.duration) return;
-    if(e.key==='ArrowRight'){ a.currentTime = Math.min(a.duration, a.currentTime+1); e.preventDefault(); }
-    else if(e.key==='ArrowLeft'){ a.currentTime = Math.max(0, a.currentTime-1); e.preventDefault(); }
+    const step = e.shiftKey ? 5 : 1;
+    const to = t => { a.currentTime = Math.max(0, Math.min(a.duration, t)); e.preventDefault();
+                      SB._seekAria((a.currentTime/a.duration)*100); };
+    switch(e.key){
+      case 'ArrowRight': case 'ArrowUp':   to(a.currentTime + step); break;
+      case 'ArrowLeft':  case 'ArrowDown': to(a.currentTime - step); break;
+      case 'PageUp':     to(a.currentTime + 5); break;
+      case 'PageDown':   to(a.currentTime - 5); break;
+      case 'Home':       to(0); break;
+      case 'End':        to(a.duration); break;
+    }
   },
   _onTime(){
     const a = SB.audio; if(!a) return;
     const pct = a.duration ? (a.currentTime/a.duration)*100 : 0;
     SB._fill(pct);
     const el = SB._el('sbElapsed'); if(el) el.textContent = SB._fmt(a.currentTime);
-    const pr = SB._el('sbProgress'); if(pr) pr.setAttribute('aria-valuenow', String(Math.round(pct)));
+    SB._seekAria(pct);
   },
-  _onMeta(){ const a = SB.audio; const t = SB._el('sbTotal'); if(t) t.textContent = SB._fmt(a && isFinite(a.duration) ? a.duration : 0); },
+  _onMeta(){
+    const a = SB.audio; const t = SB._el('sbTotal');
+    if(t) t.textContent = SB._fmt(a && isFinite(a.duration) ? a.duration : 0);
+    SB._seekAria(a && a.duration ? (a.currentTime/a.duration)*100 : 0);
+  },
+  /* Keep the slider's spoken value in step with its painted value. valuenow is
+     the percentage the slider role requires; valuetext is what is SPOKEN. */
+  _seekAria(pct){
+    const pr = SB._el('sbProgress'); if(!pr) return;
+    const a = SB.audio;
+    const dur = a && isFinite(a.duration) ? a.duration : 0;
+    pr.setAttribute('aria-valuenow', String(Math.round(pct || 0)));
+    pr.setAttribute('aria-valuetext', `${SB._fmt(a ? a.currentTime : 0)} of ${SB._fmt(dur)}`);
+  },
   _onEnded(){
     if(SB.repeat==='one'){ try{ SB.audio.currentTime = 0; }catch(e){} SB.play(); return; }
     if(SB.repeat==='all'){ SB.next(false); return; }
     SB._setPlaying(false); try{ SB.audio.currentTime = 0; }catch(e){}
-    SB._fill(0); const el = SB._el('sbElapsed'); if(el) el.textContent = '0:00';
+    SB._fill(0); SB._seekAria(0);
+    const el = SB._el('sbElapsed'); if(el) el.textContent = '0:00';
+    SB._announce('Finished');
   },
   _setPlaying(on){
     SB.playing = on;
@@ -2727,7 +3113,9 @@ function buildCommandBoard(act){
       <p class="cmd-hint">Tap a command — the app speaks it. One command at a time; wait for the movement to finish. Use Surprise me once the child expects a pattern.</p>
       <div class="cmd-grid">${pads}</div>
       <button type="button" class="cmd-surprise" onclick="CB.surprise()">${ICON.sbShuffle} Surprise me</button>
-      <span class="visually-hidden" aria-live="assertive" id="cmdLive"></span>
+      <!-- Polite for the same reason as #sbLive: the command audio IS the cue
+           the child is listening for; the screen reader must not talk over it. -->
+      <span class="visually-hidden" aria-live="polite" id="cmdLive"></span>
     </div>`;
 }
 /* One Audio element. Commands are English-only by design (audioLang is for
@@ -2829,8 +3217,13 @@ function showActivity(catIndex, actIndex, opts){
       </button>`).join('');
     const cards = rosterKids.map((p,i)=>{
       const perChild = act.dataFields.map(f=>buildField(f, '_'+p.id)).join('');
+      // The head is a real h2 AND the focus target for batchShow. In the batch
+      // flow the child changes without a screen change — the only thing that
+      // moves is which card is `hidden`. Scoring the wrong child is the worst
+      // failure this app can produce, so the name is a heading (jump-to-able)
+      // and carries the position out loud.
       return `<div class="bcard" id="bcard_${p.id}" data-pid="${p.id}" hidden>
-        <div class="bcard-head">${avatarFor(p,'fface')}<span class="bname">${esc(p.name)}</span><span class="bprog">${i+1} of ${rosterKids.length}</span></div>
+        <h2 class="bcard-head" id="bhead_${p.id}" tabindex="-1">${avatarFor(p,'fface')}<span class="bname">${esc(p.name)}</span><span class="bprog">${i+1} of ${rosterKids.length}</span><span class="visually-hidden">. Now scoring ${esc(p.name)}, student ${i+1} of ${rosterKids.length}.</span></h2>
         ${perChild}
         <div class="bnav">
           <button type="button" class="bskip" onclick="batchAdvance()">Skip for now</button>
@@ -3013,9 +3406,17 @@ function buildField(f, sfx){
 }
 function pickSeg(groupId, value, btn){
   const group = document.getElementById(groupId);
+  // Null guard (2026-07-28). The group is gone only if the screen re-rendered
+  // between the tap landing and this handler running. That race is MORE likely
+  // with a screen reader, not less: TalkBack activates on double-tap, which is
+  // inherently laggier than a direct tap, and the Android back gesture can fire
+  // mid-sequence. Unguarded this threw, and a thrown handler in this app is
+  // silent — the control simply stops working, with nothing announced. A
+  // no-op is recoverable; an exception is not.
+  if(!group) return;
   group.dataset.value = value;
   [...group.children].forEach(b=>b.setAttribute('aria-pressed','false'));
-  btn.setAttribute('aria-pressed','true');
+  if(btn) btn.setAttribute('aria-pressed','true');
 }
 async function handleSave(activityId){
   const cat = ACTIVITY_DATA[state.category];
@@ -3033,6 +3434,15 @@ async function handleSave(activityId){
   const btn = document.getElementById('saveBtn');
   if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
   const values = {};
+  // Same null guard as pickSeg: if the form is not on screen any more (a
+  // re-render raced the tap — likelier with a screen reader's double-tap),
+  // bail out loudly instead of throwing into silence. Saving a partial record
+  // would be worse than saving none: it would look like real data.
+  const missing = act.dataFields.filter(f => !document.getElementById('f_'+f.id));
+  if(missing.length){
+    toast('Could not read the form — please try saving again.');
+    return;
+  }
   act.dataFields.forEach(f=>{
     const el = document.getElementById('f_'+f.id);
     if(f.type === 'count')        values[f.label] = el.value || '0';
@@ -3061,9 +3471,14 @@ async function handleSave(activityId){
   pendingVideo = null;
   // Honest toasts: a clip that failed to store must not be a silent loss —
   // the teacher can re-attach it now; discovering it missing weeks later, they can't.
-  if(hadClip && !videoMeta)                       toast('Saved — but the video could not be stored. Please re-attach it.');
-  else if(videoMeta && videoMeta.stored === false) toast('Saved (video kept on web preview only)');
-  else                                             toast('Saved');
+  const savedMsg = (hadClip && !videoMeta)
+    ? 'Saved — but the video could not be stored. Please re-attach it.'
+    : (videoMeta && videoMeta.stored === false)
+      ? 'Saved (video kept on web preview only)'
+      : 'Saved';
+  // toast() defers its spoken half by design, so calling it before or after
+  // the repaint no longer matters — see the note on toast().
+  toast(savedMsg);
   showActivity(state.category, state.activity, { sopCollapsed:true, focusForm:true, dir:'none' });
 }
 /* ---- FOCUS FLOW engine (rosters of 2+) ------------------------------------
@@ -3133,6 +3548,17 @@ function batchShow(i){
     if(el) el.hidden = idx !== i;
   });
   batchChipsPaint();
+  /* A11Y (2026-07-28) — THE most dangerous silent change in the app.
+     Advancing to the next child swaps which card is `hidden`. There is no
+     screen change, no navigation, nothing to announce it. A teacher who cannot
+     see the swap would carry on scoring — into the NEXT child's form. In a
+     research pilot, a result attributed to the wrong child is worse than a
+     missing result: it is data that looks valid and is not.
+     So: move focus to the new card's heading. That both announces the child
+     and puts the reading cursor at the top of the right form. */
+  const pid = batchKids[i];
+  const head = pid && document.getElementById('bhead_'+pid);
+  if(head) requestAnimationFrame(()=>{ try{ head.focus({preventScroll:true}); }catch(_){} });
 }
 function batchAdvance(){
   const after = batchKids.findIndex((pid,i)=> i > batchIdx && !batchScored(pid));
@@ -3164,15 +3590,30 @@ function batchReview(){
       });
       detail = bits.length ? bits.join(' · ') : 'detail only';
     }
-    return `<div class="sumrow${scored?'':' sumskip'}">${avatarFor(p,'sface')}<span class="sumname">${esc(p.name)}</span>
-      <span class="sumres">${detail}</span>
-      <button type="button" class="sumedit" onclick="batchShow(${i})">Edit</button></div>`;
+    // The row reads as one line; "Edit" alone is useless in a column of them.
+    const spoken = `${p.name}: ${scored ? detail.replace(/<[^>]+>/g,'') : 'skipped'}`;
+    // LAYOUT WARNING: .sumrow is display:flex and .sumres carries flex:1 to
+    // push the result to the right edge. Do NOT wrap the avatar/name/result in
+    // a container to aria-hide them together — that makes the three a SINGLE
+    // flex child and the row collapses to the left. Hide them individually.
+    // The spoken summary is `.visually-hidden`, i.e. position:absolute, so it
+    // is out of flex flow and costs nothing.
+    return `<div class="sumrow${scored?'':' sumskip'}">`
+      + `<span class="visually-hidden">${esc(spoken)}</span>`
+      + avatarFor(p, 'sface')
+      + `<span class="sumname" aria-hidden="true">${esc(p.name)}</span>`
+      + `<span class="sumres" aria-hidden="true">${detail}</span>`
+      + `<button type="button" class="sumedit" aria-label="Edit ${esc(p.name)}'s result" onclick="batchShow(${i})">Edit</button></div>`;
   }).join('');
-  sum.innerHTML = `<h3 class="section-label" style="margin-top:0">Review — what will be saved</h3>${rows}
+  sum.innerHTML = `<h3 class="section-label" id="batchReviewHead" tabindex="-1" style="margin-top:0">Review — what will be saved</h3>${rows}
     <button type="button" class="save" id="saveBtn" onclick="handleBatchSave('${esc(act.id)}')" ${n?'':'disabled'}>Save ${n} ${n===1?'result':'results'}</button>`;
   sum.hidden = false;
   batchChipsPaint(true);
   if(sum.scrollIntoView) sum.scrollIntoView({behavior:'smooth', block:'nearest'});
+  // Same reasoning as batchShow: the child cards vanish and this appears in
+  // their place with no navigation event. Move focus so it is announced.
+  const rh = document.getElementById('batchReviewHead');
+  if(rh) requestAnimationFrame(()=>{ try{ rh.focus({preventScroll:true}); }catch(_){} });
 }
 async function handleBatchSave(activityId){
   const cat = ACTIVITY_DATA[state.category];
@@ -3229,10 +3670,32 @@ function renderRecord(r, resultLabels, activityId){
   const pills = entries.map(([k,v])=>{ const isResult = resultLabels.includes(k); return `<span class="${isResult ? 'val-result' : ''}">${esc(k)}: ${esc(v)}</span>`; }).join('');
   // Delete is BY ID — the migration shim guarantees every record has one.
   const del = (activityId != null && r.id)
-    ? `<button type="button" class="rec-del" aria-label="Delete this result" onclick="confirmDeleteRecord('${esc(activityId)}','${esc(r.id)}')">${ICON.trash}</button>`
+    ? `<button type="button" class="rec-del" aria-label="Delete ${esc(recordDisplayName(r))}'s result from ${esc(fmtWhen(r))}" onclick="confirmDeleteRecord('${esc(activityId)}','${esc(r.id)}')">${ICON.trash}</button>`
     : '';
   const videoPill = r.video ? `<span class="val-video">${ICON.video} Video</span>` : '';
-  return `<div class="record"><div class="rec-head"><span class="rec-meta"><span class="who">${esc(recordDisplayName(r))}</span> <span class="when">· ${esc(fmtWhen(r))}</span></span>${del}</div><div class="vals">${pills || '<span>(no values)</span>'}${videoPill}</div></div>`;
+  // A11Y (2026-07-28): on screen a record is a scannable block — name, date, a
+  // row of value chips. Swiped through one node at a time it arrives as
+  // "Vaishu" / "· 2 July" / "Steps: 8" / "Result: Got it" / "Video": five
+  // fragments with no glue. The whole card gets ONE composed sentence and the
+  // visible pieces are hidden from the reader. The delete button stays a
+  // separate, focusable control — it must not be swallowed into the label.
+  const spoken = [
+    recordDisplayName(r),
+    fmtWhen(r),
+    entries.length ? entries.map(([k,v])=>`${k}: ${v}`).join(', ') : 'no values recorded',
+    r.video ? 'video clip attached' : null,
+  ].filter(Boolean).join('. ');
+  // REAL TEXT, not aria-label. First attempt put `spoken` in an aria-label on
+  // the <span class="rec-meta">. That span has no role, so ARIA 1.2 PROHIBITS
+  // aria-label on it (axe: aria-prohibited-attr) and the label is dropped —
+  // which, with .vals aria-hidden, would have made the recorded VALUES
+  // completely unreadable. A visually-hidden text node needs no role and is
+  // always in the accessibility tree. Rule: when a screen reader must hear
+  // something, put it in the DOM as text.
+  return `<div class="record">`
+    + `<p class="visually-hidden">${esc(spoken)}</p>`
+    + `<div class="rec-head"><span class="rec-meta" aria-hidden="true"><span class="who">${esc(recordDisplayName(r))}</span> <span class="when">· ${esc(fmtWhen(r))}</span></span>${del}</div>`
+    + `<div class="vals" aria-hidden="true">${pills || '<span>(no values)</span>'}${videoPill}</div></div>`;
 }
 async function confirmDeleteRecord(activityId, recordId){
   const go = await askConfirm({
@@ -3263,6 +3726,7 @@ async function confirmDeleteRecord(activityId, recordId){
                                      // teacherId:'legacy' / safe whenISO
     await ensureSchoolsSeeded();     // PILOT seed of schools/teachers (see seam)
     await ensureDemoChildrenSeeded();// demo children (fresh installs only — see seed note)
+    applyDisplayPrefs();             // text size / contrast / dark, BEFORE first paint
   }
   catch(e){ setTimeout(()=>toast('Storage failed to load — please restart the app.'), 400); }
   // Login gates the app. Once signed in, the welcome-seen flag decides whether
