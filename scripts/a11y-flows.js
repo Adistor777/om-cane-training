@@ -176,8 +176,42 @@ function boot(){
   ok(editBtn && /edit .+'s result/i.test(editBtn.getAttribute('aria-label')||''),
      'each Edit button names its child (a column of "Edit" is unusable)');
 
-  /* ---- FLOW 5: destructive confirm returns focus ------------------------ */
-  console.log('\nFLOW 5 — dialogs must not strand you');
+  /* ---- FLOW 5: the two the blind reviewer found (2026-07-29) ------------ */
+  console.log('\nFLOW 5 — reported by the blind reviewer');
+
+  // (a) "when students are being selected he cannot hear the student name"
+  const pick = flat.find(x => !x.a.group);
+  w.showChildPicker(pick.ci, pick.ai, 'none'); await sleep(200);
+  const tiles = [...D.querySelectorAll('.pick-tile')];
+  ok(tiles.length >= 2, `picker rendered ${tiles.length} child tiles`);
+  const who = w.eval('loadProfiles()')[0].name;
+  w.rosterToggle(w.eval('loadProfiles()')[0].id);
+  await sleep(300);
+  ok(spoken().includes(who),
+     `selecting a child SPEAKS THEIR NAME ("${spoken().trim()}")`);
+  ok(/selected/i.test(spoken()),
+     'and says whether they were selected or removed');
+  ok(/\d+ of \d+/.test(spoken()),
+     'and still gives the running count');
+  const cntEl = D.getElementById('rosterCount');
+  ok(cntEl && !cntEl.hasAttribute('aria-live'),
+     'the bare count is no longer its own live region (it used to be the ONLY thing spoken)');
+  // Two different children in a row must both announce.
+  const second = w.eval('loadProfiles()')[1];
+  if(second){
+    w.rosterToggle(second.id); await sleep(300);
+    ok(spoken().includes(second.name), 'a SECOND child also announces by name');
+  }
+
+  // (b) "talkback says everything from the start" — focus destroyed, no target
+  w.showChildPicker(pick.ci, pick.ai, 'none', { skipLedeFocus: true });
+  await sleep(300);
+  const after = active();
+  ok(after && after !== D.body && after !== D.documentElement && D.getElementById('screen').contains(after),
+     'a repaint NEVER leaves focus on <body> — TalkBack always keeps a cursor');
+
+  /* ---- FLOW 6: destructive confirm returns focus ------------------------ */
+  console.log('\nFLOW 6 — dialogs must not strand you');
   w.showHome('none'); await sleep(150);
   w.setMenuVisible(true); w.openMenu(); await sleep(200);
   ok(D.querySelector('body > main').hasAttribute('inert'),

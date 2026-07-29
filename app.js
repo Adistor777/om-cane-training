@@ -1128,14 +1128,22 @@ async function exportCSV(includePII){
    --------------------------------------------------------------------------- */
 const srStatusEl = document.getElementById('srStatus');
 let _srTimer = null;
+/* Speak something WITHOUT showing a visible toast. For moments that need to be
+   heard but not seen — a sighted teacher can see which face has the selection
+   ring, so "Vaishu selected" on screen would be noise; spoken, it is the whole
+   point. Always clears first: writing identical text twice running is not a
+   change, and a screen reader will not announce it. */
+function announce(msg){
+  if(!srStatusEl || !msg) return;
+  clearTimeout(_srTimer);
+  srStatusEl.textContent = '';
+  _srTimer = setTimeout(()=>{ srStatusEl.textContent = msg; }, 150);
+}
 function toast(msg){
   toastEl.textContent = msg;
   toastEl.classList.add('show');
   setTimeout(()=>toastEl.classList.remove('show'), 1800);
-  if(!srStatusEl) return;
-  clearTimeout(_srTimer);
-  srStatusEl.textContent = '';                        // force a real change
-  _srTimer = setTimeout(()=>{ srStatusEl.textContent = msg; }, 150);
+  announce(msg);
 }
 
 /* Age is derived from date of birth, never stored as a fixed number — so a
@@ -1193,7 +1201,30 @@ function paint(html, dir, stagger, opts){
     screen.style.animation = 'none'; void screen.offsetWidth; screen.style.animation = '';
     screen.classList.toggle('stagger', !!stagger); screen.innerHTML = html;
   }
-  if(!opts.skipLedeFocus) moveScreenFocus(opts);
+  /* DO NOT flush pending announcements here. It looks obviously right — "a
+     message queued on the old screen shouldn't play on the new one" — and it
+     is wrong. Almost every announcement in this app describes the action that
+     CAUSED the navigation: `toast('Saved'); showActivity(...)`,
+     `toast('Result deleted'); showChildDetail(...)`. Flushing on paint kills
+     precisely the confirmations that matter most, which is the bug fixed on
+     2026-07-28 and nearly reintroduced on 07-29. scripts/a11y-flows.js caught
+     it; leave this note so nobody "tidies" the flush back in. */
+  if(!opts.skipLedeFocus){ moveScreenFocus(opts); return; }
+  /* skipLedeFocus means "I will place focus myself" (the record form, a newly
+     added child). If the caller does NOT — because its target was not rendered,
+     or it simply forgot — then innerHTML has just destroyed the focused node
+     and NOTHING has taken its place. A screen reader is then left with no
+     cursor, and TalkBack's recovery is to start reading the window FROM THE
+     TOP. That is the "it says everything from the start" the blind reviewer
+     hit on 2026-07-29.
+     So: verify on the next frame that focus actually landed inside the new
+     screen, and fall back to the heading if it did not. A safety net, not a
+     replacement for the caller doing its job. */
+  requestAnimationFrame(()=>{
+    const a = document.activeElement;
+    const parked = !a || a === document.body || a === document.documentElement;
+    if(parked || !screen.contains(a)) moveScreenFocus(opts);
+  });
 }
 /* ---------------------------------------------------------------------------
    A11Y — SCREEN CHANGE ANNOUNCEMENT (2026-07-28)
@@ -2536,13 +2567,30 @@ function showChildPicker(catIndex, actIndex, dir, opts){
     ${hintOnce('roster', 'Tap every student taking part — you can pick several. Then <strong>Start</strong>. New students can be added right below.')}
     ${profiles.length ? `
       <div class="roster-selbar">
-        <span class="roster-count" id="rosterCount" aria-live="polite"></span>
+        <!-- NOT a live region any more (2026-07-29). It used to be, and it was
+             the ONLY thing that spoke when a child was tapped — so the teacher
+             heard "3 of 12 selected" and never the child's name. Announcements
+             now go through the shared #srStatus region led by the name; this
+             span is the visible count only. -->
+        <span class="roster-count" id="rosterCount"></span>
         <button type="button" class="roster-all" id="rosterAllBtn" onclick="rosterSelectAll()">Select all</button>
       </div>
       <div class="picker-grid" ${groupAttrs(profiles.length,'student')}>${tiles}</div>` : ''}
     ${addForm}
     ${profiles.length ? `<button type="button" class="save roster-cta" id="rosterCta" onclick="startBatch(${catIndex},${actIndex})"></button>` : ''}
   `, dir || 'fwd', true, { skipLedeFocus: !!opts.skipLedeFocus });
+  /* Arriving here straight after adding a child (skipLedeFocus + newId): put
+     the reading cursor on THAT child rather than the screen heading. They are
+     already selected, so the teacher hears "Priya, student 12 of 12, selected"
+     — confirmation that the add worked and where they now are, in one breath.
+     Before this, focus was skipped and nothing replaced it, which left
+     TalkBack with no cursor and sent it back to the top of the screen. */
+  if(opts.skipLedeFocus){
+    const tile = opts.newId && document.getElementById('tile_' + opts.newId);
+    requestAnimationFrame(()=>{
+      if(tile && document.contains(tile)) tile.focus({preventScroll:true});
+    });
+  }
 
   rosterPaintCount();
   // When there are no children at all, the add form is the only path — open it
@@ -2553,10 +2601,22 @@ function showChildPicker(catIndex, actIndex, dir, opts){
 }
 function rosterToggle(id){
   const i = rosterSel.indexOf(id);
-  if(i === -1) rosterSel.push(id); else rosterSel.splice(i,1);
+  const nowSelected = i === -1;
+  if(nowSelected) rosterSel.push(id); else rosterSel.splice(i,1);
   const tile = document.getElementById('tile_'+id);
-  if(tile){ tile.classList.toggle('sel', i === -1); tile.setAttribute('aria-pressed', i === -1 ? 'true' : 'false'); }
-  rosterPaintCount();
+  if(tile){ tile.classList.toggle('sel', nowSelected); tile.setAttribute('aria-pressed', String(nowSelected)); }
+  /* A11Y FIX (2026-07-29, from the blind reviewer): "when students are being
+     selected he cannot hear the student name."
+     Confirmed in code. Activating a toggle makes TalkBack announce the new
+     STATE only — it does not re-read the button's name. The one thing that DID
+     speak was the live region, and it only carried a count ("3 of 12
+     selected"). So the teacher tapped a face and heard a number, never a name,
+     with no way to tell WHICH child they had just picked or dropped.
+     The name goes in the announcement. rosterPaintCount takes it as an
+     optional lead so the count still works on its own (Select all, first
+     paint), but a tap always says who. */
+  const p = profileById(id);
+  rosterPaintCount(p ? `${p.name} ${nowSelected ? 'selected' : 'removed'}` : '');
 }
 function rosterSelectAll(){
   const all = loadProfiles().map(p=>p.id);
@@ -2569,11 +2629,17 @@ function rosterSelectAll(){
   rosterPaintCount();
 }
 // One place keeps the count line, the Select-all label and the CTA honest.
-function rosterPaintCount(){
+function rosterPaintCount(lead){
   const total = loadProfiles().length;
   const n = rosterSel.length;
   const cnt = document.getElementById('rosterCount');
+  // The VISIBLE count stays a bare count — a sighted teacher does not need
+  // "Vaishu selected" written next to the grid, they can see the ring. The
+  // spoken version leads with the name (see rosterToggle) and goes through the
+  // shared status region, which is cleared first so two taps in a row on
+  // different children both announce.
   if(cnt) cnt.textContent = `${n} of ${total} selected`;
+  if(lead) announce(`${lead}. ${n} of ${total} selected.`);
   const allBtn = document.getElementById('rosterAllBtn');
   if(allBtn) allBtn.textContent = (n === total && total > 0) ? 'Clear' : 'Select all';
   const cta = document.getElementById('rosterCta');
@@ -3660,7 +3726,11 @@ async function handleBatchSave(activityId){
   if(failed){ toast(`Saved ${saved}, but ${failed} failed — storage may be full. Export your data, then try again.`); }
   else if(!saved){ toast('Nothing to save yet — score at least one student.'); return; }
   else toast(`Saved ${saved} ${saved===1?'result':'results'}`);
-  showActivity(state.category, state.activity, { dir:'none', skipLedeFocus:true });
+  // NOTE: showActivity keys its focus behaviour off `focusForm`, not
+  // `skipLedeFocus` — passing the latter here did nothing. Focus goes to the
+  // screen heading, which is right: after saving a batch you want to be told
+  // where you have landed.
+  showActivity(state.category, state.activity, { dir:'none' });
 }
 // Human-readable timestamp, derived AT RENDER from the canonical whenISO.
 // Legacy records that never got a safe whenISO fall back to their stored
@@ -3724,7 +3794,8 @@ async function confirmDeleteRecord(activityId, recordId){
   if(!ok){ toast('Could not delete — please try again.'); return; }
   toast('Result deleted');
   // Re-render the current activity screen in place (no entrance slide).
-  showActivity(state.category, state.activity, { sopCollapsed:true, dir:'none', skipLedeFocus:true });
+  // Same as handleBatchSave: `skipLedeFocus` is not read by showActivity.
+  showActivity(state.category, state.activity, { sopCollapsed:true, dir:'none' });
 }
 // Always open on the Welcome page. (Earlier this was show-once via a
 // `welcomeSeen` flag; the app now lands on Welcome every launch by request.)
