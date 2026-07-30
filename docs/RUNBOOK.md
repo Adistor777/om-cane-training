@@ -237,14 +237,20 @@ photos need guardian consent on file before a build leaves the team.
 **If the tester is outside the team**, either confirm that consent or build them
 a copy with `faces/` emptied:
 
-The photos are gitignored, so moving them out of the way loses nothing.
+**Do NOT stash them in `/tmp`.** macOS clears it, and these files are
+gitignored — the Mac is the only copy, so `/tmp` means one reboot from gone.
+That happened on 2026-07-29. Use a stable folder outside the repo:
 
 ```bash
+mkdir -p ~/om-media-backup
 cd ~/Desktop/om-app
-mv faces/*.jpg /tmp/
+cp faces/*.jpg ~/om-media-backup/
+rm faces/*.jpg
 ./scripts/build.sh
 cd android && ./gradlew clean assembleDebug
 ```
+
+`cp` then `rm`, not `mv` — if the copy fails you still have the originals.
 
 Watch for `mirrored faces/ -> www/faces/ (0 files)` in the build output — that
 is the mirror doing its job.
@@ -263,11 +269,13 @@ Then put them back:
 
 ```bash
 cd ~/Desktop/om-app
-mv /tmp/aditya.jpg /tmp/vaishu.jpg faces/
+cp ~/om-media-backup/*.jpg faces/
 ./scripts/build.sh
 ```
 
-Expect `mirrored faces/ -> www/faces/ (2 files)`.
+Expect `mirrored faces/ -> www/faces/ (2 files)`. Leave the backup folder in
+place — it is the second copy that `audio/`, `sounds/` and `faces/` have never
+had.
 
 ### Two things had to be fixed for that to actually work (2026-07-28)
 
@@ -293,6 +301,7 @@ thing that looks done and isn't.
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| Media stashed in `/tmp` has vanished | macOS clears `/tmp`; the files are gitignored so there was no second copy | Recover from a device that still has an older APK installed (see below), Time Machine, or the original source. Then keep the backup in `~/om-media-backup`, not `/tmp`. |
 | Emulator/phone shows old behaviour after a clean sync | stale install, not stale assets | `cd android && ./gradlew clean installDebug` |
 | `cp: Permission denied` copying to `www/` | a sandbox session touched the media | `chmod -R u+w www` then rebuild |
 | `git` says another process is running | leftover lock file | `rm -f .git/index.lock .git/HEAD.lock` |

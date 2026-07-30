@@ -105,6 +105,17 @@ obvious recipe ("empty faces/, rebuild") did NOT work:
 - [x] Runbook gained a `unzip -l ... | grep -c faces/` verification step —
       expect 0 — because assumption (1) is exactly the kind of thing that looks
       done and isn't.
+## Done 2026-07-29 (late) — media loss, recovered
+- [x] `faces/*.jpg` lost: stashed in `/tmp` for a consent-clean build, macOS
+      cleared it, gitignored so no other copy existed.
+- [x] **Recovered from the emulator's installed APK.** Any installed build
+      carries the media at `assets/public/faces/`. `scripts/recover-faces.sh`
+      automates the search and extraction.
+- [x] `~/om-media-backup/` created: audio (28), sounds (22), 8 demo videos,
+      2 faces. First time this media has had a second copy.
+- [x] RUNBOOK corrected: never stash in `/tmp`; `cp` then `rm`, not `mv`.
+- [ ] **Still worth doing:** get `~/om-media-backup` off the Mac entirely —
+      Drive, or an external disk. One machine is still one machine.
 ## NEXT (2026-07-28) — in order
 - [ ] **Aditya, Mac — commit the follow-ups + MEMORY/TRACKER (two commits):**
       ```

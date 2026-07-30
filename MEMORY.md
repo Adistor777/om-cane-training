@@ -156,6 +156,27 @@ Designed-for-Families still should not trigger.
   (it IS on in scripts, which is why build.sh is unaffected). **Never put an
   inline `#` comment on a command line meant to be pasted** — put expected
   values on the line below. All RUNBOOK snippets were rewritten this way.
+- **MEDIA LOSS + RECOVERY (2026-07-29) — the bus-factor risk finally bit.**
+  A consent-clean build stashed `faces/*.jpg` in `/tmp`; macOS cleared it; the
+  files are gitignored, so that was the only copy. Gone from the repo, from
+  `www/` (the new `rsync --delete` mirror had removed them), from the built
+  assets, and from the APK (`clean` wiped the old output).
+  - **RECOVERED from the EMULATOR.** An older build was still installed on the
+    Pixel_10_Pro_XL AVD, and every APK carries the photos at
+    `assets/public/faces/`. `adb shell pm path org.omcane.trainer` → pull
+    `base.apk` → unzip. **Any installed build is a media backup** — remember
+    this, it is the only reason nothing was lost.
+  - `scripts/recover-faces.sh` automates the whole search (Mac APKs → boot an
+    AVD → pull the install → extract). Written as a SCRIPT, not a snippet,
+    because two pasted instructions that day needed hand-editing first (a `#`
+    comment zsh does not honour, and a `<placeholder>`). **Give Aditya runnable
+    commands, never templates.**
+  - `~/om-media-backup/` now holds `audio/` (28), `sounds/` (22), the 8 demo
+    videos and both faces. RUNBOOK updated: never `/tmp`, always `cp` then
+    `rm`, never `mv`.
+  - The app degraded gracefully throughout — `avatarFallback` showed initials
+    rather than broken images. That fix, written hours earlier for a different
+    reason, is why the loss was cosmetic instead of visible breakage.
 - **Seven new scripts, and the build now ENFORCES them** (build.sh step 2b):
   - `scripts/a11y-audit.js` — boots every screen in jsdom, axe sweep + 18
     app-specific regression assertions. **21 screens CLEAN, 29/29 assertions.**
