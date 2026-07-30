@@ -1,185 +1,177 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-07-28 (accessibility pass — blind-teacher operable)_
-## STATE (2026-07-28) — accessibility pass, `feat/a11y-blind-teacher`
-Aditya returning after a break: before resuming the roadmap, make the app fully
-operable by a blind person. Decision taken: **TalkBack-native**, not
-self-voicing. Users remain sighted teachers → **Play Store 18+ declaration
-unchanged**.
+_Last updated: 2026-07-29 (blind-reviewer round 1: two defects fixed, sound stop)_
 
-Audited with axe-core over all 21 screens first. The baseline was strong (zero
-div-onclick, focus already moved to `.lede`, focus trap on the help sheet) — one
-minor axe violation total. The real defects were invisible to axe:
+## STATE (2026-07-29) — accessibility work reviewed by a blind person, round 1
+`feat/a11y-blind-teacher`, 8 commits, **pushed**. Built and verified on the Mac.
+NOT merged to main on purpose — the reviewer is mid-loop and fixes should land
+here, not on main.
+
+The build went to a blind reviewer. He found **two real defects**, both traced
+to specific lines and fixed the same day:
+
+1. **Selecting a student never spoke the name.** Activating a toggle makes
+   TalkBack announce the STATE only; it does not re-read the button's name. The
+   one thing that did speak was `#rosterCount`, and it carried a bare count
+   ("3 of 12 selected"). He tapped a face, heard a number, and could not tell
+   WHICH child. Now: "Vaishu selected. 3 of 12 selected." `#rosterCount` is no
+   longer a live region; announcements go through the shared `#srStatus` via a
+   new `announce()` (speak without showing a visible toast).
+2. **"TalkBack reads everything from the start."** `paint()` honoured
+   `skipLedeFocus` by moving focus NOWHERE — innerHTML had destroyed the focused
+   node and nothing replaced it, so TalkBack lost its cursor and its recovery is
+   to read the window from the top. Hit on the child picker, which passes that
+   flag when returning from adding a child. Now that path focuses the NEW
+   child's tile, and `paint()` has a next-frame safety net: if focus is parked
+   on `<body>` or outside the new screen, fall back to the heading.
+
+He also reported **difficulty pausing sounds**. Traced and worse than it
+sounded: when a sound starts his cursor is ON the pad, but Pause sat THIRD in
+the transport row behind ~20 pads, the track name, group label and seek bar —
+and tapping the same pad again RESTARTED it from zero, so the obvious instinct
+made it worse.
+- The pad is now a **toggle**: tapping a playing pad stops it. Zero navigation.
+- **Confirmed with Aditya that this costs sighted teachers nothing** — they play
+  a sound, let it FINISH, then tap to replay. They never tap mid-playback (they
+  use the transport button). A tap after the sound ends still replays, and
+  there is a flow assertion pinning exactly that.
+- `stopPad()` stops and rewinds rather than pausing: for a 3-second drill sound
+  resuming from the middle is never what anyone wants.
+- The pad's NAME tracks state ("Play dog" / "Stop dog"). For a screen-reader
+  user discoverability lives entirely in the label.
+- Play/Pause moved to FIRST in the transport DOM order; CSS `order` keeps the
+  visual row identical (shuffle · prev · play · next · repeat, play centred).
+- Starting a sound announces its length ("Playing dog, 3 seconds") once
+  metadata loads, so he knows whether to hunt for stop or just wait.
+- Repeat-one says what it means: "will loop until you stop it" — the only mode
+  with no natural end.
+
+**NEARLY SHIPPED A REGRESSION.** The first cut also flushed pending
+announcements in `paint()`, on the reasoning that a message queued on the old
+screen should not play on the new one. That kills "Saved" — almost every
+announcement here describes the action that CAUSED the navigation.
+`a11y-flows.js` caught it. The reasoning is now a comment in `paint()`.
+
+**Green at 2026-07-29 wrap:** 40/40 tests · 22/22 default-look · 55/55 contrast
+(1 advisory) · **43/43 flows** · **31/31 a11y assertions** · 21 screens
+axe-clean · 546 controls, zero exceptions. The 1x default look is unchanged and
+proven on every build.
+
+## NEXT (2026-07-29) — in order
+- [ ] **Send the new build to the reviewer** (consent-clean: see the runbook
+      section on emptying `faces/`, and verify with
+      `unzip -l app-debug.apk | grep -c faces/` → 0).
+- [ ] **Ask him three things specifically:**
+      1. Selecting a student — does it say the NAME now?
+      2. Tapping the pad again to stop — did he FIND that himself, or only
+         because he was told? If the latter, the label change is not carrying
+         its weight and a spoken hint is needed.
+      3. Does it still read from the top anywhere? If yes, WHICH SCREEN — that
+         one detail pins it immediately.
+- [ ] **Then merge:** `git checkout main && git merge feat/a11y-blind-teacher`,
+      delete the branch, push. Hold until his round-2 feedback is in.
+- [ ] **Get `~/om-media-backup` OFF the Mac** — Drive or an external disk. It
+      holds audio (28), sounds (22), 8 demo videos, 2 faces. Survived `/tmp`
+      today; would not survive the laptop.
+- [ ] **DECISION NEEDED — video evidence + a blind teacher.** The one thing with
+      NO non-visual equivalent: he cannot frame a shot, cannot tell whether the
+      child is in it, cannot check the clip after. Filming a child you cannot
+      see, for a research record, is a consent question too. Options: (a) leave
+      it — video is optional per-child and he simply does not use it; (b) a
+      sighted colleague captures video when needed; (c) hide the control when a
+      screen reader is detected — unreliable to detect, paternalistic when
+      wrong. Recommend (a) or (b). Needs Aditya + Mansi, legal if (b).
+- [ ] **Designer:** send `docs/a11y-preview.html` (regenerate with
+      `node scripts/a11y-preview.js`) to the Flipkart reviewer. High-contrast
+      mode deliberately overrides the "one accent, one shadow tier" guardrails
+      — a considered exception for low vision, worth a second opinion.
+- [ ] **Untested, flagged honestly:** braille display, Switch Access, Voice
+      Access. If any pilot teacher uses one, test before assuming.
+- [ ] **Content team:** three new FAQ entries (text size, easier to see, screen
+      reader) are DRAFT copy. Also: the demo clips are SILENT — the `?` sheet
+      now says so, but a narrated demo would remove the caveat.
+- [ ] **Then resume the roadmap** — backend P0 (deferred 2026-07-22) and the
+      `feat/section-color-zones` emulator verify below. A dedicated UI session
+      is also queued (Aditya, 2026-07-29).
+
+## Done 2026-07-29 — the whole day
+- [x] Reviewer defect 1: student name spoken on selection (`1219e2d`).
+- [x] Reviewer defect 2: `paint()` never leaves focus destroyed (`1219e2d`).
+- [x] Sound pad is a toggle; Play/Pause first in reading order; duration
+      announced; repeat-one warns it loops (`fe8beee`).
+- [x] `showActivity` never read `opts.skipLedeFocus` (it keys off `focusForm`)
+      — two callers were passing a no-op. Removed.
+- [x] **Media loss + recovery.** `faces/*.jpg` stashed in `/tmp` for a
+      consent-clean build; macOS cleared it; gitignored so no second copy
+      existed. **Recovered from the emulator's installed APK** — every build
+      carries the media at `assets/public/faces/`, which makes ANY INSTALLED
+      BUILD A BACKUP. `scripts/recover-faces.sh` automates the search
+      (`f8b5391`). `~/om-media-backup/` now exists.
+- [x] RUNBOOK corrected three times over: never stash media in `/tmp`; `cp`
+      then `rm`, not `mv`; no inline `#` comments in pasteable snippets
+      (interactive zsh does not honour them); emulator must be BOOTED before
+      `installDebug`.
+- [x] Consent-clean APK built and verified (`grep -c faces/` → 0).
+
+## STATE (2026-07-28) — the accessibility pass itself
+Decision: **TalkBack-native**, not self-voicing. Users remain sighted teachers
+→ **Play Store 18+ declaration unchanged**.
+
+axe-core over all 21 screens found the baseline strong (zero div-onclick, focus
+already moved to `.lede`, focus trap on the help sheet) — ONE minor violation
+total. Every real defect was invisible to axe:
 
 1. **Narration language buttons had no `lang`** — Devanagari/Tamil/Bengali read
-   by an English voice = noise. A blind teacher could not find the switcher.
+   by an English voice = noise. The switcher was unfindable.
 2. **Child detail had no heading to focus** — that screen announced nothing.
 3. **Modals leaked** — `aria-modal` alone; swiping past the last control walked
    out behind the scrim. Now `inert`, depth-counted.
 4. **Live regions were assertive** — they interrupted TalkBack *while the drill
    sound was playing*.
-5. **The seek slider ignored ArrowUp/Down** — which is exactly the gesture
-   TalkBack sends, so it was unreachable by touch.
+5. **The seek slider ignored ArrowUp/Down** — exactly the gesture TalkBack
+   sends, so it was unreachable by touch.
 6. **Everything was px** — a low-vision teacher could not enlarge anything.
-7. **No collection said how big it was.** Every grid — categories, activities,
-   the child picker, saved records — was a `<div>` of labelled `<button>`s. An
-   audit passes; a blind teacher still cannot answer "how many students are in
-   this picker?" without swiping to the end and counting. Containers are now
-   `role="group"` with their size, items carry their position ("Vaishu, student
-   3 of 12"), and records read as one sentence instead of five fragments.
+7. **No collection said how big it was.** Every grid was a `<div>` of labelled
+   `<button>`s. Containers are now `role="group"` with their size, items carry
+   their position ("Vaishu, student 3 of 12"), records read as one sentence.
 
-Fixed, plus new **Settings → Display**: text size (4 steps), high contrast,
-dark background — persisted, applied before first paint. Type/spacing moved to
-rem, and the large-text layout repairs are gated behind `data-text-scale="up"`
-so **the 1x default look is unchanged** (enforced by a11y-nochange.js).
-`forceDarkAllowed=false` on both Android themes.
+Plus **Settings → Display**: text size (4 steps), high contrast, dark
+background — persisted, applied before first paint. Type/spacing moved to rem;
+large-text repairs gated behind `data-text-scale="up"` so the 1x look is
+unchanged. `forceDarkAllowed=false` on both Android themes.
 
-**Verification is now part of the build** (`build.sh` step 2b): axe sweep +
-29 regression assertions (21 screens clean, 29/29), a real WCAG contrast check
-across all four colour modes (55 pass / 0 fail / 1 advisory), and a
-default-look guard (18/18: rem token parity + no unscoped rule in the a11y
-block). The contrast script caught a genuine bug in the freshly-written dark
-palette. Tests 40/40.
+### Pre-handover bug hunt (2026-07-28) — six defects, all of which passed the audit
+1. **Record values were about to be UNREADABLE** — the composed summary sat in
+   an `aria-label` on a roleless `<span>`; ARIA 1.2 prohibits that on
+   `role=generic` so it is DROPPED, and the visible chips were aria-hidden.
+   **RULE: if a screen reader must hear it, put it in the DOM as real text.**
+2. **Login stranded you** — picking a school injects the credential fields with
+   no announcement. Focus now moves into the login-ID field.
+3. **"Saved" was never spoken** — the repaint's focus move pre-empted the
+   pending polite announcement. Fixed centrally in `toast()`.
+4. **The batch flow swapped children silently** — a teacher who cannot see the
+   swap keeps scoring into the NEXT child's form. Data that looks valid and is
+   not. Card heads are `<h2>` and `batchShow()` focuses them.
+5. **Two layout regressions I introduced** — `.sumrow` is flex with
+   `.sumres{flex:1}` and an aria-hiding wrapper collapsed three flex children
+   into one; `.bcard-head` became an h2 without resetting UA defaults.
+6. **`pickSeg`/`handleSave` had no null guard** — a tap racing a re-render
+   threw, and a thrown handler here is SILENT.
 
-### PRE-HANDOVER CHECK (2026-07-28, before giving the build to a blind tester)
-A fourth pass, hunting bugs rather than re-running green tests. **Six real
-defects, and every one of them had passed the static audit** — because they
-are all about CHANGE, not resting state, which is exactly what strands a
-screen-reader user:
+## Verification gates — all wired into `./scripts/build.sh`
+| Script | What it protects |
+|--------|------------------|
+| `a11y-contrast.js` | real WCAG ratios, all four colour modes (55/55) |
+| `a11y-nochange.js` | rem token parity + no a11y rule leaks into the 1x design (22/22) |
+| `a11y-flows.js` | sign in, save, batch scoring, sound stop, dialogs (43/43) |
+| `a11y-smoke.js` | 546 controls activated, nothing throws |
+| `a11y-audit.js` | axe over 21 screens + 31 app-specific assertions |
+| `a11y-preview.js` | 5 screens x 6 modes → `docs/a11y-preview.html` (for the designer) |
+| `recover-faces.sh` | pull gitignored media back out of any installed APK |
 
-1. **Record values were about to become UNREADABLE.** My own third-pass fix put
-   the composed summary in an `aria-label` on a roleless `<span>`. ARIA 1.2
-   PROHIBITS aria-label on `role=generic` — the label is dropped — and I had
-   also `aria-hidden` the visible chips. Net effect on a device: name and date
-   read, **the actual scores silently gone**. Now real `visually-hidden` text,
-   which needs no role. RULE: if a screen reader must hear it, put it in the
-   DOM as text, never as aria-label on a div/span.
-2. **Login stranded you on the first screen.** Picking a school INJECTS the ID
-   and password fields. Nothing announced it. A blind teacher would choose
-   their school, hear silence, and have no reason to think anything appeared.
-   Now focus moves into the login-ID field and it is announced.
-3. **"Saved" was never spoken.** Every toast is followed immediately by a
-   repaint; the repaint moves focus, and on Android a focus event pre-empts a
-   pending polite announcement. Fixed CENTRALLY in `toast()` (visible half
-   sync, spoken half on a later frame, region cleared first so two identical
-   messages both announce) — not at the five call sites, so a sixth cannot
-   regress it.
-4. **The batch flow swapped children silently.** Advancing to the next child
-   only toggles which card is `hidden` — no navigation, no announcement. A
-   teacher who cannot see the swap carries on scoring **into the next child's
-   form**. In a research pilot that is worse than a missing result: it is data
-   that looks valid and is not. Card heads are now `<h2>` and `batchShow()`
-   focuses them. Same fix on the review screen.
-5. **Two layout regressions I introduced.** `.sumrow` is `display:flex` with
-   `.sumres{flex:1}` — my aria-hiding wrapper collapsed three flex children
-   into one and broke the row. And `.bcard-head` became an `<h2>` without
-   resetting the browser default 1.5em/bold/0.83em margin. Both fixed, both
-   now guarded by `a11y-nochange.js`.
-6. **`pickSeg`/`handleSave` had no null guard.** A tap racing a re-render threw,
-   and a thrown handler here is SILENT — the control just stops working.
-   That race is MORE likely with a screen reader (double-tap to activate is
-   laggier than a direct tap). Now a no-op / an honest toast.
+`docs/A11Y-TALKBACK-TESTS.md` is the manual run (screen curtain ON) plus an
+honest list of what a blind teacher still cannot do.
+`docs/RUNBOOK.md` is build-and-ship.
 
-Two new gates, both wired into `build.sh`:
-`a11y-flows.js` (23/23) drives the real flows — sign in, save, batch scoring,
-dialogs. `a11y-smoke.js` activates **546 controls across every screen** and
-fails on anything that throws.
-
-**Full state at handover:** 40/40 existing · 22/22 default-look · 55/55
-contrast · 23/23 flows · 31/31 a11y assertions · 21 screens axe-clean ·
-546 controls, zero exceptions.
-
-Committed on `feat/a11y-blind-teacher`. `cap sync` could not run in the sandbox
-(EPERM on the mount, as always) — **not built, not merged**.
-## Done 2026-07-28 (late) — consent-clean build actually works now
-Chasing the `faces/` consent question turned up two silent failures. The
-obvious recipe ("empty faces/, rebuild") did NOT work:
-- [x] **`build.sh` step 3b used `cp -R`, which only ADDS.** A file deleted from
-      `faces/` (or `audio/`, or `sounds/`) lingered in `www/` and kept shipping.
-      A consent-clean APK would still have contained the child photos. Now
-      mirrors with `rsync --delete` (plain-`cp` fallback if rsync is absent).
-- [x] **A profile's `photo` is a PATH, not image data**, so a missing file gave
-      a BROKEN-IMAGE icon on every screen showing that child, not the initials
-      fallback. `avatarFor` now attaches `onerror="avatarFallback(this)"`, which
-      swaps in the child's initial. Also fixes a fresh clone, where `faces/` is
-      gitignored and simply absent.
-- [x] Runbook gained a `unzip -l ... | grep -c faces/` verification step —
-      expect 0 — because assumption (1) is exactly the kind of thing that looks
-      done and isn't.
-## Done 2026-07-29 (late) — media loss, recovered
-- [x] `faces/*.jpg` lost: stashed in `/tmp` for a consent-clean build, macOS
-      cleared it, gitignored so no other copy existed.
-- [x] **Recovered from the emulator's installed APK.** Any installed build
-      carries the media at `assets/public/faces/`. `scripts/recover-faces.sh`
-      automates the search and extraction.
-- [x] `~/om-media-backup/` created: audio (28), sounds (22), 8 demo videos,
-      2 faces. First time this media has had a second copy.
-- [x] RUNBOOK corrected: never stash in `/tmp`; `cp` then `rm`, not `mv`.
-- [ ] **Still worth doing:** get `~/om-media-backup` off the Mac entirely —
-      Drive, or an external disk. One machine is still one machine.
-## NEXT (2026-07-28) — in order
-- [ ] **Aditya, Mac — commit the follow-ups + MEMORY/TRACKER (two commits):**
-      ```
-      cd ~/Desktop/om-app && rm -f .git/index.lock .git/HEAD.lock
-      git add app.js scripts/build.sh docs/RUNBOOK.md
-      git commit -m "a11y: avatar falls back to the initial when a photo file is
-      absent; build.sh mirrors media with --delete so a consent-clean build
-      really drops faces/"
-      git add MEMORY.md TRACKER.md
-      git commit -m "MEMORY/TRACKER: 2026-07-28 accessibility pass"
-      git log --oneline -3
-      ```
-- [ ] ~~**Aditya, Mac — commit it (sandbox hit the git-lock wall again).**~~ DONE `a577ac4`.
-      The work is on disk on `feat/a11y-blind-teacher`, uncommitted:
-      ```
-      cd ~/Desktop/om-app
-      rm -f .git/index.lock .git/HEAD.lock
-      git add app.js index.html styles.css scripts/ docs/A11Y-TALKBACK-TESTS.md \
-              package.json package-lock.json
-      git commit -F docs/a11y-commit-msg.txt
-      git log --oneline -2
-      ```
-      `docs/a11y-preview.html` is generated output — regenerate rather than
-      commit it (`node scripts/a11y-preview.js`). MEMORY/TRACKER commit
-      separately, as always.
-- [ ] **Aditya, Mac — build + eyeball:** `./scripts/build.sh` (it now runs the
-      a11y gates itself), then `cd android && ./gradlew clean installDebug`.
-      Open `docs/a11y-preview.html` in a browser first — 5 screens × 6 modes,
-      rendered from the real markup. The thing to check is the **2× text**
-      columns: spacing should have grown with the type and nothing clipped.
-- [ ] **Aditya — the run that actually matters:** `docs/A11Y-TALKBACK-TESTS.md`,
-      TalkBack on, **screen curtain on**. ~20 minutes. Runs 3 (modal escape)
-      and 4 (sound library) are the ones most likely to surface something.
-- [ ] **Best possible version of the above:** do run 4 with a blind teacher at
-      Saksham or RNKS driving. Ten minutes of that beats any audit output —
-      and it is the only way to check the Hindi labels against a device with a
-      real Devanagari voice pack installed.
-- [ ] **Then merge:** `git checkout main && git merge feat/a11y-blind-teacher`,
-      delete the branch, push. (Note: the sandbox still cannot `rm .git/*.lock`
-      — clear locks on the Mac first if git complains.)
-- [ ] **Designer:** send `docs/a11y-preview.html` to the Flipkart reviewer. The
-      high-contrast mode deliberately overrides the "one accent, one shadow
-      tier" guardrails — that is a considered exception for low vision, and
-      worth a second opinion on the hues.
-- [ ] **DECISION NEEDED — video evidence + a blind teacher.** The one thing in
-      the app with NO non-visual equivalent: a blind teacher cannot frame a
-      shot, cannot tell whether the child is in it, cannot check the clip
-      afterwards. Filming a child you cannot see, for a research record, is a
-      consent question as well as a usability one. Options: (a) leave it —
-      video is optional per-child and a blind teacher just doesn't use it;
-      (b) a sighted colleague captures video when it's needed; (c) hide the
-      control when a screen reader is detected — unreliable to detect and
-      paternalistic when wrong. Recommend (a) or (b); (c) decides for the
-      teacher. Needs Aditya + Mansi, and legal if (b).
-- [ ] **Content team (nice-to-have):** the demo clips are SILENT. The SOP and
-      narration carry the same content, and the ? sheet now says so — but a
-      narrated demo would remove the caveat entirely. Same recording session as
-      the Hindi SOP audio, if there is one.
-- [ ] **Untested, flagged honestly:** braille display, Switch Access, Voice
-      Access. If any pilot teacher uses one, test before assuming.
-- [ ] **Content team:** three new FAQ entries (text size, easier to see, screen
-      reader) are DRAFT copy, same as the other six.
-- [ ] **Then resume the roadmap** — backend P0 (deferred 2026-07-22) and the
-      `feat/section-color-zones` emulator verify below.
 ## STATE (2026-07-22) — repo audit + "block filling" color redesign
 Two threads this session, both mostly hand-off-to-Mac.
 **(1) Section color zones (Draft 2)** — manager wants COMPLETE BLOCK FILLING,
