@@ -1,7 +1,8 @@
 # MEMORY.md — O&M Cane Training
 _Last updated: 2026-07-29 (accessibility: built, reviewed by a blind person, round 1 fixed)_
 
-## ACCESSIBILITY (2026-07-28/29, `feat/a11y-blind-teacher` @ `f8b5391`, 8 commits, pushed, NOT merged)
+## ACCESSIBILITY (2026-07-28/29, `feat/a11y-blind-teacher`, pushed, NOT merged to main)
+_Don't pin a commit SHA in these files — committing the file invalidates it. Use `git log --oneline main..HEAD`._
 
 ### The scope decision
 Users are still SIGHTED teachers. The team requires the app to be **fully

@@ -2,7 +2,7 @@
 _Last updated: 2026-07-29 (blind-reviewer round 1: two defects fixed, sound stop)_
 
 ## STATE (2026-07-29) — accessibility work reviewed by a blind person, round 1
-`feat/a11y-blind-teacher`, 8 commits, **pushed**. Built and verified on the Mac.
+`feat/a11y-blind-teacher`, **pushed**, in sync with origin. Built and verified on the Mac.
 NOT merged to main on purpose — the reviewer is mid-loop and fixes should land
 here, not on main.
 
@@ -105,7 +105,7 @@ proven on every build.
       existed. **Recovered from the emulator's installed APK** — every build
       carries the media at `assets/public/faces/`, which makes ANY INSTALLED
       BUILD A BACKUP. `scripts/recover-faces.sh` automates the search
-      (`f8b5391`). `~/om-media-backup/` now exists.
+      (see `git log` for the tooling commit). `~/om-media-backup/` now exists.
 - [x] RUNBOOK corrected three times over: never stash media in `/tmp`; `cp`
       then `rm`, not `mv`; no inline `#` comments in pasteable snippets
       (interactive zsh does not honour them); emulator must be BOOTED before
