@@ -210,8 +210,73 @@ function boot(){
   ok(after && after !== D.body && after !== D.documentElement && D.getElementById('screen').contains(after),
      'a repaint NEVER leaves focus on <body> — TalkBack always keeps a cursor');
 
-  /* ---- FLOW 6: destructive confirm returns focus ------------------------ */
-  console.log('\nFLOW 6 — dialogs must not strand you');
+  /* ---- FLOW 6: stopping a sound ----------------------------------------
+     Reported 2026-07-29: "difficulty pausing the sounds". The pad is the only
+     control the teacher is already on when a sound starts; everything else is
+     a long swipe away. */
+  console.log('\nFLOW 6 — a playing sound must be stoppable from the pad');
+  const snd = flat.find(x => x.a.soundboard);
+  if(snd){
+    await w.eval(`batchRoster = ${JSON.stringify([profs[0].id])}`);
+    w.showActivity(snd.ci, snd.ai); await sleep(300);
+    const pads = [...D.querySelectorAll('.sb-pad')];
+    ok(pads.length > 0, `sound library rendered ${pads.length} pads`);
+
+    // Play/Pause must be the FIRST transport control in reading order.
+    const transport = [...D.querySelectorAll('.sb-transport .sb-tbtn')];
+    ok(transport.length && transport[0].id === 'sbPlay',
+       'Play/Pause is the first transport control in DOM order (was third)');
+
+    // Tap a pad: it plays, and its own label flips to Stop.
+    w.eval('SB.playIdx(0)'); await sleep(200);
+    ok(w.eval('SB.playing') === true, 'tapping a pad starts the sound');
+    ok(/^Stop /.test(pads[0].getAttribute('aria-label') || ''),
+       `the playing pad renames itself to Stop ("${pads[0].getAttribute('aria-label')}")`);
+
+    // Tap the SAME pad: it stops. It used to restart from zero.
+    w.eval('SB.playIdx(0)'); await sleep(200);
+    ok(w.eval('SB.playing') === false,
+       'tapping the SAME pad again STOPS it (it used to restart from zero)');
+    ok(/^Play /.test(pads[0].getAttribute('aria-label') || ''),
+       'and the pad goes back to saying Play');
+    ok(/stopped/i.test(w.document.getElementById('sbLive').textContent || ''),
+       'stopping is announced by name');
+
+    // A different pad while one plays still switches, rather than stopping.
+    if(pads.length > 1){
+      w.eval('SB.playIdx(0)'); await sleep(150);
+      w.eval('SB.playIdx(1)'); await sleep(150);
+      ok(w.eval('SB.playing') === true && w.eval('SB.idx') === 1,
+         'tapping a DIFFERENT pad switches to it — only the same pad toggles');
+    }
+
+    /* THE SIGHTED WORKFLOW — confirmed with Aditya 2026-07-29: teachers play
+       Dog, let it FINISH, then tap Dog again to replay. They never tap a pad
+       mid-playback (they use the transport button for that). So the toggle
+       must not touch this path: once a sound has ended, a tap plays it again,
+       exactly as it always did. This is the assertion that says the pad-toggle
+       costs sighted users nothing. */
+    w.eval('SB.repeat = "off"');
+    w.eval('SB.playIdx(0)'); await sleep(150);
+    ok(w.eval('SB.playing') === true, 'sighted flow: tap plays');
+    w.eval('SB._onEnded()'); await sleep(120);
+    ok(w.eval('SB.playing') === false, 'sound finishes on its own');
+    ok(/^Play /.test(pads[0].getAttribute('aria-label') || ''),
+       'the finished pad says Play again, not Stop');
+    w.eval('SB.playIdx(0)'); await sleep(150);
+    ok(w.eval('SB.playing') === true,
+       'tapping the SAME pad AFTER it finished replays it — the sighted workflow is untouched');
+
+    // Repeat-one is the mode with no natural end; it must say so.
+    w.eval("SB.repeat='all'; SB.cycleRepeat()"); await sleep(120);
+    ok(/loop/i.test(w.document.getElementById('sbLive').textContent || ''),
+       'repeat-one warns that the sound will loop until stopped');
+  } else {
+    console.log('  SKIP  sound library (no soundboard activity found)');
+  }
+
+  /* ---- FLOW 7: destructive confirm returns focus ------------------------ */
+  console.log('\nFLOW 7 — dialogs must not strand you');
   w.showHome('none'); await sleep(150);
   w.setMenuVisible(true); w.openMenu(); await sleep(200);
   ok(D.querySelector('body > main').hasAttribute('inert'),

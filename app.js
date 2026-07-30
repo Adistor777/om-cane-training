@@ -3003,12 +3003,20 @@ function buildSoundboard(act){
           </div>
           <span class="t total" id="sbTotal">0:00</span>
         </div>
+        <!-- DOM ORDER: Play/Pause FIRST (a11y 2026-07-29). It used to sit third,
+             behind Shuffle and Previous, which cost a screen-reader user two
+             extra swipes on the one control they need urgently — the sound is
+             playing while they hunt for it. Reading order now leads with it.
+             The VISUAL order is unchanged: styles.css gives each button a CSS
+             order value so the row still paints shuffle, prev, play, next,
+             repeat with play centred. Reading order and visual order are
+             allowed to differ, and here they should. -->
         <div class="sb-transport">
+          <button type="button" class="sb-tbtn main"   id="sbPlay"    aria-label="Play" onclick="SB.toggle()">${ICON.sbPlay}</button>
           <button type="button" class="sb-tbtn toggle" id="sbShuffle" aria-pressed="false" aria-label="Shuffle off" onclick="SB.toggleShuffle()">${ICON.sbShuffle}</button>
-          <button type="button" class="sb-tbtn side" id="sbPrev" aria-label="Previous sound" onclick="SB.prev()">${ICON.sbPrev}</button>
-          <button type="button" class="sb-tbtn main" id="sbPlay" aria-label="Play" onclick="SB.toggle()">${ICON.sbPlay}</button>
-          <button type="button" class="sb-tbtn side" id="sbNext" aria-label="Next sound" onclick="SB.next(true)">${ICON.sbNext}</button>
-          <button type="button" class="sb-tbtn toggle" id="sbRepeat" aria-label="Repeat off" onclick="SB.cycleRepeat()">${ICON.sbRepeat}<span class="badge" id="sbRepeatBadge" hidden>1</span></button>
+          <button type="button" class="sb-tbtn side"   id="sbPrev"    aria-label="Previous sound" onclick="SB.prev()">${ICON.sbPrev}</button>
+          <button type="button" class="sb-tbtn side"   id="sbNext"    aria-label="Next sound" onclick="SB.next(true)">${ICON.sbNext}</button>
+          <button type="button" class="sb-tbtn toggle" id="sbRepeat"  aria-label="Repeat off" onclick="SB.cycleRepeat()">${ICON.sbRepeat}<span class="badge" id="sbRepeatBadge" hidden>1</span></button>
         </div>
       </div>
       <!-- POLITE, not assertive (2026-07-28). These announcements fire at the
@@ -3037,7 +3045,34 @@ const SB = {
     document.querySelectorAll('#soundboardPanel .sb-tab').forEach((t,k)=>t.setAttribute('aria-selected', String(k===gi)));
     document.querySelectorAll('#soundboardPanel .sb-gridwrap').forEach((w,k)=>{ w.hidden = (k!==gi); });
   },
-  playIdx(i){ SB.load(i, true); },
+  /* A11Y (2026-07-29, from the blind reviewer: "difficulty pausing the sounds").
+     The pad is the ONLY control the teacher is already standing on when a sound
+     starts. Reaching Pause meant swiping forward through the rest of the grid,
+     the track name, the group label and the seek slider before even entering
+     the transport row — 10 to 25 swipes while the sound plays, and longer if
+     repeat-one is looping. Meanwhile the obvious instinct, tapping the same pad
+     again, RESTARTED it from zero (load() sets currentTime = 0), so the natural
+     recovery made things worse.
+     Now the pad is a toggle, like every media control ever made: tap a playing
+     pad to stop it. Replay costs one extra tap, and only for a sound still in
+     flight — most of the library is 2-5 seconds, so by the time a teacher wants
+     it again it has already finished and a single tap plays it. */
+  playIdx(i){
+    if(SB.idx === i && SB.playing){ SB.stopPad(); return; }
+    SB.load(i, true);
+  },
+  /* Stop rather than pause: for a short drill sound, resuming from the middle
+     is never what anyone wants — the child needs to hear it whole. Rewinds so
+     the next tap plays it complete. */
+  stopPad(){
+    const a = SB.audio;
+    if(a){ try{ a.pause(); a.currentTime = 0; }catch(e){} }
+    SB._setPlaying(false);
+    SB._fill(0); SB._seekAria(0);
+    const el = SB._el('sbElapsed'); if(el) el.textContent = '0:00';
+    const s = (typeof SOUND_LIBRARY !== 'undefined' && SOUND_LIBRARY[SB.idx]) || null;
+    SB._announce(s ? `Stopped ${s.label}` : 'Stopped');
+  },
   load(i, autoplay){
     if(typeof SOUND_LIBRARY==='undefined' || i<0 || i>=SOUND_LIBRARY.length) return;
     const s = SOUND_LIBRARY[i]; const a = SB._ensure();
@@ -3048,7 +3083,12 @@ const SB = {
     SB._fill(0); const el = SB._el('sbElapsed'); if(el) el.textContent = '0:00';
     SB._highlight(i);
     if(autoplay) SB.play(); else SB._setPlaying(false);
-    SB._announce((autoplay?'Playing ':'Selected ') + s.label);
+    /* Duration is not known yet — metadata has not loaded. _onMeta re-announces
+       with the length once it has, because "playing dog, 3 seconds" tells the
+       teacher whether to go hunting for pause or simply wait it out. That is
+       the difference between a 3-second wait and a 20-second scramble. */
+    SB._pendingAnnounce = (autoplay ? 'Playing ' : 'Selected ') + s.label;
+    SB._announce(SB._pendingAnnounce);
   },
   _first(){ return (SB.shuffle && SOUND_LIBRARY.length > 1) ? Math.floor(Math.random()*SOUND_LIBRARY.length) : 0; },
   play(){
@@ -3086,7 +3126,13 @@ const SB = {
     if(b){ b.classList.toggle('on', SB.repeat !== 'off');
       b.setAttribute('aria-label', SB.repeat==='off'?'Repeat off':SB.repeat==='all'?'Repeat all':'Repeat one'); }
     if(badge) badge.hidden = (SB.repeat !== 'one');
-    SB._announce(SB.repeat==='off'?'Repeat off':SB.repeat==='all'?'Repeat all':'Repeat one');
+    /* Repeat-one is the ONE mode with no natural end — the sound loops until
+       something stops it, which is exactly the situation where not finding
+       pause turns from annoying into stuck. Say what it means, not just its
+       name. */
+    SB._announce(SB.repeat === 'off' ? 'Repeat off'
+               : SB.repeat === 'all' ? 'Repeat all sounds'
+               : 'Repeat one — this sound will loop until you stop it');
   },
   seekFromClient(clientX){
     const bar = SB._el('sbProgress'); const a = SB.audio;
@@ -3126,8 +3172,15 @@ const SB = {
   },
   _onMeta(){
     const a = SB.audio; const t = SB._el('sbTotal');
-    if(t) t.textContent = SB._fmt(a && isFinite(a.duration) ? a.duration : 0);
+    const dur = a && isFinite(a.duration) ? a.duration : 0;
+    if(t) t.textContent = SB._fmt(dur);
     SB._seekAria(a && a.duration ? (a.currentTime/a.duration)*100 : 0);
+    // Now that the length is known, say it — see the note in load().
+    if(SB._pendingAnnounce && dur > 0){
+      const secs = Math.round(dur);
+      SB._announce(`${SB._pendingAnnounce}, ${secs} second${secs === 1 ? '' : 's'}`);
+      SB._pendingAnnounce = '';
+    }
   },
   /* Keep the slider's spoken value in step with its painted value. valuenow is
      the percentage the slider role requires; valuetext is what is SPOKEN. */
@@ -3151,9 +3204,24 @@ const SB = {
     const btn = SB._el('sbPlay');
     if(btn){ btn.innerHTML = on ? ICON.sbPause : ICON.sbPlay; btn.setAttribute('aria-label', on ? 'Pause' : 'Play'); }
     const panel = SB._el('soundboardPanel'); if(panel) panel.setAttribute('data-playing', String(on));
+    SB._padLabels();   // the pads are toggles now; their names track play state
   },
   _fill(pct){ const f = SB._el('sbFill'); const k = SB._el('sbKnob'); if(f) f.style.width = pct+'%'; if(k) k.style.left = pct+'%'; },
-  _highlight(i){ document.querySelectorAll('.sb-pad').forEach(p=>{ p.setAttribute('aria-pressed', String(Number(p.dataset.idx)===i)); }); },
+  _highlight(i){ document.querySelectorAll('.sb-pad').forEach(p=>{ p.setAttribute('aria-pressed', String(Number(p.dataset.idx)===i)); }); SB._padLabels(); },
+  /* The pad toggles, so its NAME has to change with it — a control that says
+     "Play dog" while dog is playing teaches the teacher that tapping it will
+     start something, which is the opposite of what it now does. Discoverability
+     for a screen-reader user is entirely in the label; there is no icon to see. */
+  _padLabels(){
+    if(typeof SOUND_LIBRARY === 'undefined') return;
+    document.querySelectorAll('.sb-pad').forEach(p=>{
+      const i = Number(p.dataset.idx);
+      const s = SOUND_LIBRARY[i]; if(!s) return;
+      const live = (i === SB.idx && SB.playing);
+      p.setAttribute('aria-label', (live ? 'Stop ' : 'Play ') + s.label);
+    });
+  },
+  _pendingAnnounce: '',
   _announce(msg){ const a = SB._el('sbLive'); if(a) a.textContent = msg; },
   _fmt(sec){ sec = Math.max(0, Math.floor(sec||0)); const m = Math.floor(sec/60); const s = sec%60; return m+':'+(s<10?'0':'')+s; },
   // Stop and fully reset when navigating between screens (no cross-screen audio).

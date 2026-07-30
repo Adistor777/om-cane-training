@@ -384,7 +384,18 @@
   .sb-progress .knob{ position:absolute; top:50%; left:0%; width:14px; height:14px; margin-left:-7px;
     transform:translateY(-50%); border-radius:50%; background:var(--cat); box-shadow:0 1px 3px rgba(60,45,15,.3); }
   .sb-progress:focus-visible{ outline:3px solid var(--cat); outline-offset:5px; border-radius:99px; }
+  /* Play/Pause is FIRST in the DOM so a screen reader reaches it immediately
+     (a11y 2026-07-29 — it used to be third, behind shuffle and previous, which
+     is two extra swipes while a sound is playing). `order` restores the
+     familiar visual row without putting those two back in front of it. The
+     flex container is the only thing that knows about this; the buttons keep
+     their own classes and sizes. */
   .sb-transport{ display:flex; align-items:center; justify-content:center; gap:6px; }
+  .sb-transport #sbShuffle{ order:1; }
+  .sb-transport #sbPrev   { order:2; }
+  .sb-transport #sbPlay   { order:3; }
+  .sb-transport #sbNext   { order:4; }
+  .sb-transport #sbRepeat { order:5; }
   .sb-tbtn{ display:inline-flex; align-items:center; justify-content:center; background:transparent;
     border:none; color:var(--ink-soft); cursor:pointer; border-radius:50%; position:relative;
     transition:background .15s, color .15s, filter .15s, transform .08s; }
