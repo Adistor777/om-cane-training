@@ -1,5 +1,148 @@
 # MEMORY.md — O&M Cane Training
-_Last updated: 2026-07-22 (backend P0 audit + section color zones Draft 2)_
+_Last updated: 2026-07-29 (accessibility: built, reviewed by a blind person, round 1 fixed)_
+
+## ACCESSIBILITY (2026-07-28/29, `feat/a11y-blind-teacher` @ `f8b5391`, 8 commits, pushed, NOT merged)
+
+### The scope decision
+Users are still SIGHTED teachers. The team requires the app to be **fully
+operable by a blind person**. So: **TalkBack-native** — semantic HTML, ARIA and
+focus management driving the user's OWN screen reader — NOT self-voicing via
+Sarvam. Children never operate the app, so the **Play Store 18+ target-audience
+declaration is UNCHANGED** and Designed-for-Families still should not trigger.
+
+### The baseline was already good
+axe-core over all 21 screens found ONE minor violation. Zero `div onclick` —
+all 63 handlers on real `<button>`s. `paint()` already focused `.lede`. The help
+sheet already had a focus trap, Escape and focus-restore. **That is why this was
+a two-day job and not a rewrite.** Every real defect was invisible to axe.
+
+### The a11y seams now in app.js — know these before touching anything
+| Function | Job |
+|----------|-----|
+| `moveScreenFocus(opts)` | after every screen swap: focus `.lede` → first heading → labelled `#screen`. Nothing may leave focus destroyed. |
+| `setBackgroundInert(on)` | depth-COUNTED `inert` on header+main while any modal is open (a confirm can open on top of the help sheet). |
+| `announce(msg)` | speak without a visible toast. Clears `#srStatus` first, writes 150ms later. |
+| `toast(msg)` | visible half sync + `announce()`. |
+| `posLabel` / `groupAttrs` | "Vaishu, student 3 of 12" and "12 students" on every collection. |
+| `avatarFor` / `avatarFallback` | photo with `onerror` → the child's initial. |
+| `langBtnAttrs` | BCP-47 `lang` + Latin `aria-label` on narration language buttons. |
+| `SB.stopPad` / `SB._padLabels` | sound pad is a toggle; its NAME tracks play state. |
+| the `for(const k of Object.keys(ICON))` loop | hardens every icon `aria-hidden` at source, so future icons are covered automatically. |
+
+### RULES — these are the transferable ones
+1. **If a screen reader must hear it, put it in the DOM as real text**
+   (`.visually-hidden`), never `aria-label` on a div/span. ARIA 1.2 PROHIBITS
+   aria-label on `role=generic`; it is silently DROPPED. axe's
+   `aria-prohibited-attr` does NOT catch it when the element has text content.
+   This nearly shipped record scores as unreadable.
+2. **Never flush pending announcements on navigation.** It looks obviously
+   right and it is wrong: almost every announcement describes the action that
+   CAUSED the navigation (`toast('Saved'); showActivity(...)`). Flushing kills
+   exactly the confirmations that matter. Comment lives in `paint()`.
+3. **aria-hide flex/grid children INDIVIDUALLY, never with a wrapper.** A
+   wrapper makes them one flex child and the row collapses (`.sumrow` had
+   `.sumres{flex:1}`).
+4. **Retagging an element means resetting its new UA defaults.** `.bcard-head`
+   became an `<h2>` and brought 1.5em/bold/0.83em margin with it.
+5. **A thrown handler in this app is SILENT** — the control just stops working,
+   with nothing announced. Null-guard anything a re-render can race. That race
+   is MORE likely with a screen reader: double-tap is laggier than a direct tap.
+6. **Announcements must lead with the thing you cannot get otherwise.** A
+   toggle's activation announces STATE only, never the name — so a bare count
+   ("3 of 12 selected") told the teacher a number and never which child.
+
+### Android WebView / TalkBack gotchas
+- **`aria-modal` is a hint WebView ignores.** Swiping past the last control
+  walks out behind the scrim. `inert` is the real fix.
+- **TalkBack's slider gesture sends ArrowUp/Down**, not Left/Right. Handling
+  only Left/Right made the seek bar unreachable by the only input a blind
+  teacher has.
+- **`aria-live="assertive"` interrupts speech** — and the soundboard fires at
+  the exact moment the drill sound plays. That sound IS the activity. Polite.
+- **A focus event pre-empts a pending polite announcement.** Hence deferred
+  speech in `toast()`.
+- **`forceDarkAllowed=false` on BOTH Android themes** (`AppTheme` and
+  `AppTheme.NoActionBar` — the latter has an explicit parent so it does NOT
+  inherit). Force-dark inverts the warm-paper palette into sludge.
+  **android/ is gitignored — re-apply if regenerated, like allowBackup=false.**
+
+### Low vision
+Type + spacing tokens px → **rem**; `html{font-size:calc(100% * var(--text-scale,1))}`.
+**Settings → Display**: text size (4 steps), high contrast (~19:1), dark
+background (photophobia — common with albinism/aniridia/achromatopsia).
+Persisted through the Store, applied in `boot()` BEFORE first paint.
+All in ONE appended block at the END of styles.css; revert = delete to EOF.
+**The 1x default look is UNCHANGED and proven** — large-text repairs are gated
+behind `data-text-scale="up"`, and `a11y-nochange.js` fails the build if any
+rule in that block escapes a mode gate. (First draft did not gate them and
+silently changed three things; Aditya asking "have you changed the entire UI?"
+is why that guard exists.)
+
+### The sound pad is a toggle — and it costs sighted teachers nothing
+Reported: "difficulty pausing the sounds". When a sound starts the cursor is ON
+the pad, but Pause sat THIRD in the transport behind ~20 pads and the seek bar
+— and tapping the same pad RESTARTED from zero, punishing the correct instinct.
+Now tapping a playing pad stops it. **Aditya confirmed sighted teachers play,
+let it FINISH, then tap to replay — they never tap mid-playback** (they use the
+transport button). A tap after the sound ends still replays; there is a flow
+assertion pinning that. Play/Pause moved first in DOM order with CSS `order`
+restoring the visual row.
+
+### Verification — seven scripts, all wired into `./scripts/build.sh`
+`a11y-contrast` (55/55, all four colour modes) · `a11y-nochange` (22/22, rem
+parity + rule scoping) · `a11y-flows` (43/43, real flows) · `a11y-smoke` (546
+controls, nothing throws) · `a11y-audit` (axe 21 screens + 31 assertions) ·
+`a11y-preview` (5 screens x 6 modes for the designer) · `recover-faces.sh`.
+Plus `test-batch1` 40/40.
+**a11y-flows has now caught two regressions I was about to ship.** When someone
+later calls the gates slow, that is the answer.
+
+### Still NOT solved — documented, not hidden
+- **Filming video evidence has no non-visual equivalent.** A blind teacher
+  cannot frame it, verify it, or check it after; and filming a child you cannot
+  see is a consent question too. Options + recommendation in TRACKER,
+  deliberately NOT decided unilaterally.
+- **Demo clips are silent.** SOP + narration carry the same content and the `?`
+  sheet now says so, but a narrated demo would remove the caveat.
+- **Untested:** braille display, Switch Access, Voice Access.
+- Verdict worth keeping: the CORE WORKFLOW was never visual (sign in → pick
+  child → hear SOP → play sounds → score → save → read back). This app is far
+  more amenable to blind use than most.
+
+### Round 1 with the actual blind reviewer (2026-07-29) — two defects
+1. **Selecting a student never spoke the name** — see RULE 6.
+2. **"Reads everything from the start"** — `paint()` honoured `skipLedeFocus` by
+   moving focus NOWHERE; innerHTML had destroyed the focused node, TalkBack lost
+   its cursor, and its recovery is to read the window from the top. Now the
+   picker focuses the newly-added child's tile, and `paint()` has a next-frame
+   safety net.
+**Both were found by a human in minutes and had passed every automated check.**
+
+---
+
+## MEDIA IS GITIGNORED — and it bit (2026-07-29)
+`faces/*.jpg` was stashed in `/tmp` for a consent-clean build; macOS cleared it;
+gitignored so no second copy existed. Gone from the repo, from `www/` (the new
+`rsync --delete` mirror removed them), from the built assets, and from the APK
+(`clean` wiped it).
+- **RECOVERED from the emulator's installed APK. ANY INSTALLED BUILD IS A MEDIA
+  BACKUP** — every APK carries it at `assets/public/faces/`.
+  `scripts/recover-faces.sh` automates the search.
+- `~/om-media-backup/` now holds audio (28), sounds (22), 8 demo videos, 2
+  faces. **Still on the same Mac — getting it onto Drive is open in TRACKER.**
+- **Never stash media in `/tmp`. `cp` then `rm`, never `mv`.**
+- `build.sh` step 3b now MIRRORS with `rsync --delete` (was `cp -R`, which only
+  ADDS — a consent-clean build would have shipped the photos anyway).
+
+## WRITING INSTRUCTIONS FOR ADITYA — two failures in one day
+- **zsh does NOT honour `#` comments interactively.** A pasted
+  `... | grep -c faces/   # expect 0` passes `#`, `expect`, `0` to grep as
+  filenames. (It IS on in scripts, which is why build.sh was unaffected.)
+  Put expected values on the line BELOW.
+- **Never write `<placeholder>` in a command.** It gets pasted literally.
+  If a command needs a value it cannot know, make it a SCRIPT.
+- Git housekeeping runs from the REPO ROOT, never `android/`.
+
 ## Session 2026-07-22 — repo audit + "block filling" color redesign
 - **Section color zones (Draft 2), `feat/section-color-zones` `b705487`, PENDING
   emulator verify.** Manager wanted complete BLOCK FILLING (no white gutters):
@@ -522,6 +665,16 @@ Plus: **a few more features to add** — Aditya to name them next chat.
   restructure; recovered via undo. Edit ONLY the targeted block, with a backup
   and a diff proving nothing outside it moved (the SLT + soundboard changes were
   applied this safe way; delete the `.bak` afterward — don't leave it in the tree).
+- **Accessibility is a build gate, not a review step** (2026-07-28/29). Six
+  scripts fail the build. They have already caught two regressions I was about
+  to ship, and they still missed both defects the blind reviewer found in
+  minutes — automation catches what you thought of, a human catches the rest.
+  Neither replaces the other.
+- **If a screen reader must hear it, it is real text in the DOM**
+  (`.visually-hidden`), never `aria-label` on a div/span — ARIA 1.2 drops it.
+- **Any change to the a11y block in styles.css must stay behind a mode gate**
+  (`[data-text-scale="up"]` etc). The 1x sighted design is not allowed to move;
+  `a11y-nochange.js` enforces it.
 - **`ensureSchoolsSeeded()` skips if schools already exist** — clear old seed on
   emulator before new names appear.
 ## Working approach
@@ -545,32 +698,59 @@ Plus: **a few more features to add** — Aditya to name them next chat.
 - Compliance: India DPDP Act 2023 + Rules 2025; penalties up to ₹200 crore for
   children's data; consent burden on app as data fiduciary.
 ## Key files
-- `index.html` — markup shell; `styles.css` — look; `store.js` — storage seam;
-  `app.js` — behaviour (incl. `buildSoundboard` + `SB`, `seedSchools` ~L213,
-  `verifyCredentials` ~L280, `upsertProfile` ~L351, `SCHEMA_VERSION` ~L128)
+- `index.html` — markup shell (also `#srStatus`, the polite live region);
+  `styles.css` — look (a11y block is appended at EOF; revert = delete to EOF);
+  `store.js` — storage seam; `app.js` — behaviour (incl. `buildSoundboard` + `SB`,
+  `seedSchools` ~L213, `verifyCredentials` ~L280, `upsertProfile` ~L351,
+  `SCHEMA_VERSION` ~L128, and the a11y seams table in the ACCESSIBILITY section above)
 - `activities.js` — content-team owned; holds `ACTIVITY_DATA`, the `soundboard:true`
   flags, and `SOUND_LIBRARY` (soundboard sound list). Do not modify without content team.
-- `scripts/build.sh` — the one build command (guard + parse + copy + sync + verify)
-- `sounds/` — bundled soundboard mp3s (gitignored, like `audio/`); synced to `www/`
+- `scripts/build.sh` — the one build command (guards + parse + 6 a11y gates + mirror + sync + verify)
+- `scripts/a11y-*.js` — the six verification gates; `scripts/recover-faces.sh` — media recovery
+- `docs/RUNBOOK.md` — build and ship, written for Aditya to paste
+- `docs/A11Y-TALKBACK-TESTS.md` — the 6 manual runs to hand a blind tester
+- `sounds/`, `audio/`, `faces/` — bundled media (gitignored); mirrored to `www/`
+- `~/om-media-backup/` — the ONLY second copy of that media. Not on this Mac's git.
 - `MEMORY.md`, `TRACKER.md`, `DESIGN_NOTES.md`, `REVIEW_PACKET.md`
 ## Useful commands
-Build + verify (replaces the old cp/sync/grep ritual AND the JS parse one-liner):
+**Never put an inline `#` comment on a line meant to be pasted** — interactive
+zsh passes it to the command as arguments. Expected values go BELOW the block.
+
+Build + verify (guards, parse, all six a11y gates, mirror, sync, byte-verify):
 ```
 ./scripts/build.sh
 ```
+Last line must read `BUILD OK`. A failing gate is a real regression — read the
+assertion, do not skip it.
+
 Post-sync spot-check (any function you just added — note: app.js, not index.html):
 ```
 grep -c "myNewFunction" ~/Desktop/om-app/android/app/src/main/assets/public/app.js
 ```
 Soundboard sounds bundled:
 ```
-ls ~/Desktop/om-app/android/app/src/main/assets/public/sounds | wc -l   # expect 22
+ls ~/Desktop/om-app/android/app/src/main/assets/public/sounds | wc -l
 ```
+Expect 22.
+
+Consent check before any APK leaves the team:
+```
+unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -c faces/
+```
+Expect 0 for an outside tester. (`grep -c` exits non-zero at zero — normal.)
+
 Clean reinstall (stale APK fix):
 ```
 cd ~/Desktop/om-app/android && ./gradlew clean installDebug
+```
+Recover gitignored media from any installed build:
+```
+bash scripts/recover-faces.sh
 ```
 DevTools storage dump (chrome://inspect):
 ```
 Store._keys().filter(k=>k.startsWith('rec_')).forEach(k=>console.log(k, JSON.stringify(Store.getJSON(k,[]),null,2)))
 ```
+TalkBack debugging on the emulator: chrome://inspect → inspect the WebView →
+Elements → **Accessibility** pane shows the computed name/role for any node.
+That is how you prove an `aria-label` was dropped rather than guessing.

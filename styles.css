@@ -56,8 +56,18 @@
     --ink:#22201b; --ink-soft:#6b6458; --ink-faint:#736b5e; /* faint passes WCAG AA at 12px on paper; don't lighten (guardrail #5) */
     --paper:#f7f4ed; --card:#fffdf8; --line:#e8e0d0; --line-soft:#f0e9da;
     --cat:#2f6f4e; --cat-deep:#1f4d36; --cat-soft:#e2efe5; --cat-line:#cce0d1;
-    --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s5:48px;
-    --t-display:38px; --t-title:18px; --t-body:17px; --t-bodysm:15px; --t-caption:13px; --t-micro:12px;
+    /* SPACING AND TYPE ARE IN rem, NOT px (a11y, 2026-07-28). ───────────────
+       Both scales key off the root font size, so raising the text size grows
+       the gaps with it instead of cramming bigger words into the same boxes.
+       The px values these replace are kept here as the 1x reference — at
+       --text-scale:1 on a 16px root this renders identically to the old look:
+         --s1 8  --s2 16  --s3 24  --s4 32  --s5 48
+         display 38 · title 18 · body 17 · bodysm 15 · caption 13 · micro 12
+       Do NOT convert these back to px "for predictability" — px is precisely
+       what stops a low-vision teacher from making the app readable. */
+    --s1:.5rem; --s2:1rem; --s3:1.5rem; --s4:2rem; --s5:3rem;
+    --t-display:2.375rem; --t-title:1.125rem; --t-body:1.0625rem;
+    --t-bodysm:.9375rem; --t-caption:.8125rem; --t-micro:.75rem;
     --r-lg:20px; --r-md:14px; --r-sm:11px;
     --shadow-lift:0 1px 2px rgba(60,45,15,.05), 0 18px 40px -16px rgba(70,55,25,.22);
     --shadow-rest:0 1px 2px rgba(60,45,15,.04);
@@ -82,7 +92,19 @@
   *{box-sizing:border-box;}
   svg{ max-width:100%; }
   .panel-title > svg, .media-slot > svg, .back > svg{ flex:0 0 auto; }
-  html{ -webkit-text-size-adjust:100%; }
+  /* TEXT SIZE — the root every rem in this file resolves against. ───────────
+     Three multipliers stack here, deliberately:
+       1. the browser/WebView default (16px),
+       2. Android's own font-size setting, which the WebView applies on top,
+       3. --text-scale, the app's own control in Settings.
+     (3) exists because a school tablet is SHARED. A blind or low-vision
+     teacher cannot be asked to change a system-wide setting that then follows
+     the next colleague who picks the device up — they need a per-app size that
+     is theirs. Set by applyTextScale() in app.js, persisted through the Store.
+     -webkit-text-size-adjust:100% stops the WebView from ALSO auto-inflating
+     text on its own, which would fight (2) and (3) and produce sizes nobody
+     asked for. */
+  html{ -webkit-text-size-adjust:100%; font-size:calc(100% * var(--text-scale, 1)); }
   body{ margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
     font-family:"Arimo", Arial, system-ui, -apple-system, sans-serif; font-size:var(--t-body); line-height:1.5;
     -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
@@ -362,7 +384,18 @@
   .sb-progress .knob{ position:absolute; top:50%; left:0%; width:14px; height:14px; margin-left:-7px;
     transform:translateY(-50%); border-radius:50%; background:var(--cat); box-shadow:0 1px 3px rgba(60,45,15,.3); }
   .sb-progress:focus-visible{ outline:3px solid var(--cat); outline-offset:5px; border-radius:99px; }
+  /* Play/Pause is FIRST in the DOM so a screen reader reaches it immediately
+     (a11y 2026-07-29 — it used to be third, behind shuffle and previous, which
+     is two extra swipes while a sound is playing). `order` restores the
+     familiar visual row without putting those two back in front of it. The
+     flex container is the only thing that knows about this; the buttons keep
+     their own classes and sizes. */
   .sb-transport{ display:flex; align-items:center; justify-content:center; gap:6px; }
+  .sb-transport #sbShuffle{ order:1; }
+  .sb-transport #sbPrev   { order:2; }
+  .sb-transport #sbPlay   { order:3; }
+  .sb-transport #sbNext   { order:4; }
+  .sb-transport #sbRepeat { order:5; }
   .sb-tbtn{ display:inline-flex; align-items:center; justify-content:center; background:transparent;
     border:none; color:var(--ink-soft); cursor:pointer; border-radius:50%; position:relative;
     transition:background .15s, color .15s, filter .15s, transform .08s; }
@@ -640,7 +673,14 @@
   .bchip:focus-visible .cface{ outline:3px solid var(--cat); outline-offset:2px; }
   .bcard{ border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper);
     padding:14px; }
-  .bcard-head{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  /* This is an <h2> (a11y 2026-07-28) — batchShow() focuses it so the child
+     swap is announced, and a real heading is jump-to-able. Browser default h2
+     styling (1.5em, bold, 0.83em top/bottom margin) must be reset or the card
+     head grows and gains ~22px of space above it. Same reset .panel-title
+     does for the other h2s in this file. */
+  .bcard-head{ display:flex; align-items:center; gap:12px;
+    margin:0 0 14px; font-size:inherit; font-weight:inherit; }
+  .bcard-head:focus{ outline:none; }
   .bcard-head .fface{ width:44px; height:44px; border-radius:14px; background:var(--cat-soft);
     display:flex; align-items:center; justify-content:center; font-family:"Instrument Serif",Georgia,serif;
     font-size:22px; color:var(--cat-deep); object-fit:cover; }
@@ -994,7 +1034,7 @@
   .visually-hidden{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
   @media (max-width:640px){
     .wrap{ padding:var(--s4) calc(18px + env(safe-area-inset-right)) calc(110px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left)); }
-    :root{ --t-display:30px; }
+    :root{ --t-display:1.875rem; } /* was 30px — rem so it scales with the rest */
     .lede{ max-width:none; }
     .studentbar{ flex-wrap:wrap; }
     .seg{ flex-direction:column; }
@@ -1002,4 +1042,165 @@
     .save{ padding:18px 24px; }
     .panel{ padding:var(--s3); }
     .card{ padding:var(--s3); }
+  }
+
+/* ===========================================================================
+   ACCESSIBILITY BLOCK — added 2026-07-28.
+   Self-contained and appended LAST on purpose: reverting the whole feature is
+   `delete from this banner to EOF`, the same escape hatch the section-colour
+   work used. Nothing above this line was restyled; this block only adds
+   opt-in modes and repairs things that break at large text.
+
+   Three user-facing modes, all set from Settings and persisted in the Store:
+     data-contrast="high"   maximum-contrast palette for low vision
+     data-theme="dark"      light-sensitivity / photophobia (common in albinism,
+                            aniridia, achromatopsia — a real slice of any
+                            school-for-the-blind roster)
+     --text-scale           1 · 1.25 · 1.5 · 2  (see html{} near the top)
+   =========================================================================== */
+
+  /* ---- Large-text repair — SCOPED, not global ----------------------------
+     CORRECTED 2026-07-28 (second pass). The first version of this block
+     applied its repairs at EVERY text scale, which quietly changed the 1x
+     design in three places the guardrails care about:
+       · `.rowbtn/.action-row/.drawer-item { align-items:flex-start }` fought
+         the existing `align-items:center` — every action-row icon would have
+         jumped to top-aligned.
+       · `.linklike { min-height:44px; display:inline-flex }` turned an inline
+         text link ("view form photo", mid-sentence) into a 44px block and
+         broke the sentence it sits in.
+       · a blanket `button { min-height:44px }` raised `.sb-tab` from its
+         deliberate 40px and would have grown any other small control.
+     None of that was needed at 1x. Everything in the app already clears the
+     WCAG 2.2 AA target minimum of 24x24 CSS px (smallest control is the 40px
+     sound-library tab), so the 1x layout needed NO repair at all.
+
+     So the repairs now only apply when the teacher has actually chosen larger
+     text. `applyDisplayPrefs()` sets data-text-scale="up" on <html> for any
+     scale above 1x; at 1x the attribute is absent and not one rule below
+     matches. The default look is therefore byte-for-byte the design you had.
+
+     `.seg`/`header` are left alone entirely — `.seg` already wraps, and the
+     header is padding-sized, so both grow on their own. */
+  [data-text-scale="up"] .seg button{ height:auto; min-height:48px; white-space:normal; }
+  [data-text-scale="up"] .sb-tabs{ flex-wrap:wrap; }
+  [data-text-scale="up"] .sb-tab{ height:auto; white-space:normal; }
+  [data-text-scale="up"] .pill, [data-text-scale="up"] .pill.saved,
+  [data-text-scale="up"] .count-pill{ white-space:normal; height:auto; }
+  [data-text-scale="up"] .crumb, [data-text-scale="up"] .brand{
+    white-space:normal; overflow:visible; text-overflow:clip; }
+  [data-text-scale="up"] .action-text strong,
+  [data-text-scale="up"] .action-text small{ white-space:normal; }
+  /* Only at large text does a two-line label make a centred icon look wrong —
+     and only then does the row need to stop being a fixed-height strip. */
+  [data-text-scale="up"] .rowbtn,
+  [data-text-scale="up"] .action-row,
+  [data-text-scale="up"] .drawer-item{ height:auto; align-items:flex-start; }
+  [data-text-scale="up"] .action-row .action-ic{ margin-top:2px; }
+
+  /* ---- HIGH CONTRAST ------------------------------------------------------
+     Guardrail #5 says the default palette is contrast-checked, and it is —
+     every pair clears WCAG AA 4.5:1. AA is a floor for normal vision, not a
+     ceiling for low vision: a teacher with, say, 6/60 acuity and reduced
+     contrast sensitivity needs far more separation than 4.5:1. This mode goes
+     to near-black on pure white (about 19:1) and hardens every hairline.
+     The category hues survive as DARKENED versions rather than being dropped —
+     colour is wayfinding here, and flattening it to grey would cost the
+     category-recognition the design deliberately built. */
+  [data-contrast="high"]{
+    --ink:#000; --ink-soft:#1a1a1a; --ink-faint:#262626;
+    --paper:#fff; --card:#fff; --line:#000; --line-soft:#444;
+    --cat:#00402a; --cat-deep:#002417; --cat-soft:#dff0e6; --cat-line:#00402a;
+    --code-count-bg:#fff5da; --code-count-line:#000; --code-count-deep:#3d2c00;
+    --code-judge-bg:#dff0e6; --code-judge-line:#000; --code-judge-deep:#002417;
+    --code-notes-bg:#dceaf5; --code-notes-line:#000; --code-notes-deep:#00263b;
+    --code-video-bg:#eee0f3; --code-video-line:#000; --code-video-deep:#2c1739;
+    --shadow-lift:none; --shadow-rest:none;
+  }
+  /* Borders do the work shadows used to. */
+  [data-contrast="high"] .panel,
+  [data-contrast="high"] .card,
+  [data-contrast="high"] .record,
+  [data-contrast="high"] .cat-tile,
+  [data-contrast="high"] .action-row,
+  [data-contrast="high"] input,
+  [data-contrast="high"] textarea,
+  [data-contrast="high"] select,
+  [data-contrast="high"] .select{ border:2px solid var(--line); box-shadow:none; }
+  [data-contrast="high"] button{ border-width:2px; }
+  /* Selected state must not rest on hue alone at this contrast level. */
+  [data-contrast="high"] [aria-pressed="true"],
+  [data-contrast="high"] [aria-selected="true"]{
+    background:var(--ink); color:#fff; border-color:var(--ink); font-weight:700; }
+  [data-contrast="high"] header{ background:#fff; backdrop-filter:none; -webkit-backdrop-filter:none;
+    border-bottom:2px solid var(--line); }
+  /* The frosted-glass header and scrims lose legibility fast for low vision —
+     opaque everywhere in this mode. */
+  [data-contrast="high"] .help-overlay,
+  [data-contrast="high"] .drawer-overlay{ background:rgba(0,0,0,.75); }
+
+  /* ---- DARK -------------------------------------------------------------
+     Explicit, not `prefers-color-scheme` alone: Android's force-dark would
+     otherwise auto-invert this warm-paper palette into muddy low-contrast
+     sludge. Declaring the mode ourselves keeps control of every pair. */
+  [data-theme="dark"]{
+    --ink:#f2ede3; --ink-soft:#c9c1b3; --ink-faint:#b3ab9c;
+    /* --line is deliberately BRIGHTER than a straight inversion of the paper
+       palette would give. Nobody picks dark mode on a school tablet for fun —
+       they pick it because bright screens hurt, and that usually travels with
+       reduced contrast sensitivity. A hairline they cannot see is a card
+       boundary they cannot find. #6a6458 clears 3:1 against the dark page;
+       scripts/a11y-contrast.js enforces it. --line-soft keeps the quieter
+       inner rules that never carry structure. */
+    --paper:#14130f; --card:#1e1c17; --line:#6a6458; --line-soft:#3a362d;
+    --cat:#6fb98d; --cat-deep:#a5d9bb; --cat-soft:#1d3529; --cat-line:#2f5843;
+    --code-count-bg:#332a12; --code-count-line:#5c4c22; --code-count-deep:#f0d99a;
+    --code-judge-bg:#1d3529; --code-judge-line:#2f5843; --code-judge-deep:#a5d9bb;
+    --code-notes-bg:#16293a; --code-notes-line:#27455f; --code-notes-deep:#a8cee9;
+    --code-video-bg:#2a1f33; --code-video-line:#453256; --code-video-deep:#d5b8e6;
+    --shadow-lift:0 1px 2px rgba(0,0,0,.5), 0 18px 40px -16px rgba(0,0,0,.7);
+    --shadow-rest:0 1px 2px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+  [data-theme="dark"] header{ background:rgba(30,28,23,.86); }
+  [data-theme="dark"] .toast{ background:#f2ede3; color:#14130f; }
+  [data-theme="dark"] input,
+  [data-theme="dark"] textarea,
+  [data-theme="dark"] select,
+  [data-theme="dark"] .select,
+  [data-theme="dark"] #lg_school{ background:var(--card); color:var(--ink); }
+  /* Tell the WebView we have handled dark ourselves — no force-dark on top. */
+  [data-theme="dark"] img, [data-theme="dark"] video{ filter:none; }
+
+  [data-theme="dark"][data-contrast="high"]{
+    --ink:#fff; --ink-soft:#f0f0f0; --ink-faint:#e0e0e0;
+    --paper:#000; --card:#000; --line:#fff; --line-soft:#bbb;
+    --cat:#7fe0a8; --cat-deep:#b8f0d0; --cat-soft:#062015; --cat-line:#7fe0a8;
+  }
+
+  /* ---- Focus ring -------------------------------------------------------
+     The default rings are category-tinted and subtle by design. For anyone
+     driving the app by keyboard or switch, the ring IS the cursor — it has to
+     survive both new palettes, so it gets a two-tone outline that stays
+     visible on paper, on white, and on black. */
+  [data-contrast="high"] :focus-visible{
+    outline:3px solid var(--ink) !important; outline-offset:2px !important;
+    box-shadow:0 0 0 6px #ffd54a !important; }
+  [data-theme="dark"] :focus-visible{
+    outline:3px solid #ffd54a !important; outline-offset:2px !important; }
+
+  /* Programmatic focus targets (the screen heading paint() focuses on every
+     navigation) must NOT paint a ring — nobody clicked them. */
+  .lede:focus, .lede:focus-visible,
+  #screen:focus, #screen:focus-visible{ outline:none !important; box-shadow:none !important; }
+
+  /* ---- Motion -----------------------------------------------------------
+     Seven reduced-motion blocks already exist above for individual components.
+     This is the backstop: vestibular disorders and motion-triggered nausea are
+     common alongside low vision, and a component added later should be calm by
+     default rather than waiting for someone to remember. */
+  @media (prefers-reduced-motion:reduce){
+    *, *::before, *::after{
+      animation-duration:.01ms !important; animation-iteration-count:1 !important;
+      transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }

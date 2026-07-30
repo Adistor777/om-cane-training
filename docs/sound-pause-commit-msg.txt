@@ -1,0 +1,36 @@
+a11y: make a playing sound stoppable from the pad you are already on
+
+Reported by the blind reviewer (2026-07-29): "difficulty pausing the
+sounds". Traced, and it was worse than it sounds.
+
+When a sound starts, the teacher's screen-reader cursor is ON the pad
+they just tapped. Reaching Pause meant swiping forward through the rest
+of the grid, the track name, the group label and the seek bar before
+even entering the transport row -- where Play/Pause sat THIRD, behind
+Shuffle and Previous. Ten to twenty-five swipes while the sound plays.
+And the obvious instinct made it worse: tapping the same pad again
+RESTARTED it from zero, because playIdx went straight to load(), which
+sets currentTime = 0.
+
+- The pad is now a toggle. Tapping a playing pad stops it -- zero
+  navigation, and the convention every media UI already uses. A
+  different pad still switches to that sound; only the same pad toggles.
+- stopPad() stops and rewinds rather than pausing: for a 3-second drill
+  sound, resuming from the middle is never what anyone wants, the child
+  needs to hear it whole.
+- The pad's NAME tracks state ("Play dog" / "Stop dog"). For a screen
+  reader user, discoverability is entirely in the label -- a control
+  that says "Play" while playing teaches the wrong thing.
+- Play/Pause moved to FIRST in the transport DOM order. Visual row is
+  unchanged: styles.css restores shuffle-prev-play-next-repeat with CSS
+  order, so play stays centred. Reading order and visual order are
+  allowed to differ, and here they should.
+- Starting a sound now announces its length once metadata loads
+  ("Playing dog, 3 seconds"), so the teacher knows whether to hunt for
+  stop or just wait.
+- Repeat-one says what it means: "this sound will loop until you stop
+  it". It is the only mode with no natural end, and the one where not
+  finding pause turns from annoying into stuck.
+
+a11y-flows.js gains FLOW 6 covering all of it.
+39/39 flows, 31/31 assertions, 40/40 tests, 546 controls no exceptions.
