@@ -1,6 +1,19 @@
 # TRACKER.md — O&M Cane Training
 _Last updated: 2026-07-30 (rounds 2 + 3: focus guard, stale live region)_
 
+## ROUND 4 (2026-07-30) — dark / high-contrast modes were being defeated
+"When the contrast changes we cannot see the text." Root cause was NOT a bad
+colour pair: `themeFor()` wrote the light category palette as an INLINE style on
+`<body>`, which beats the mode blocks on `<html>`. Dark mode therefore rendered
+light `--cat-soft` under light `--ink` at **1.02:1 — invisible**. High contrast
+was equally defeated, just less visibly. Fixed; `a11y-runtime-theme.js` is a new
+build gate (7 assertions) because the existing contrast gate reads the
+stylesheet and so passed 55/55 the whole time.
+STILL OPEN from round 3 feedback: "Don't show again" destroys focus; the
+verbosity trim (drop ", student 3 of 12" from tile labels).
+SCOPE NOTE: Aditya clarified the app is NOT for blind users — accessible, not
+blind-first. The grid redesign and Brief/Full setting are dropped.
+
 ## ROUND 3 (2026-07-30) — stale live region. FIXED, needs a new APK.
 "On Today, TalkBack reads out Saksham School / enter your login ID."
 `#srStatus` kept the school-pick announcement forever; `.visually-hidden` is

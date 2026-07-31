@@ -1,15 +1,24 @@
 # MEMORY.md — O&M Cane Training
-_Last updated: 2026-07-30 (reviewer rounds 2 + 3 — focus guard + stale live region)_
+_Last updated: 2026-07-30 (rounds 2-4 — focus guard, stale live region, defeated display modes)_
 
 ## ACCESSIBILITY (2026-07-28 → 30, `feat/a11y-blind-teacher`, NOT merged to main)
 _Don't pin a commit SHA in these files — committing the file invalidates it. Use `git log --oneline main..HEAD`._
 
-### The scope decision
-Users are still SIGHTED teachers. The team requires the app to be **fully
-operable by a blind person**. So: **TalkBack-native** — semantic HTML, ARIA and
-focus management driving the user's OWN screen reader — NOT self-voicing via
-Sarvam. Children never operate the app, so the **Play Store 18+ target-audience
-declaration is UNCHANGED** and Designed-for-Families still should not trigger.
+### The scope decision — REVISED 2026-07-30, read this before designing anything
+Users are SIGHTED teachers. Aditya's words: **"this app is not for the blind at
+all, I just want it to be accessible."**
+So the aim is **accessible, NOT blind-first**. Meet the standard, fix real
+defects, keep the sighted design primary. Do NOT redesign flows around
+non-visual navigation. Dropped on this basis: the grid-of-faces redesign
+(summary line / heading groups / search) and a Brief-vs-Full verbosity setting —
+a verbosity setting only earns its keep with two audiences, and there is one.
+Mechanism stays **TalkBack-native** (semantic HTML, ARIA, focus management
+driving the user's own screen reader) — NOT self-voicing via Sarvam.
+Children never operate the app, so the **Play Store 18+ target-audience
+declaration is UNCHANGED** and Designed-for-Families should still not trigger.
+_Earlier drafts of this file said "fully operable by a blind person". That
+overshot. A blind reviewer is still the best defect-finder we have — his three
+rounds found real bugs — but he is a TESTER, not the target user._
 
 ### The baseline was already good
 axe-core over all 21 screens found ONE minor violation. Zero `div onclick` —
@@ -77,7 +86,19 @@ a two-day job and not a rewrite.** Every real defect was invisible to axe.
    Distinguish from RULE 2: a PENDING announcement describes the action that
    caused the navigation and must survive; an ALREADY-WRITTEN one belongs to the
    screen being left and must go.
-10. **jsdom cannot see focus bugs.** It does NOT implement blur-on-disable, so a
+10. **An inline style on `<body>` beats an attribute selector on `<html>`.**
+   `themeFor()` wrote `--cat*` inline, silently defeating BOTH
+   `[data-theme="dark"]` and `[data-contrast="high"]`, which define their own
+   mode-correct set. In dark mode that put the light `--cat-soft` (#e2efe5)
+   under light `--ink` (#f2ede3) — **1.02:1, invisible**, on every surface with
+   `background:var(--cat-soft)` and no colour of its own. Fixed by having
+   themeFor stand down when a mode owns the palette, and re-running it from
+   `applyDisplayPrefs()` so a runtime toggle cannot strand old values.
+11. **A contrast test that READS the stylesheet proves what the CSS says, not
+   what the teacher sees.** `a11y-contrast.js` passed 55/55 throughout the
+   above, because the value it checked was never the value that rendered.
+   `a11y-runtime-theme.js` now drives the real app and is a build gate.
+12. **jsdom cannot see focus bugs.** It does NOT implement blur-on-disable, so a
    behavioural assertion passes on broken code. Verified 2026-07-30. Where the
    harness cannot reproduce a browser behaviour, assert the STRUCTURE (attribute
    contracts, source scans) and say so in the test — a green check that cannot
