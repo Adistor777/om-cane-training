@@ -34,7 +34,8 @@ a two-day job and not a rewrite.** Every real defect was invisible to axe.
 | `srSpeak(el,msg,state)` | the ONE way to write any live region. Clears, writes 150ms later, then SELF-CLEARS after `SR_CLEAR_MS`. Used by `announce`, `SB._announce`, `CB._flash`. |
 | `announce(msg)` | speak without a visible toast (wraps `srSpeak` on `#srStatus`). |
 | `toast(msg)` | visible half sync + `announce()`. |
-| `posLabel` / `groupAttrs` | "Vaishu, student 3 of 12" and "12 students" on every collection. |
+| `posLabel` / `groupAttrs` | position + collection size. NOT on child tiles any more — see RULE 13. |
+| `removeAfterFocus(el,pref,msg)` | remove an element containing the focused control WITHOUT destroying focus. |
 | `avatarFor` / `avatarFallback` | photo with `onerror` → the child's initial. |
 | `langBtnAttrs` | BCP-47 `lang` + Latin `aria-label` on narration language buttons. |
 | `SB.stopPad` / `SB._padLabels` | sound pad is a toggle; its NAME tracks play state. |
@@ -66,6 +67,11 @@ a two-day job and not a rewrite.** Every real defect was invisible to axe.
    its cursor and TalkBack reads the window from the top. Use `lockBtn` /
    `unlockBtn` / `btnBusy` (aria-disabled + a busy flag). `a11y-flows.js` FLOW 8
    scans app.js for the banned pattern and fails the build.
+   **Same class: never REMOVE an element containing the focused control.** That
+   is what "Don't show again" did. Use `removeAfterFocus()` — move focus first,
+   announce, then remove. FLOW 10 covers it. jsdom DOES blur on removal (unlike
+   on disable), so that one can be asserted behaviourally — but assert AFTER the
+   removal timer fires, or it passes on broken code.
 8. **Speech rate masks bugs — always test one pass at a SLOW rate.** Rate does
    not change WHETHER a defect fires, only how long it stays audible: seconds at
    30, a clipped blip at 100. Fast speech hides lost focus, doubled
@@ -98,7 +104,11 @@ a two-day job and not a rewrite.** Every real defect was invisible to axe.
    what the teacher sees.** `a11y-contrast.js` passed 55/55 throughout the
    above, because the value it checked was never the value that rendered.
    `a11y-runtime-theme.js` now drives the real app and is a build gate.
-12. **jsdom cannot see focus bugs.** It does NOT implement blur-on-disable, so a
+12. **Do not put a position count in a per-item label.** It is useful once and
+   noise on every swipe, and it pushes the item's NAME behind a state word,
+   since screen readers announce state first. Collection size belongs on the
+   container (`groupAttrs`), not on each child.
+13. **jsdom cannot see focus bugs.** It does NOT implement blur-on-disable, so a
    behavioural assertion passes on broken code. Verified 2026-07-30. Where the
    harness cannot reproduce a browser behaviour, assert the STRUCTURE (attribute
    contracts, source scans) and say so in the test — a green check that cannot
@@ -143,7 +153,7 @@ restoring the visual row.
 
 ### Verification — seven scripts, all wired into `./scripts/build.sh`
 `a11y-contrast` (55/55, all four colour modes) · `a11y-nochange` (22/22, rem
-parity + rule scoping) · `a11y-flows` (57/57, real flows) · `a11y-smoke` (546
+parity + rule scoping) · `a11y-flows` (63/63, real flows) · `a11y-smoke` (546
 controls, nothing throws) · `a11y-audit` (axe 21 screens + 31 assertions) ·
 `a11y-preview` (5 screens x 6 modes for the designer) · `recover-faces.sh`.
 Plus `test-batch1` 40/40.
