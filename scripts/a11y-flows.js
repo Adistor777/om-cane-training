@@ -268,7 +268,9 @@ function boot(){
        'tapping the SAME pad AFTER it finished replays it — the sighted workflow is untouched');
 
     // Repeat-one is the mode with no natural end; it must say so.
-    w.eval("SB.repeat='all'; SB.cycleRepeat()"); await sleep(120);
+    // 300ms, not 120: SB._announce now goes through srSpeak, which clears the
+    // region and writes 150ms later so the change always registers as a change.
+    w.eval("SB.repeat='all'; SB.cycleRepeat()"); await sleep(300);
     ok(/loop/i.test(w.document.getElementById('sbLive').textContent || ''),
        'repeat-one warns that the sound will loop until stopped');
   } else {
@@ -285,6 +287,115 @@ function boot(){
   ok(inDrawer && inDrawer.closest('.drawer'), 'focus is inside the drawer');
   w.closeMenu(true); await sleep(150);
   ok(!D.querySelector('body > main').hasAttribute('inert'), 'inert is released on close');
+
+  /* ---- FLOW 8: a submit must not steal the screen reader cursor ----------
+     Reported 2026-07-30, blind reviewer round 2: "after moving from the login
+     page the talkback still says the details about the sign in page."
+
+     Cause: the double-tap guard was `btn.disabled = true` on the button the
+     teacher had just activated. Disabling a focused element blurs it, focus
+     falls to <body>, the screen reader loses its cursor, and TalkBack's
+     recovery is to read the window from the top — which at that instant is
+     still the sign-in screen. handleLogin held that state across two awaits
+     before showHub painted, so there was ample time to hear it.
+
+     These assertions pin the MECHANISM, not the symptom: if anyone reaches for
+     .disabled in a handler again, this fails. */
+  console.log('\nFLOW 8 — a submit must not drop focus to <body>');
+  w.showLogin('none'); await sleep(140);
+  const sel8 = D.getElementById('lg_school');
+  sel8.value = schoolId; w.onSchoolPick(schoolId); await sleep(220);
+  D.getElementById('lg_id').value = 'saksham01';
+  D.getElementById('lg_pw').value = 'pilot';
+
+  /* IMPORTANT — READ BEFORE ADDING A "focus is still on the button" CHECK.
+     jsdom does NOT implement the blur-on-disable behaviour that Chrome and
+     Android WebView have: setting .disabled on a focused element leaves
+     document.activeElement untouched here, but moves it to <body> on a real
+     device. Verified 2026-07-30.
+     So a behavioural assertion CANNOT fail in this harness — it would pass on
+     the broken code and give false confidence. That is exactly how this bug
+     reached a blind tester in the first place.
+     The two guards below are therefore STRUCTURAL, and they do fail on the old
+     code: the attribute contract, and a source scan for the banned pattern. */
+  const submit = D.querySelector('#lg_teacherArea .save');
+  ok(!!submit, 'the sign-in button is there to press');
+  submit.focus();
+
+  w.lockBtn(submit);
+  ok(submit.getAttribute('aria-disabled') === 'true',
+     'the guard marks the button aria-disabled, so it still reads as unavailable');
+  ok(submit.disabled === false,
+     'the guard does NOT touch .disabled — that property is what blurs it on a real device');
+  w.unlockBtn(submit);
+  ok(!submit.hasAttribute('aria-disabled'), 'and unlocking clears it');
+
+  // Re-entrancy: the busy flag, not the browser, is what stops a double tap.
+  w.lockBtn(submit);
+  ok(w.btnBusy(submit) === true, 'a locked button reports busy, so handlers can reject a second tap');
+  w.unlockBtn(submit);
+  ok(w.btnBusy(submit) === false, 'and is accepted again once unlocked');
+
+  // THE REAL GUARD: nothing in app.js may disable a control imperatively.
+  // `x.disabled = !cond` (state-driven, on a control the user is not on) is
+  // fine; `x.disabled = true/false` inside a handler is the banned pattern.
+  // Strip comments FIRST — the block comment above handleLogin names the
+  // banned pattern in prose, and a naive line filter flags its own warning.
+  const src = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8')
+                .replace(/\/\*[\s\S]*?\*\//g, '')
+                .replace(/^\s*\/\/.*$/gm, '')
+                .split('\n');
+  const banned = src.filter(l => /\.disabled\s*=\s*(true|false)\b/.test(l));
+  ok(banned.length === 0,
+     banned.length === 0
+       ? 'no handler sets .disabled — the focus-stealing pattern is gone from app.js'
+       : `${banned.length} line(s) still set .disabled directly: ${banned[0].trim()}`);
+
+  await w.handleLogin(schoolId); await sleep(400);
+  const a8 = active();
+  ok(a8 && D.getElementById('screen').contains(a8),
+     'and sign-in still lands focus inside the new screen');
+  w.localStorage.setItem('welcomeSeen','1');
+
+  /* ---- FLOW 9: an announcement must not outlive its screen ---------------
+     Reported 2026-07-30 from Mansi's phone: on the Today screen, exploring by
+     touch read out "Saksham School, Noida selected. Enter your login ID and
+     password." — the sign-in announcement, still sitting in #srStatus.
+
+     A live region KEEPS its last text, and .visually-hidden is clipped rather
+     than display:none, so that text stays real, readable content in the
+     accessibility tree right next to the new screen.
+
+     It looked device-specific and was not: the phone that seemed fine had a
+     saved session, skipped the sign-in screen entirely, and so never populated
+     the region. Reinstalling wiped the session, which is why reinstalling
+     appeared to cause it. */
+  console.log('\nFLOW 9 — an announcement must not outlive its screen');
+  w.showLogin('none'); await sleep(140);
+  const sel9 = D.getElementById('lg_school');
+  sel9.value = schoolId; w.onSchoolPick(schoolId); await sleep(300);
+  ok(/login id/i.test(spoken()), 'picking a school announces what to do next');
+
+  D.getElementById('lg_id').value = 'saksham01';
+  D.getElementById('lg_pw').value = 'pilot';
+  await w.handleLogin(schoolId); await sleep(400);
+  ok(spoken() === '',
+     'once on the next screen that sentence is GONE from the live region');
+  ok(!/saksham|login id|password/i.test(D.getElementById('main').textContent + spoken()),
+     'and no sign-in text is reachable anywhere on the new screen');
+
+  /* The self-clear must ALSO work without a navigation — a teacher can sit on
+     one screen and explore. This waits out the real SR_CLEAR_MS rather than
+     asserting a constant exists: a check that cannot fail is worse than none,
+     which is the lesson from FLOW 8's first draft. SR_CLEAR_MS is a top-level
+     const so it is NOT on window — reach it with eval. */
+  const CLEAR_MS = w.eval('SR_CLEAR_MS');
+  ok(typeof CLEAR_MS === 'number' && CLEAR_MS > 0, `SR_CLEAR_MS is set (${CLEAR_MS}ms)`);
+  w.announce('Standalone message'); await sleep(300);
+  ok(spoken() === 'Standalone message', 'a standalone announcement is written');
+  await sleep(CLEAR_MS + 400);
+  ok(spoken() === '',
+     `and it clears itself after ${CLEAR_MS}ms with no navigation at all`);
 
   console.log(`\n  ========== ${pass} passed, ${fail} failed ==========`);
   dom.window.close();

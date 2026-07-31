@@ -1127,23 +1127,97 @@ async function exportCSV(includePII){
    must both say "Saved".
    --------------------------------------------------------------------------- */
 const srStatusEl = document.getElementById('srStatus');
-let _srTimer = null;
 /* Speak something WITHOUT showing a visible toast. For moments that need to be
    heard but not seen — a sighted teacher can see which face has the selection
    ring, so "Vaishu selected" on screen would be noise; spoken, it is the whole
    point. Always clears first: writing identical text twice running is not a
    change, and a screen reader will not announce it. */
-function announce(msg){
-  if(!srStatusEl || !msg) return;
-  clearTimeout(_srTimer);
-  srStatusEl.textContent = '';
-  _srTimer = setTimeout(()=>{ srStatusEl.textContent = msg; }, 150);
+/* HOW LONG an announcement is allowed to sit in the DOM after being spoken.
+   See srSpeak() for why it must not sit there forever. */
+const SR_CLEAR_MS = 5000;
+
+/* Write to a live region, then EMPTY it again once it has been spoken.
+
+   WHY THE CLEAR MATTERS (2026-07-30, found from Mansi's device):
+   a live region keeps whatever text it last held, and `.visually-hidden` is
+   CLIPPED, not `display:none` — so the text stays REAL, readable content in the
+   accessibility tree. #srStatus sits just after <main>, so a stale sentence is
+   sitting right next to the screen content, waiting to be found by touch
+   exploration or a forward swipe.
+
+   That is the bug: picking a school on the sign-in screen announces
+   "Saksham School, Noida selected. Enter your login ID and password." — and
+   that sentence was STILL THERE while the teacher was on the Today screen, so
+   exploring near "Today" read the sign-in instructions back at her.
+
+   It looked device-specific and was not. It reproduces wherever the sign-in
+   screen was actually used; the phone that seemed fine still had a saved
+   session, went straight to the hub, and so never populated the region at all.
+   Reinstalling wiped that session — which is why reinstalling "caused" it.
+
+   Clearing cannot truncate speech: aria-relevant defaults to "additions text",
+   so a REMOVAL is not announced, and TalkBack has already queued the utterance
+   when the text was inserted. The guard makes sure a newer message is never
+   wiped by an older message's timer. */
+function srSpeak(el, msg, state){
+  if(!el || !msg) return;
+  clearTimeout(state.write);
+  clearTimeout(state.clear);
+  el.textContent = '';
+  state.write = setTimeout(()=>{
+    state.write = null;            // nulled so "is a write pending?" is answerable
+    el.textContent = msg;
+    state.clear = setTimeout(()=>{
+      state.clear = null;
+      if(el.textContent === msg) el.textContent = '';
+    }, SR_CLEAR_MS);
+  }, 150);
 }
+
+const _srState = { write:null, clear:null };
+function announce(msg){ srSpeak(srStatusEl, msg, _srState); }
 function toast(msg){
   toastEl.textContent = msg;
   toastEl.classList.add('show');
   setTimeout(()=>toastEl.classList.remove('show'), 1800);
   announce(msg);
+}
+
+/* ---------------------------------------------------------------------------
+   DOUBLE-TAP GUARDS MUST NOT STEAL FOCUS.  (2026-07-30, blind reviewer round 2)
+
+   The obvious way to stop a double submit is `btn.disabled = true`. It is
+   wrong here, and the reason is worth writing down because it is invisible
+   when you can see.
+
+   Disabling the element that currently HAS focus makes the browser blur it and
+   drop focus to <body>. A screen reader is then left with no cursor, and
+   TalkBack's recovery for "no cursor" is to start reading the window FROM THE
+   TOP. On sign-in that window is still the sign-in screen — so the teacher
+   taps "Sign in" and hears the sign-in page recited at them. That is exactly
+   what the reviewer reported: "after moving from the login page the talkback
+   still says the details about the sign in page."
+
+   handleLogin was the acute case because the disable straddles two awaits
+   (verifyCredentials, then four Store writes in logIn) before showHub paints —
+   a long, silent window in which TalkBack has nothing to hold on to.
+
+   aria-disabled keeps the element focusable, so the cursor stays put. It does
+   NOT block the click, so the busy flag is what actually prevents re-entry.
+   Sighted users see no difference: the CSS matches [aria-disabled="true"]
+   alongside :disabled.
+
+   RULE: never set .disabled on a control in its own handler. Use these. */
+function btnBusy(btn){ return !!btn && btn.dataset.busy === '1'; }
+function lockBtn(btn){
+  if(!btn) return;
+  btn.dataset.busy = '1';
+  btn.setAttribute('aria-disabled', 'true');
+}
+function unlockBtn(btn){
+  if(!btn) return;
+  delete btn.dataset.busy;
+  btn.removeAttribute('aria-disabled');
 }
 
 /* Age is derived from date of birth, never stored as a fixed number — so a
@@ -1209,6 +1283,29 @@ function paint(html, dir, stagger, opts){
      precisely the confirmations that matter most, which is the bug fixed on
      2026-07-28 and nearly reintroduced on 07-29. scripts/a11y-flows.js caught
      it; leave this note so nobody "tidies" the flush back in. */
+
+  /* DO, however, drop an announcement that has ALREADY been written. Read the
+     two cases carefully, because they look identical and are opposites:
+
+       PENDING (still inside srSpeak's 150ms window) — describes the action that
+         caused this navigation ("Saved"). Must survive. That is the note above.
+       ALREADY WRITTEN — was spoken on the screen we are leaving. TalkBack has
+         long since queued it, so removing the text cannot truncate anything,
+         but LEAVING it means the sentence is still real text in the
+         accessibility tree, sitting next to the new screen's content where
+         touch exploration finds it.
+
+     That second case is the 2026-07-30 bug: "Saksham School, Noida selected.
+     Enter your login ID and password." was still in #srStatus while the teacher
+     was on Today, so exploring near the heading read the sign-in instructions
+     back at her. srSpeak also self-clears after SR_CLEAR_MS; this covers the
+     case where she moves on faster than that. */
+  if(srStatusEl && !_srState.write){
+    clearTimeout(_srState.clear);
+    _srState.clear = null;
+    srStatusEl.textContent = '';
+  }
+
   if(!opts.skipLedeFocus){ moveScreenFocus(opts); return; }
   /* skipLedeFocus means "I will place focus myself" (the record form, a newly
      added child). If the caller does NOT — because its target was not rendered,
@@ -1358,10 +1455,11 @@ async function handleLogin(schoolId){
   if(!loginId.trim()){ showLoginError('Enter your login ID.'); if(idEl) idEl.focus(); return; }
   if(!password){ showLoginError('Enter your password.'); if(pwEl) pwEl.focus(); return; }
   const btn = document.querySelector('#lg_teacherArea .save');
-  if(btn){ btn.disabled = true; }
+  if(btnBusy(btn)) return;
+  lockBtn(btn);
   const teacher = await verifyCredentials(s, loginId, password);
   if(!teacher){
-    if(btn){ btn.disabled = false; }
+    unlockBtn(btn);
     showLoginError('Login ID or password is incorrect.');
     if(pwEl){ pwEl.value = ''; pwEl.focus(); }
     return;
@@ -2265,7 +2363,8 @@ async function handleProfileSave(existingId){
   if(consentChecked && !consentBy){ toast('Enter the guardian\u2019s name who gave video consent.'); return; }
   if(consentChecked && !consentRel){ toast('Pick the guardian\u2019s relation to the child.'); return; }
   const btn = document.getElementById('saveProfileBtn');
-  if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
+  if(btnBusy(btn)) return;
+  lockBtn(btn); setTimeout(()=>unlockBtn(btn), 300);
   // >>> CLOUD ENROLMENT (Architecture A) — server-assigned child ID. <<<
   // With CLOUD_SYNC on, a NEW child is enrolled through the enrol_child() RPC:
   // the SERVER mints research_id and creates the children row (school stamped
@@ -2290,7 +2389,7 @@ async function handleProfileSave(existingId){
       consentMethod: consentChecked ? ((document.getElementById('p_consentmethod')||{}).value || 'Signed paper form') : ''
     });
     if(!res.ok){
-      if(btn) btn.disabled = false;
+      unlockBtn(btn);
       toast(res.offline
         ? 'No internet — a new child can only be enrolled online (their ID comes from the server). Connect and try again. Existing children keep working offline.'
         : 'Could not enrol this child: ' + res.error + '. Make sure you signed in while online, then try again.');
@@ -3222,7 +3321,10 @@ const SB = {
     });
   },
   _pendingAnnounce: '',
-  _announce(msg){ const a = SB._el('sbLive'); if(a) a.textContent = msg; },
+  /* Self-clearing, same reason as announce() — a stale "Stopped dog" left in
+     the tree is another sentence for a teacher to stumble on by touch. */
+  _srState: { write:null, clear:null },
+  _announce(msg){ srSpeak(SB._el('sbLive'), msg, SB._srState); },
   _fmt(sec){ sec = Math.max(0, Math.floor(sec||0)); const m = Math.floor(sec/60); const s = sec%60; return m+':'+(s<10?'0':'')+s; },
   // Stop and fully reset when navigating between screens (no cross-screen audio).
   reset(){
@@ -3273,7 +3375,7 @@ function buildCommandBoard(act){
    SOP narration, not cues); missing file → teacher toast, and the pad still
    flashes so the drill can continue by voice. */
 const CB = {
-  audio:null, cmds:[], last:-1, _timer:null,
+  audio:null, cmds:[], last:-1, _timer:null, _srState:{ write:null, clear:null },
   play(i){
     const c = CB.cmds[i]; if(!c) return;
     if(!CB.audio) CB.audio = new Audio();
@@ -3301,7 +3403,9 @@ const CB = {
       p.setAttribute('aria-pressed', String(Number(p.dataset.idx)===i));
       p.classList.toggle('is-speaking', Number(p.dataset.idx)===i);
     });
-    const live = document.getElementById('cmdLive'); if(live) live.textContent = label;
+    // Self-clearing (see srSpeak): a command label left sitting in the tree is
+    // read back later by touch exploration, out of context.
+    srSpeak(document.getElementById('cmdLive'), label, CB._srState);
     clearTimeout(CB._timer);
     CB._timer = setTimeout(()=>{
       document.querySelectorAll('#commandBoardPanel .cmd-pad.is-speaking').forEach(p=>{
@@ -3583,7 +3687,8 @@ async function handleSave(activityId){
   // researchId is the portable pseudonym that survives export and (future) sync.
   const researchId = isGroup ? '' : child.researchId;
   const btn = document.getElementById('saveBtn');
-  if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
+  if(btnBusy(btn)) return;
+  lockBtn(btn); setTimeout(()=>unlockBtn(btn), 300);
   const values = {};
   // Same null guard as pickSeg: if the form is not on screen any more (a
   // re-render raced the tap — likelier with a screen reader's double-tap),
@@ -3770,7 +3875,8 @@ async function handleBatchSave(activityId){
   const cat = ACTIVITY_DATA[state.category];
   const act = cat.activities[state.activity];
   const btn = document.getElementById('saveBtn');
-  if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 400); }
+  if(btnBusy(btn)) return;
+  lockBtn(btn); setTimeout(()=>unlockBtn(btn), 400);
   let saved = 0, failed = 0;
   for(const pid of batchKids){
     const child = profileById(pid);
