@@ -1588,6 +1588,18 @@ function showHome(dir){
         <span class="action-go">${ICON.chevronRight}</span>
       </button>
     </div>
+    <!-- Home illustration (2026-07-31). Deliberately BELOW the two actions, not
+         above them: the landing's whole job is Activities and Students, and art
+         placed above would push both down the screen and compete with the lede
+         for the one moment of personality this design allows.
+
+         DECORATIVE, so alt="" + aria-hidden. It carries no information a
+         teacher needs, and the a11y review taught us that anything announced
+         on a screen is something a screen-reader user must swipe past. It is
+         also hidden entirely at large text sizes (see styles.css) — when a
+         teacher has scaled the type up, vertical space is the scarce thing and
+         decoration is the first thing that should go. -->
+    <img class="home-art" src="./img/child-cane.png" alt="" aria-hidden="true">
   `, dir || 'fwd', false);
   setMenuVisible(true); // landing is the only screen with the utilities menu
 }

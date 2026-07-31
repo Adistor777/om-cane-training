@@ -1044,6 +1044,27 @@
     .card{ padding:var(--s3); }
   }
 
+/* =========================================================================
+   HOME ILLUSTRATION — added 2026-07-31, scoped block at the end of the file
+   so reverting it is "delete this block" and nothing above moves.
+
+   Sits under the two hub actions. Capped by VIEWPORT HEIGHT, not width, so it
+   can never grow enough to push Activities/Students off a short screen — the
+   failure mode that would actually cost a teacher something. Hidden outright
+   at large text sizes: when type is scaled up, vertical room is the scarce
+   resource and decoration goes first.
+   ========================================================================= */
+.home-art{
+  display:block;
+  margin:var(--s4) auto 0;
+  width:auto;
+  height:clamp(110px, 20vh, 190px);
+  max-width:60%;
+  object-fit:contain;
+  pointer-events:none;
+}
+[data-text-scale="up"] .home-art{ display:none; }
+
 /* ===========================================================================
    ACCESSIBILITY BLOCK — added 2026-07-28.
    Self-contained and appended LAST on purpose: reverting the whole feature is
