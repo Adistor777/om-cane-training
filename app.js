@@ -2666,10 +2666,19 @@ function showChildPicker(catIndex, actIndex, dir, opts){
       : `<span class="face" aria-hidden="true">${initial}</span>`;
     const sel = rosterSel.includes(p.id);
     const isNew = opts.newId === p.id;
-    // "Vaishu, student 3 of 12" — the position is the whole point; this grid is
-    // the one place a teacher genuinely needs to know how many children there
-    // are and where they have got to. "New" is visual-only otherwise.
-    const label = posLabel(p.name, i, profiles.length, 'student') + (isNew ? ', just added' : '');
+    /* Just the name — REVISED 2026-07-30 from reviewer feedback ("too
+       accessible", and "the student name is only said after selection").
+
+       This used to be "Vaishu, student 3 of 12". Two problems. Screen readers
+       announce STATE BEFORE the accessible name, so every swipe was "Not
+       selected. Vaishu, student three of twelve. Button." — the child's name
+       arrived third, behind a state word, and was easy to miss entirely.
+       And the position is useful ONCE, not on all twelve swipes.
+
+       The grid already carries its size via groupAttrs on the container, which
+       a screen reader reads on entry, so nothing is lost. Now the name is the
+       first content word after the unavoidable state. */
+    const label = p.name + (isNew ? ', just added' : '');
     return `<button type="button" class="pick-tile roster-tile${sel?' sel':''}" id="tile_${p.id}"
       aria-pressed="${sel}" aria-label="${esc(label)}" onclick="rosterToggle('${p.id}')">
       ${face}<span class="roster-tick" aria-hidden="true">${ICON.check}</span>
@@ -2862,8 +2871,8 @@ async function dismissHint(id, btn){
   const m = Store.getJSON(k, {}) || {};
   m[id] = true;
   await Store.setJSON(k, m);
-  const box = btn.closest('.hint');
-  if(box){ box.classList.add('gone'); setTimeout(()=>box.remove(), 260); }
+  // Same focus trap as dismissHelpTip — the button lives inside the box.
+  removeAfterFocus(btn.closest('.hint'), null, 'Tip dismissed.');
 }
 function hintOnce(id, html){
   if(hintSeen(id)) return '';
@@ -2887,11 +2896,41 @@ function helpCallout(){
     <button type="button" class="help-tip-ok" onclick="dismissHelpTip(this)">Don't show again</button>
   </div>`;
 }
+/* Remove an element that CONTAINS the control the user just pressed.
+
+   Doing it naively destroys focus: the focused node disappears, focus falls to
+   <body>, the screen reader loses its cursor and TalkBack reads the window from
+   the top. It is the same failure as setting `.disabled` on a focused button
+   (see lockBtn), and it is why "Don't show again" misbehaved for the reviewer
+   on 2026-07-30 — the tap worked, but the app then read itself out again.
+
+   So: move focus somewhere real FIRST, say what happened, then remove. */
+function removeAfterFocus(el, preferred, spoken){
+  if(!el) return;
+  const target = (preferred && document.contains(preferred) ? preferred : null)
+              || el.nextElementSibling
+              || el.previousElementSibling
+              || screen.querySelector('.lede')
+              || screen;
+  if(target){
+    if(!target.matches('a,button,input,select,textarea,[tabindex]')){
+      target.setAttribute('tabindex','-1');
+    }
+    try{ target.focus({preventScroll:true}); }catch(_){}
+  }
+  if(spoken) announce(spoken);
+  el.classList.add('gone');
+  setTimeout(()=>{ try{ el.remove(); }catch(_){} }, 260);
+}
+
 async function dismissHelpTip(btn){
   await Store.setString(_obKey(HELP_USED_KEY), '1');
   document.querySelectorAll('.help-btn.pulse').forEach(b=>b.classList.remove('pulse'));
-  const t = btn.closest('.help-tip');
-  if(t){ t.classList.add('gone'); setTimeout(()=>t.remove(), 240); }
+  // The ? button is the right landing place: the tip was describing it, and it
+  // is still on screen after the tip goes.
+  removeAfterFocus(btn.closest('.help-tip'),
+                   document.querySelector('.help-btn'),
+                   'Tip dismissed. The question mark button stays available.');
 }
 /* ---- HELP POPUP — one dialog, lazily created, shared by every ? ---------- */
 let helpPopupState = null; // { src, opener } while open — where to return content/focus

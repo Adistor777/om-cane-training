@@ -397,6 +397,38 @@ function boot(){
   ok(spoken() === '',
      `and it clears itself after ${CLEAR_MS}ms with no navigation at all`);
 
+  /* ---- FLOW 10: dismissing a tip must not strand the cursor --------------
+     Reported 2026-07-30: "the elements in the do not show again thing are kinda
+     not working properly with TalkBack." The tap worked; what failed was after
+     it. dismissHelpTip() removed the element CONTAINING the button just
+     pressed, so focus fell to <body> and TalkBack restarted from the top.
+
+     Unlike the .disabled case in FLOW 8, jsdom DOES blur on element removal
+     (verified 2026-07-30), so this one can be asserted behaviourally. */
+  console.log('\nFLOW 10 — dismissing a tip must not destroy focus');
+  // The callout only renders while the teacher has never dismissed it, and
+  // earlier flows set that flag. Clear it, then open a screen that has a ?.
+  await w.eval(`Store._remove(_obKey(HELP_USED_KEY))`);
+  w.showActivity(solo.ci, solo.ai); await sleep(300);
+  const tipBtn = D.querySelector('.help-tip-ok');
+  ok(!!tipBtn, 'the "Don\'t show again" button is on screen to test');
+  if(tipBtn){
+    tipBtn.focus();
+    ok(active() === tipBtn, 'focus starts on the dismiss button, as after a double-tap');
+    await w.dismissHelpTip(tipBtn);
+    /* Wait PAST the removal timeout before judging focus. The old code removed
+       the element on a 240ms timer, so checking at 150ms saw focus still on the
+       doomed button and passed on broken code — the same can't-fail assertion
+       trap as FLOW 8's first draft. Judge focus only after the DOM has settled. */
+    await sleep(450);
+    ok(!D.body.contains(tipBtn), 'the tip is removed');
+    const a10 = active();
+    ok(a10 && a10 !== D.body && a10 !== D.documentElement,
+       'and focus is NOT left on <body> once it is gone');
+    ok(a10 && D.body.contains(a10), 'it is on something still in the page');
+    ok(/dismissed/i.test(spoken()), 'and the dismissal is announced');
+  }
+
   console.log(`\n  ========== ${pass} passed, ${fail} failed ==========`);
   dom.window.close();
   process.exit(fail ? 1 : 0);
