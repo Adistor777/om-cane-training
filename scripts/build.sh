@@ -81,6 +81,16 @@ node scripts/a11y-smoke.js > /tmp/a11y-smoke.log 2>&1 \
   || { cat /tmp/a11y-smoke.log; fail "a control throws — see above"; }
 echo "OK  smoke (every control on every screen, nothing throws)"
 
+# a11y-runtime-theme.js checks the display modes actually TAKE EFFECT at
+# runtime. a11y-contrast.js reads the values declared in styles.css; it passed
+# 55/55 while dark mode rendered light-on-light at 1.02:1, because themeFor()
+# was writing the light palette inline on <body> and inline beats an attribute
+# selector on <html>. A stylesheet-reading test proves what the CSS says, not
+# what the teacher sees.
+node scripts/a11y-runtime-theme.js > /tmp/a11y-theme.log 2>&1 \
+  || { cat /tmp/a11y-theme.log; fail "a display mode is not taking effect — see above"; }
+echo "OK  display modes take effect at runtime (dark / high contrast)"
+
 if node -e "require.resolve('axe-core')" >/dev/null 2>&1; then
   node scripts/a11y-audit.js > /tmp/a11y-audit.log 2>&1 \
     || { cat /tmp/a11y-audit.log; fail "accessibility audit failed — see above"; }

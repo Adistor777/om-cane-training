@@ -68,6 +68,11 @@ function applyDisplayPrefs(){
   else                             root.removeAttribute('data-contrast');
   if(getThemeMode() === 'dark')    root.setAttribute('data-theme','dark');
   else                             root.removeAttribute('data-theme');
+  /* Re-run the category theme AFTER the attributes settle. Toggling a mode from
+     Settings does not repaint the screen, so without this the inline --cat*
+     values written for the previous mode would survive the switch — which is
+     the light-on-light bug all over again, just delayed by one tap. */
+  themeFor(_lastCatIndex);
 }
 async function setTextScale(v, btn){
   await Store.setString(TEXT_SCALE_KEY, v);
@@ -425,7 +430,39 @@ const CATEGORY_PALETTE = [
   { c:"#3a7d5d", deep:"#265a41", soft:"#e2f0e8", line:"#c8e2d2" },
   { c:"#9a4060", deep:"#702c45", soft:"#f4e0e8", line:"#ecc6d5" },
 ];
+const CAT_VARS = ['--cat','--cat-deep','--cat-soft','--cat-line'];
+
+/* Category hue as wayfinding — but ONLY in the default palette.
+
+   THE BUG THIS FIXES (2026-07-30, "when the contrast changes we cannot see the
+   text"): these four were written as INLINE styles on <body>, and an inline
+   style beats an attribute selector on <html>. So `[data-theme="dark"]` and
+   `[data-contrast="high"]`, which define their own mode-correct --cat* set,
+   were SILENTLY OVERRIDDEN on every screen.
+
+   In dark mode that is catastrophic rather than cosmetic: the stylesheet wants
+   --cat-soft:#1d3529 (near-black) to sit under --ink:#f2ede3 (near-white), a
+   clean 11.29:1. The inline write put the LIGHT paper-palette #e2efe5 back, so
+   light text landed on a light background at 1.02:1 — invisible, not merely
+   low. Every surface with `background:var(--cat-soft)` and no colour of its own
+   was affected: drawer items, disclosure summaries, hover and active states.
+
+   Both mode blocks already define ONE category-neutral set, so the design has
+   already accepted losing per-category hue in these modes. Honouring that is
+   the whole fix — no new palette is needed.
+
+   The default 1x paper look is untouched: no mode attribute, no early return. */
+let _lastCatIndex = 0;
 function themeFor(catIndex){
+  _lastCatIndex = catIndex;
+  const root = document.documentElement;
+  const modeOwnsPalette = root.getAttribute('data-theme') === 'dark'
+                       || root.getAttribute('data-contrast') === 'high';
+  if(modeOwnsPalette){
+    // Remove, don't overwrite — the stylesheet's values must win the cascade.
+    CAT_VARS.forEach(k => document.body.style.removeProperty(k));
+    return;
+  }
   const p = CATEGORY_PALETTE[catIndex % CATEGORY_PALETTE.length];
   document.body.style.setProperty('--cat',      p.c);
   document.body.style.setProperty('--cat-deep', p.deep);
