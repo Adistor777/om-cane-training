@@ -1,5 +1,29 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-07-29 (blind-reviewer round 1: two defects fixed, sound stop)_
+_Last updated: 2026-07-30 (rounds 2 + 3: focus guard, stale live region)_
+
+## ROUND 3 (2026-07-30) — stale live region. FIXED, needs a new APK.
+"On Today, TalkBack reads out Saksham School / enter your login ID."
+`#srStatus` kept the school-pick announcement forever; `.visually-hidden` is
+clipped, not hidden, so it stayed readable beside every later screen.
+Surfaced only after Mansi REINSTALLED, because the other phone had a saved
+session and skipped sign-in entirely — NOT a speed or speech-rate difference.
+`#sbLive` and `#cmdLive` had the same flaw. All three self-clear now and are
+dropped on navigation once written. FLOW 9 fails the build on a regression.
+**Gates: 57/57 flows · 22/22 · 55/55 · 40/40 · axe clean · 546 controls.**
+**BLOCKING: needs ./scripts/build.sh + assembleDebug on the Mac — not in any APK.**
+
+## ROUND 2 FEEDBACK (2026-07-30) — one defect, fixed, NOT yet on his phone
+Reviewer confirmed FIXED: student names, and stopping a sound from the pad.
+Still broken then: after sign-in, TalkBack recited the sign-in page.
+CAUSE: `btn.disabled = true` as a double-tap guard blurred the button he had
+just pressed → focus to `<body>` → TalkBack reads the window from the top, and
+`handleLogin` held that across two awaits before painting. Three more sites had
+the same pattern. All four now use `lockBtn`/`unlockBtn` (aria-disabled + busy
+flag); CSS matches `[aria-disabled="true"]` so sighted users see no change.
+`a11y-flows.js` FLOW 8 now fails the build on the banned pattern.
+**Gates: 51/51 flows · 22/22 default look · 55/55 contrast · 40/40 · axe clean.**
+**NEXT: Aditya must run ./scripts/build.sh + assembleDebug and send the APK —
+the fix is in git and www/, but NOT in any APK yet.**
 
 ## STATE (2026-07-29) — accessibility work reviewed by a blind person, round 1
 `feat/a11y-blind-teacher`, **pushed**, in sync with origin. Built and verified on the Mac.
@@ -105,7 +129,8 @@ proven on every build.
       existed. **Recovered from the emulator's installed APK** — every build
       carries the media at `assets/public/faces/`, which makes ANY INSTALLED
       BUILD A BACKUP. `scripts/recover-faces.sh` automates the search
-      (see `git log` for the tooling commit). `~/om-media-backup/` now exists.
+      (see `git log` for the tooling commit). `~/om-media-backup/` now exists and was verified complete on 2026-07-30
+      (39 audio, 22 sounds, 2 faces, 8 videos). Getting it OFF the Mac is still open.
 - [x] RUNBOOK corrected three times over: never stash media in `/tmp`; `cp`
       then `rm`, not `mv`; no inline `#` comments in pasteable snippets
       (interactive zsh does not honour them); emulator must be BOOTED before

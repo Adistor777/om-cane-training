@@ -1,7 +1,7 @@
 # MEMORY.md — O&M Cane Training
-_Last updated: 2026-07-29 (accessibility: built, reviewed by a blind person, round 1 fixed)_
+_Last updated: 2026-07-30 (reviewer rounds 2 + 3 — focus guard + stale live region)_
 
-## ACCESSIBILITY (2026-07-28/29, `feat/a11y-blind-teacher`, pushed, NOT merged to main)
+## ACCESSIBILITY (2026-07-28 → 30, `feat/a11y-blind-teacher`, NOT merged to main)
 _Don't pin a commit SHA in these files — committing the file invalidates it. Use `git log --oneline main..HEAD`._
 
 ### The scope decision
@@ -22,7 +22,8 @@ a two-day job and not a rewrite.** Every real defect was invisible to axe.
 |----------|-----|
 | `moveScreenFocus(opts)` | after every screen swap: focus `.lede` → first heading → labelled `#screen`. Nothing may leave focus destroyed. |
 | `setBackgroundInert(on)` | depth-COUNTED `inert` on header+main while any modal is open (a confirm can open on top of the help sheet). |
-| `announce(msg)` | speak without a visible toast. Clears `#srStatus` first, writes 150ms later. |
+| `srSpeak(el,msg,state)` | the ONE way to write any live region. Clears, writes 150ms later, then SELF-CLEARS after `SR_CLEAR_MS`. Used by `announce`, `SB._announce`, `CB._flash`. |
+| `announce(msg)` | speak without a visible toast (wraps `srSpeak` on `#srStatus`). |
 | `toast(msg)` | visible half sync + `announce()`. |
 | `posLabel` / `groupAttrs` | "Vaishu, student 3 of 12" and "12 students" on every collection. |
 | `avatarFor` / `avatarFallback` | photo with `onerror` → the child's initial. |
@@ -51,6 +52,36 @@ a two-day job and not a rewrite.** Every real defect was invisible to axe.
 6. **Announcements must lead with the thing you cannot get otherwise.** A
    toggle's activation announces STATE only, never the name — so a bare count
    ("3 of 12 selected") told the teacher a number and never which child.
+7. **Never set `.disabled` on a control inside its own handler.** Disabling the
+   focused element BLURS it; focus falls to `<body>`; the screen reader loses
+   its cursor and TalkBack reads the window from the top. Use `lockBtn` /
+   `unlockBtn` / `btnBusy` (aria-disabled + a busy flag). `a11y-flows.js` FLOW 8
+   scans app.js for the banned pattern and fails the build.
+8. **Speech rate masks bugs — always test one pass at a SLOW rate.** Rate does
+   not change WHETHER a defect fires, only how long it stays audible: seconds at
+   30, a clipped blip at 100. Fast speech hides lost focus, doubled
+   announcements and interrupted utterances. And it is the LEAST fluent users
+   who run slow rates — they get the worst version of every bug and are the
+   least likely to call it a bug.
+   **CORRECTION (2026-07-30):** an earlier draft of this rule blamed the 30-vs-100
+   rate difference for the sign-in bug appearing on one phone and not the other.
+   That was wrong. The real difference was STATE: the quiet phone had a saved
+   session and never ran the sign-in screen at all. See Round 3 below. Rate
+   affects audibility, not occurrence — do not use it to explain away a defect
+   that reproduces on one device only.
+9. **A live region KEEPS its last text, and that text stays readable.**
+   `.visually-hidden` is CLIPPED, not `display:none`, so a spoken sentence
+   remains real content in the accessibility tree, sitting beside the new
+   screen where touch exploration finds it. Announcements must SELF-CLEAR
+   (`srSpeak` + `SR_CLEAR_MS`) and be dropped on navigation once written.
+   Distinguish from RULE 2: a PENDING announcement describes the action that
+   caused the navigation and must survive; an ALREADY-WRITTEN one belongs to the
+   screen being left and must go.
+10. **jsdom cannot see focus bugs.** It does NOT implement blur-on-disable, so a
+   behavioural assertion passes on broken code. Verified 2026-07-30. Where the
+   harness cannot reproduce a browser behaviour, assert the STRUCTURE (attribute
+   contracts, source scans) and say so in the test — a green check that cannot
+   fail is worse than no check.
 
 ### Android WebView / TalkBack gotchas
 - **`aria-modal` is a hint WebView ignores.** Swiping past the last control
@@ -91,12 +122,13 @@ restoring the visual row.
 
 ### Verification — seven scripts, all wired into `./scripts/build.sh`
 `a11y-contrast` (55/55, all four colour modes) · `a11y-nochange` (22/22, rem
-parity + rule scoping) · `a11y-flows` (43/43, real flows) · `a11y-smoke` (546
+parity + rule scoping) · `a11y-flows` (57/57, real flows) · `a11y-smoke` (546
 controls, nothing throws) · `a11y-audit` (axe 21 screens + 31 assertions) ·
 `a11y-preview` (5 screens x 6 modes for the designer) · `recover-faces.sh`.
 Plus `test-batch1` 40/40.
-**a11y-flows has now caught two regressions I was about to ship.** When someone
-later calls the gates slow, that is the answer.
+**a11y-flows has now caught two regressions I was about to ship, and FLOW 8
+fails on the round-2 bug.** When someone later calls the gates slow, that is
+the answer.
 
 ### Still NOT solved — documented, not hidden
 - **Filming video evidence has no non-visual equivalent.** A blind teacher
@@ -118,6 +150,38 @@ later calls the gates slow, that is the answer.
    picker focuses the newly-added child's tile, and `paint()` has a next-frame
    safety net.
 **Both were found by a human in minutes and had passed every automated check.**
+
+### Round 3 (2026-07-30) — the STALE LIVE REGION. Read this one carefully.
+Symptom, from Mansi's phone: on the Today screen, exploring by touch read out
+**"Saksham School, Noida selected. Enter your login ID and password."**
+Cause: `onSchoolPick` announces that sentence and **`#srStatus` never cleared
+it**. It sat in the accessibility tree immediately after `<main>`, so touch
+exploration found it on every later screen.
+**Why it looked device-specific, and was not.** The quiet phone had a SAVED
+SESSION — `boot()` saw `isLoggedIn()`, went straight to the hub, the sign-in
+screen never ran, so the region was never populated. **Reinstalling wiped that
+session**, forced a real sign-in, and "caused" the bug. Aditya pushed back on my
+speed theory and was right; the reinstall detail was the tell, and speech rate
+was a red herring.
+`#sbLive` and `#cmdLive` had the identical flaw. All three go through `srSpeak()`
+now. `a11y-flows.js` FLOW 9 fails the build on any of it.
+**LESSON: "it works on my device" for a screen reader usually means that device
+has different STATE, not different speed. Ask what storage differs first — and
+ask what the tester did just before it started.**
+
+### Round 2 (2026-07-30) — "it still reads the sign-in page"
+Names and the sound pad were confirmed FIXED by the reviewer. One left:
+after signing in, TalkBack recited the sign-in screen.
+**Cause: `btn.disabled = true` as a double-tap guard in `handleLogin`.** It
+blurred the button the teacher had just pressed, parking focus on `<body>`,
+and the disable straddled TWO awaits (verifyCredentials, then four Store
+writes) before `showHub` painted — a long window with no cursor. Same pattern
+existed at three more sites (saveProfile, saveRecord, batch save); all four now
+use `lockBtn`/`unlockBtn`. CSS matches `[aria-disabled="true"]` alongside
+`:disabled` so nothing changes for sighted users.
+**Round 1's fix was necessary but not sufficient** — `moveScreenFocus` repairs
+focus AFTER a paint, and this bug destroyed focus BEFORE one. Worth remembering:
+"focus is restored on navigation" does not cover the gap before navigation.
 
 ---
 
@@ -711,7 +775,9 @@ Plus: **a few more features to add** — Aditya to name them next chat.
 - `docs/RUNBOOK.md` — build and ship, written for Aditya to paste
 - `docs/A11Y-TALKBACK-TESTS.md` — the 6 manual runs to hand a blind tester
 - `sounds/`, `audio/`, `faces/` — bundled media (gitignored); mirrored to `www/`
-- `~/om-media-backup/` — the ONLY second copy of that media. Not on this Mac's git.
+- `~/om-media-backup/` — second copy, VERIFIED COMPLETE 2026-07-30 (39 audio,
+  22 sounds, 2 faces, 8 videos). Still on the same Mac = still one disk. An APK
+  is a third copy of audio+sounds but NOT of `faces/` in consent-clean builds.
 - `MEMORY.md`, `TRACKER.md`, `DESIGN_NOTES.md`, `REVIEW_PACKET.md`
 ## Useful commands
 **Never put an inline `#` comment on a line meant to be pasted** — interactive
