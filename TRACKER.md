@@ -1,10 +1,59 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-07-31 (NEXT lists consolidated; SPEC.md added)_
+_Last updated: 2026-07-31 pm (branding, bulk import, sheet sync)_
+
+## STATE (2026-07-31 pm) — branding + student intake. UNCOMMITTED.
+Everything below is in the working tree on `feat/a11y-blind-teacher` and NOT
+committed. Gates all green: **40/40 · 93/93 flows · 22/22 · 7/7 · 32/32 axe ·
+contrast pass · 546 controls**.
+
+**1. SPEC.md is new and is now the definition of done** for accounts, children
+and data custody — Aditya's own eight-line description of the app, with a
+verified status column and file:line evidence. TRACKER is history; SPEC is the
+target. Committed earlier as `3dff39f`.
+
+**2. Brand moment moved to the WEB LAYER.** The native splash never appeared
+because `AppTheme.NoActionBarLaunch` inherits `Theme.SplashScreen`, so from
+Android 12 the system draws the launch screen and IGNORES
+`android:background="@drawable/splash"`. It also circle-masks its icon, so the
+~5:1 BIF wordmark can never render natively at any size. Now `#brandGate` in
+index.html: full-bleed black, mark centred, held 1000ms, faded, removed from
+the DOM. `launchAutoHide:false` + an explicit `SplashScreen.hide()` in a
+`finally` — the hold starts only AFTER the native splash lifts, which is what
+fixed "I see black but no logo" (both timers were previously racing and the
+mark got a few dozen frames, most mid-fade). `values-v31/styles.xml` makes the
+system's own moment black so there is no cream→black→cream flash.
+
+**3. Funder credit** pinned to the foot of the landing (a `.home-screen` flex
+column, `margin-top:auto`) and repeated in About. The cane-child illustration
+Aditya asked for was added, then REMOVED at his request — markup, CSS and file
+all gone.
+
+**4. Bulk import** ("Add several students from a list") — paste rows, live
+preview, four verdicts. Then **sheet sync** replaced it as the primary path
+after Aditya said the paste step was the very thing he wanted to avoid: a
+coordinator sets a published-CSV link once in Settings, teachers tap **Sync
+from the sheet** on Students. Paste survives as the offline fallback, one line
+below Sync — DELETE IT if he confirms he does not want it.
 
 ## NEXT — the one list (2026-07-31)
 _Replaces five competing "NEXT" sections dated 14, 21, 21 pm, 22 and 29 July.
 History stays in the STATE / Done sections below. New work is added HERE, not in
 a new section. Target state for accounts and data custody lives in `SPEC.md`._
+
+### FIRST — commit and verify the 31 Jul pm work
+- [ ] **Commit it.** Three focused commits (see MEMORY for what is in each):
+      brand/web gate · student intake (import + sync) · MEMORY/TRACKER.
+      Then `git push origin feat/a11y-blind-teacher`.
+- [x] **Sheet sync WORKS against a real published sheet** — confirmed on device
+      2026-07-31 pm. Route to get there: an `/edit` link 401s because the sheet
+      is private; File › Share › Publish to web › the tab › CSV gives the
+      `/d/e/2PACX-…/pub?…output=csv` link that works. Still worth confirming
+      once: tap Sync a SECOND time and check it adds nobody.
+- [ ] **Decide the paste screen's fate** — keep as the offline fallback, or
+      delete. Aditya disliked it; it is currently one line under Sync.
+- [ ] **Before real children go in any sheet:** un-publish and re-publish to
+      mint a fresh URL. The current one was pasted into a chat, and a published
+      link is unauthenticated — the URL IS the credential.
 
 ### BLOCKING EVERYTHING — one build ships rounds 2–4
 - [ ] `./scripts/build.sh` → `cd android && ./gradlew assembleDebug` on the Mac.

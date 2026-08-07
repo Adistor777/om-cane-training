@@ -1,4 +1,103 @@
 # MEMORY.md — O&M Cane Training
+
+## SPEC.md is the definition of done (new 2026-07-31)
+Aditya's own eight-line description of the app — schools added by us, teacher
+logins issued by us, changeable passwords, teacher-added children that are
+never overwritten, videos that come to US and not the school, CSV export, and
+export scoped to the children a teacher works with. Status column is verified
+against the tree with file:line evidence. **TRACKER is history; SPEC is the
+target.** Order of work: `2 → 5 → 6 → 8 → 3 → 1`.
+Headline finding behind it: the `Cloud` seam has ONLY `signIn` + `enrolChild`.
+No `.upload(`, no `storage.from`, no `syncRecords` — **records never leave the
+device either**, so "we hold the videos" is not an uploader, it is the whole
+sync layer. `records.teacher_id` already exists in `schema.sql:106` and is dead
+because nothing ever reaches the server.
+
+## Android 12+ kills the native splash (settled 2026-07-31)
+`AppTheme.NoActionBarLaunch` inherits `Theme.SplashScreen`, so from API 31 the
+SYSTEM draws the launch screen and **ignores `android:background`** — the
+legacy `drawable/splash.png` never appears. It also **circle-masks** its icon,
+so a ~5:1 wordmark cannot render there at any size. The BIF mark therefore
+lives in the WEB layer (`#brandGate`), which also means it is in git, unlike
+anything under the gitignored `android/`.
+- `launchAutoHide:false` + an explicit `SplashScreen.hide()` inside a
+  **`finally`** (not `catch` — with auto-hide off, a render throw on any boot
+  path would strand the app on a black screen forever).
+- The hold starts AFTER that hide, never at parse time. The first attempt
+  counted down while the web gate was still behind the native splash, so both
+  expired together and the mark got a few dozen frames, most of them mid-fade.
+  That is the whole reason "I see black but no logo" happened twice.
+- `values-v31/styles.xml` sets `windowSplashScreenBackground` to black so there
+  is no cream→black→cream flash. **LOCAL ONLY** — `android/` is gitignored, so
+  this joins `allowBackup="false"` and `forceDarkAllowed="false"` on the
+  re-apply-if-android-is-regenerated list.
+
+## Brand assets (2026-07-31)
+- `img/` is a NEW committed directory and the odd one out: `audio/`, `sounds/`
+  and `faces/` are gitignored, `img/` is not, because it is artwork rather than
+  personal data. It rides the same mirror loop in `build.sh` step 3b.
+- **Never reference `img/bif-logo.png`.** The supplied master is 6000×3375 —
+  about 81 MB decoded — and Android's WebView silently declines to paint it.
+  That, not placement, is why the mark was invisible. Ship the 1000px
+  derivatives; the master stays only as the source to regenerate from.
+- The artwork is TRANSPARENT with a **white** wordmark, so it is invisible on
+  the warm paper. `bif-mark-white.png` is used on the black launch gate and in
+  dark mode; `bif-mark-ink.png` is **our recolour** (white ink → `--ink`, purple
+  untouched) for light surfaces, swapped by `[data-theme="dark"]`.
+  ⚠ **The ink variant is not Bosch's artwork.** Ask BIF for an official
+  light-background lockup before anything goes to them, and flag it if the APK
+  leaves the team.
+- Rejected: a black plate behind the white mark. A black slab in a design whose
+  first guardrail is "the page stays flat" reads as a sticker.
+
+## Student intake — paste AND sheet sync (2026-07-31)
+**One classifier, two front doors.** `classifyRows()` owns the duplicate rule,
+the date rule and the wording a teacher reads. `parseBulkRows()` (paste) and
+the sheet sync both feed it `{name, dobRaw}`. Two classifiers that drifted is
+the failure this is designed against — the preview must never promise something
+the import does not do.
+- Four verdicts: **new** · **warn** (name matches, date does not — ADDED and
+  flagged, because two children really can share a name and refusing the second
+  is worse than the duplicate) · **dup** (skipped) · **bad** (refused).
+- The `warn` state exists because writing the test found a real bug: the check
+  keyed on name+DOB, but the demo children have no DOB, so a re-run sailed
+  through as new and would have duplicated them.
+- `DD/MM/YYYY` normalises; anything ambiguous or out of range is **refused, not
+  guessed** — misreading 04/02 as April 2nd corrupts a child's age and nothing
+  downstream would flag it.
+- **Consent is not pasteable.** Imported children arrive `videoConsent:false`
+  with the video control locked (DPDP Rule 10 wants it verifiable). Fail-closed.
+- Import routes through `Cloud.enrolChild()`, the same seam as the single-child
+  form. Skipping it in bulk would mass-produce device-local IDs — the most
+  expensive bug in the backlog, thirty at a time. Sequential, not `Promise.all`.
+- **Why not a live Google Sheet as backend:** identified minors' data in a
+  consumer cloud with link-based access, no row-level isolation, no audit
+  trail. It undoes the pseudonymisation seam and moves children's data offshore
+  when Supabase was put in the India region precisely to avoid that. Prior art
+  is ODK Central Entities — the spreadsheet SEEDS the list, the server stays
+  authoritative. Aditya chose sheet-sync anyway (his call, stated once); the
+  app therefore only ever READS, and never writes a child back to the sheet.
+- **A published link is unauthenticated — the URL IS the credential.** Set once
+  by a coordinator in Settings, kept off group chats, re-minted before real
+  children go in.
+
+## Fetching from Google (2026-07-31)
+- `CapacitorHttp` is enabled in `capacitor.config.json`. Without it the fetch
+  dies on CORS, because Google redirects a published CSV to another host.
+- **Do not trust `res.ok` from Capacitor's patched `fetch`** — it does not
+  follow the fetch spec, and a good CSV body arriving with an odd status was
+  being thrown away (this produced Aditya's "returned 101"). `fetchSheetCSV()`
+  calls `CapacitorHttp.get()` directly and **judges the body first**: if it is
+  CSV, it worked, whatever the status says.
+- `normalizeSheetUrl()` accepts any of the three links Google hands out for one
+  sheet and rewrites anything carrying a spreadsheet id to a CSV export,
+  preserving `gid`. A `/pub?…output=csv` link passes through untouched.
+- **401 means the sheet is private** — a Google setting, not an app bug.
+  Publish to web → the tab → CSV. The `/d/e/2PACX-…` shape is the tell it was
+  done right; the `/edit` address alone can never work.
+- An unpublished sheet answers with a Google sign-in PAGE and a 200, so a
+  status check alone is not enough — `/^\s*</` on the body catches it.
+
 _Last updated: 2026-07-30 (rounds 2-4 — focus guard, stale live region, defeated display modes)_
 
 ## ACCESSIBILITY (2026-07-28 → 30, `feat/a11y-blind-teacher`, NOT merged to main)
