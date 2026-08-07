@@ -429,6 +429,115 @@ function boot(){
     ok(/dismissed/i.test(spoken()), 'and the dismissal is announced');
   }
 
+  /* ---- FLOW 11: bulk import ----------------------------------------------
+     The screen's whole safety property is that what it SAYS it will do and
+     what it ACTUALLY does come from one classifier. If the preview and the
+     import ever drift apart, a teacher gets silent duplicates of real children
+     — the exact failure the duplicate check exists to prevent. So this asserts
+     the classifier directly, on the nastiest paste we can write: a duplicate
+     of an already-enrolled child, a duplicate within the paste itself, a
+     British-format date, and a date that cannot be read at all. */
+  console.log('\nFLOW 11 — bulk import must not silently create duplicates');
+  // Seed a child WITH a date of birth: the seeded flow children have none, and
+  // the exact-match roster check needs both halves of the key to be real.
+  await w.eval(`upsertProfile({ id:'flow-dup', name:'Roster Child', dob:'2015-03-11', researchId:'OM-FLOW-DUP' })`);
+  const known = 'Roster Child', knownDob = '2015-03-11';
+  ok(!!(await w.eval(`loadProfiles().some(p=>p.name==='Roster Child')`)),
+     'there is an existing child with a date of birth to test the roster check against');
+  const rosterBefore = (await w.eval(`loadProfiles().length`));
+
+  const paste = [
+    'Ananya Bose\t14/08/2015',
+    'Ananya Bose\t14/08/2015',
+    `${known}\t${knownDob}`,
+    'Kabir\t2017-01-09',
+    'Roster Child\t01/01/2011',
+    'No Date Here',
+    'Bad Date\t31/31/2015'
+  ].join('\n');
+  const rows = await w.eval(`parseBulkRows(${JSON.stringify(paste)})`);
+  const by = s => rows.filter(r => r.status === s).length;
+
+  ok(rows.length === 7, 'every non-empty line is classified, none dropped');
+  ok(by('new') === 2, 'only the two genuinely new children are marked as plain adds');
+  ok(rows[1].status === 'dup', 'a line repeated inside the paste is caught');
+  ok(rows[2].status === 'dup', 'a child already on the roster is caught');
+  ok(rows[4].status === 'warn',
+     'a NAME that already exists with a different date is flagged, not silently added');
+  ok(rows[5].status === 'bad', 'a missing date of birth is refused, not defaulted');
+  ok(rows[6].status === 'bad', 'an impossible date is refused rather than guessed at');
+  ok(by('dup') === 2 && by('bad') === 2 && by('warn') === 1,
+     'the tally the teacher reads matches the rows');
+  // DD/MM must never be silently read as MM/DD — that would corrupt a child's age.
+  ok(rows[0].dob === '2015-08-14', 'DD/MM/YYYY is normalised, not transposed');
+  // Nothing may be written by parsing alone; the import is the only writer.
+  ok((await w.eval(`loadProfiles().length`)) === rosterBefore,
+     'previewing a paste writes nothing to storage');
+  // Consent cannot be pasted — imported children must arrive locked.
+  await w.eval(`importOneChild({name:'Import Test Child', dob:'2016-06-06'})`);
+  const made = await w.eval(`loadProfiles().find(p=>p.name==='Import Test Child')||{}`);
+  ok(!!made.researchId, 'an imported child still gets a research ID');
+  ok(made.videoConsent === false, 'and arrives with video consent OFF — consent is not pasteable');
+
+  /* ---- FLOW 12: the sheet sync ------------------------------------------
+     Sync and paste must agree. They share classifyRows(), and this asserts
+     that a CSV straight out of a spreadsheet — header row, quoted field with a
+     comma in it, CRLF endings — reaches the same verdicts the pasted version
+     would. A sheet the teacher never published answers with an HTML sign-in
+     page and a 200, so that has to be caught too or the app would try to
+     enrol children called "<!doctype html>". */
+  console.log('\nFLOW 12 — a synced sheet is judged exactly like a pasted list');
+  const csv = 'Name,Date of birth\r\n"Nair, Meera",14/08/2015\r\nKabir Sen,2017-01-09\r\nKabir Sen,2017-01-09\r\nNo Date,\r\n';
+  const parsed = await w.eval(`parseCSV(${JSON.stringify(csv)})`);
+  ok(parsed.length === 5, 'every CSV line is read, header included');
+  ok(parsed[1][0] === 'Nair, Meera', 'a quoted field keeps its comma instead of splitting');
+
+  const stripped = await w.eval(`stripSheetHeader(parseCSV(${JSON.stringify(csv)}))`);
+  ok(stripped.length === 4, 'a header row is detected and dropped');
+  ok(stripped[0][0] === 'Nair, Meera', 'and the first real child survives it');
+
+  const sheetRows = await w.eval(
+    `classifyRows(stripSheetHeader(parseCSV(${JSON.stringify(csv)})).map(r=>({name:r[0], dobRaw:r[1]})))`);
+  const st = s => sheetRows.filter(r=>r.status === s).length;
+  ok(sheetRows.length === 4, 'the sheet classifies every data row');
+  ok(st('new') === 2, 'the two distinct children are marked for adding');
+  ok(sheetRows[2].status === 'dup', 'a row repeated in the SHEET is caught, same as in a paste');
+  ok(sheetRows[3].status === 'bad', 'a blank date of birth from a sheet cell is refused');
+
+  // A sheet with no header must not lose its first child.
+  const noHead = await w.eval(`stripSheetHeader(parseCSV('Asha,01/02/2016\\nBimal,03/04/2015'))`);
+  ok(noHead.length === 2 && noHead[0][0] === 'Asha',
+     'a sheet WITHOUT a header keeps its first row — the header is detected, not assumed');
+
+  /* Any of the three links Google hands out for the same sheet must work.
+     Requiring a coordinator to tell them apart is a support call waiting to
+     happen, and pasting the /edit address is the single most likely mistake. */
+  const SID = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+  const fromEdit = await w.eval(`normalizeSheetUrl('https://docs.google.com/spreadsheets/d/${SID}/edit#gid=0')`);
+  ok(/output=csv|format=csv/.test(fromEdit), 'an /edit link is rewritten to a CSV export');
+  ok(fromEdit.includes(SID), 'and keeps the spreadsheet id');
+  ok(/gid=0/.test(fromEdit), 'and keeps the tab it was pointing at');
+  const alreadyCsv = 'https://docs.google.com/spreadsheets/d/e/2PACX-xyz/pub?gid=0&single=true&output=csv';
+  ok((await w.eval(`normalizeSheetUrl(${JSON.stringify(alreadyCsv)})`)) === alreadyCsv,
+     'a published CSV link is left untouched');
+
+  // An unpublished sheet returns a Google page, sometimes with a 200.
+  await w.eval(`window.fetch = () => Promise.resolve({ ok:true, status:200, text:()=>Promise.resolve('<!doctype html><html>Sign in</html>') })`);
+  const html = await w.eval(`fetchSheetCSV('https://example.com/pub?output=csv')`);
+  ok(html.ok === false, 'an HTML page is rejected rather than parsed as students');
+  ok(/Publish to web/i.test(html.error || ''), 'and the message says exactly which menu to use');
+
+  /* The bug behind "the sheet link returned 101": the transport reported an
+     odd status while handing over a perfectly good body. Judge the body. */
+  await w.eval(`window.fetch = () => Promise.resolve({ ok:false, status:101, text:()=>Promise.resolve('Name,Date of birth\\nAsha,01/02/2016') })`);
+  const odd = await w.eval(`fetchSheetCSV('https://example.com/pub?output=csv')`);
+  ok(odd.ok === true, 'a real CSV body is accepted even when the status code is strange');
+
+  // A dead network must read as offline, not as a mysterious failure.
+  await w.eval(`window.fetch = () => Promise.reject(new Error('offline'))`);
+  const down = await w.eval(`fetchSheetCSV('https://example.com/pub?output=csv')`);
+  ok(down.ok === false && down.offline === true, 'an unreachable sheet is reported as offline');
+
   console.log(`\n  ========== ${pass} passed, ${fail} failed ==========`);
   dom.window.close();
   process.exit(fail ? 1 : 0);
