@@ -6,7 +6,11 @@
     "backgroundColor": "#f7f4ed"
   },
   "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
     "SplashScreen": {
+      "launchAutoHide": false,
       "launchShowDuration": 900,
       "backgroundColor": "#000000",
       "androidScaleType": "CENTER_CROP",
