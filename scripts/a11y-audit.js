@@ -334,9 +334,19 @@ function screens(w){
     const grid = D.querySelector('.picker-grid');
     ok(grid && /student/i.test(grid.getAttribute('aria-label')||''),
        'the child picker announces how many students are in it');
+    /* REVISED 2026-07-30. This used to require "name, student N of M" on every
+       tile. Reviewer feedback killed it: screen readers announce STATE BEFORE
+       the accessible name, so each swipe became "Not selected. Vaishu, student
+       three of twelve. Button." — the child's name landed third and the
+       position was repeated on all twelve tiles.
+       The tile now carries the NAME ONLY; the grid container above still
+       announces the size, which is where a count belongs. */
     const tile = grid && grid.querySelector('.pick-tile');
-    ok(tile && /\b1 of \d+/.test(tile.getAttribute('aria-label')||''),
-       'each child tile says "name, student N of M"');
+    const tlabel = (tile && tile.getAttribute('aria-label')) || '';
+    ok(tile && tlabel.trim().length > 0 && !/\bof \d+/.test(tlabel),
+       'each child tile is labelled with the name only, no position count');
+    ok(!/^(not )?selected/i.test(tlabel),
+       'and the label does not restate the state the screen reader already says');
     ok(tile && tile.hasAttribute('aria-pressed'),
        'child tiles still report selected / not selected');
     const img = grid && grid.querySelector('img.face');

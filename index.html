@@ -27,6 +27,31 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- BRAND MOMENT (2026-07-31). The funder mark, shown for a beat on launch.
+
+     WHY THIS IS HERE AND NOT A NATIVE SPLASH: the launch theme's parent is
+     Theme.SplashScreen, so from Android 12 the SYSTEM draws the launch screen
+     and ignores android:background entirely — the legacy drawable/splash.png
+     never appears. The system splash also circle-masks whatever icon it is
+     given, and this mark is a ~5:1 wordmark, so it cannot survive that crop at
+     any size. Doing it in the web layer is the only way the wordmark renders
+     as designed, and it has two side benefits: it is identical on every API
+     level, and it lives in git (android/ is gitignored, so a native splash
+     would quietly vanish the next time android/ is regenerated).
+
+     It is inert to assistive tech: aria-hidden, nothing focusable inside, and
+     app.js removes it from the DOM after the fade. Focus is never inside it,
+     so removal cannot strand a screen reader (the removeAfterFocus lesson).
+
+     USE THE WEB-SIZED DERIVATIVE, never img/bif-logo.png. The supplied master
+     is 6000x3375 — about 81 MB once decoded — and Android's WebView silently
+     declines to paint it, which is exactly why the mark was invisible on the
+     first attempt while the smaller child illustration rendered fine. The
+     master stays in img/ as the source to regenerate from; only the -mark-
+     files are ever referenced. -->
+<div id="brandGate" aria-hidden="true">
+  <img src="./img/bif-mark-white.png" alt="">
+</div>
 <header>
   <button class="back" id="backBtn" aria-label="Go back" style="display:none;">
     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>

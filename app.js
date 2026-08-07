@@ -68,6 +68,11 @@ function applyDisplayPrefs(){
   else                             root.removeAttribute('data-contrast');
   if(getThemeMode() === 'dark')    root.setAttribute('data-theme','dark');
   else                             root.removeAttribute('data-theme');
+  /* Re-run the category theme AFTER the attributes settle. Toggling a mode from
+     Settings does not repaint the screen, so without this the inline --cat*
+     values written for the previous mode would survive the switch — which is
+     the light-on-light bug all over again, just delayed by one tap. */
+  themeFor(_lastCatIndex);
 }
 async function setTextScale(v, btn){
   await Store.setString(TEXT_SCALE_KEY, v);
@@ -144,6 +149,35 @@ const hmenuBtn = document.getElementById('hmenuBtn');
 // it is how "which build do you have?" gets answered in the review loop.
 const APP_VERSION = '0.9.0';
 const APP_BUILD   = '21 Jul 2026';
+
+/* ---------------------------------------------------------------------------
+   FUNDER CREDIT — one lockup, used in two places (the landing foot and the
+   About panel) so the mark reads identically wherever it appears.
+
+   TWO IMAGES, not one. The supplied artwork is a WHITE wordmark, which is
+   invisible on the warm paper and correct on the dark palette — so the light
+   surfaces get an ink recolour and dark mode gets the original, swapped in CSS
+   by [data-theme="dark"]. A single asset cannot serve both, and a black plate
+   behind a white mark would be a second elevated surface in a design whose
+   first guardrail is that the page stays flat.
+
+   ⚠ THE INK VARIANT IS OURS, NOT BOSCH'S. img/bif-mark-ink.png is the supplied
+   mark with its white ink remapped to --ink (the purple is untouched). That is
+   the usual light-background treatment, but it is an ADAPTATION we made while
+   waiting for an official light lockup. If BIF supply one, drop it in and
+   delete the recolour step in the generator. Flag it if the mark goes to
+   anyone outside the team.
+
+   Real alt text, not aria-hidden: unlike the decorative figure on the
+   masthead, who funded this IS information. The white copy is the duplicate,
+   so it carries the empty alt.
+   --------------------------------------------------------------------------- */
+const FUNDER_CREDIT = `
+    <p class="funder">
+      <span class="funder-label">Supported by</span>
+      <img class="funder-mark m-ink" src="./img/bif-mark-ink.png" alt="Bosch India Foundation">
+      <img class="funder-mark m-white" src="./img/bif-mark-white.png" alt="" aria-hidden="true">
+    </p>`;
 function setMenuVisible(on){
   hmenuEl.style.display = on ? '' : 'none';
   if(!on) closeMenu(true); // navigating away — drop the drawer instantly
@@ -425,7 +459,39 @@ const CATEGORY_PALETTE = [
   { c:"#3a7d5d", deep:"#265a41", soft:"#e2f0e8", line:"#c8e2d2" },
   { c:"#9a4060", deep:"#702c45", soft:"#f4e0e8", line:"#ecc6d5" },
 ];
+const CAT_VARS = ['--cat','--cat-deep','--cat-soft','--cat-line'];
+
+/* Category hue as wayfinding — but ONLY in the default palette.
+
+   THE BUG THIS FIXES (2026-07-30, "when the contrast changes we cannot see the
+   text"): these four were written as INLINE styles on <body>, and an inline
+   style beats an attribute selector on <html>. So `[data-theme="dark"]` and
+   `[data-contrast="high"]`, which define their own mode-correct --cat* set,
+   were SILENTLY OVERRIDDEN on every screen.
+
+   In dark mode that is catastrophic rather than cosmetic: the stylesheet wants
+   --cat-soft:#1d3529 (near-black) to sit under --ink:#f2ede3 (near-white), a
+   clean 11.29:1. The inline write put the LIGHT paper-palette #e2efe5 back, so
+   light text landed on a light background at 1.02:1 — invisible, not merely
+   low. Every surface with `background:var(--cat-soft)` and no colour of its own
+   was affected: drawer items, disclosure summaries, hover and active states.
+
+   Both mode blocks already define ONE category-neutral set, so the design has
+   already accepted losing per-category hue in these modes. Honouring that is
+   the whole fix — no new palette is needed.
+
+   The default 1x paper look is untouched: no mode attribute, no early return. */
+let _lastCatIndex = 0;
 function themeFor(catIndex){
+  _lastCatIndex = catIndex;
+  const root = document.documentElement;
+  const modeOwnsPalette = root.getAttribute('data-theme') === 'dark'
+                       || root.getAttribute('data-contrast') === 'high';
+  if(modeOwnsPalette){
+    // Remove, don't overwrite — the stylesheet's values must win the cascade.
+    CAT_VARS.forEach(k => document.body.style.removeProperty(k));
+    return;
+  }
   const p = CATEGORY_PALETTE[catIndex % CATEGORY_PALETTE.length];
   document.body.style.setProperty('--cat',      p.c);
   document.body.style.setProperty('--cat-deep', p.deep);
@@ -1127,23 +1193,97 @@ async function exportCSV(includePII){
    must both say "Saved".
    --------------------------------------------------------------------------- */
 const srStatusEl = document.getElementById('srStatus');
-let _srTimer = null;
 /* Speak something WITHOUT showing a visible toast. For moments that need to be
    heard but not seen — a sighted teacher can see which face has the selection
    ring, so "Vaishu selected" on screen would be noise; spoken, it is the whole
    point. Always clears first: writing identical text twice running is not a
    change, and a screen reader will not announce it. */
-function announce(msg){
-  if(!srStatusEl || !msg) return;
-  clearTimeout(_srTimer);
-  srStatusEl.textContent = '';
-  _srTimer = setTimeout(()=>{ srStatusEl.textContent = msg; }, 150);
+/* HOW LONG an announcement is allowed to sit in the DOM after being spoken.
+   See srSpeak() for why it must not sit there forever. */
+const SR_CLEAR_MS = 5000;
+
+/* Write to a live region, then EMPTY it again once it has been spoken.
+
+   WHY THE CLEAR MATTERS (2026-07-30, found from Mansi's device):
+   a live region keeps whatever text it last held, and `.visually-hidden` is
+   CLIPPED, not `display:none` — so the text stays REAL, readable content in the
+   accessibility tree. #srStatus sits just after <main>, so a stale sentence is
+   sitting right next to the screen content, waiting to be found by touch
+   exploration or a forward swipe.
+
+   That is the bug: picking a school on the sign-in screen announces
+   "Saksham School, Noida selected. Enter your login ID and password." — and
+   that sentence was STILL THERE while the teacher was on the Today screen, so
+   exploring near "Today" read the sign-in instructions back at her.
+
+   It looked device-specific and was not. It reproduces wherever the sign-in
+   screen was actually used; the phone that seemed fine still had a saved
+   session, went straight to the hub, and so never populated the region at all.
+   Reinstalling wiped that session — which is why reinstalling "caused" it.
+
+   Clearing cannot truncate speech: aria-relevant defaults to "additions text",
+   so a REMOVAL is not announced, and TalkBack has already queued the utterance
+   when the text was inserted. The guard makes sure a newer message is never
+   wiped by an older message's timer. */
+function srSpeak(el, msg, state){
+  if(!el || !msg) return;
+  clearTimeout(state.write);
+  clearTimeout(state.clear);
+  el.textContent = '';
+  state.write = setTimeout(()=>{
+    state.write = null;            // nulled so "is a write pending?" is answerable
+    el.textContent = msg;
+    state.clear = setTimeout(()=>{
+      state.clear = null;
+      if(el.textContent === msg) el.textContent = '';
+    }, SR_CLEAR_MS);
+  }, 150);
 }
+
+const _srState = { write:null, clear:null };
+function announce(msg){ srSpeak(srStatusEl, msg, _srState); }
 function toast(msg){
   toastEl.textContent = msg;
   toastEl.classList.add('show');
   setTimeout(()=>toastEl.classList.remove('show'), 1800);
   announce(msg);
+}
+
+/* ---------------------------------------------------------------------------
+   DOUBLE-TAP GUARDS MUST NOT STEAL FOCUS.  (2026-07-30, blind reviewer round 2)
+
+   The obvious way to stop a double submit is `btn.disabled = true`. It is
+   wrong here, and the reason is worth writing down because it is invisible
+   when you can see.
+
+   Disabling the element that currently HAS focus makes the browser blur it and
+   drop focus to <body>. A screen reader is then left with no cursor, and
+   TalkBack's recovery for "no cursor" is to start reading the window FROM THE
+   TOP. On sign-in that window is still the sign-in screen — so the teacher
+   taps "Sign in" and hears the sign-in page recited at them. That is exactly
+   what the reviewer reported: "after moving from the login page the talkback
+   still says the details about the sign in page."
+
+   handleLogin was the acute case because the disable straddles two awaits
+   (verifyCredentials, then four Store writes in logIn) before showHub paints —
+   a long, silent window in which TalkBack has nothing to hold on to.
+
+   aria-disabled keeps the element focusable, so the cursor stays put. It does
+   NOT block the click, so the busy flag is what actually prevents re-entry.
+   Sighted users see no difference: the CSS matches [aria-disabled="true"]
+   alongside :disabled.
+
+   RULE: never set .disabled on a control in its own handler. Use these. */
+function btnBusy(btn){ return !!btn && btn.dataset.busy === '1'; }
+function lockBtn(btn){
+  if(!btn) return;
+  btn.dataset.busy = '1';
+  btn.setAttribute('aria-disabled', 'true');
+}
+function unlockBtn(btn){
+  if(!btn) return;
+  delete btn.dataset.busy;
+  btn.removeAttribute('aria-disabled');
 }
 
 /* Age is derived from date of birth, never stored as a fixed number — so a
@@ -1209,6 +1349,29 @@ function paint(html, dir, stagger, opts){
      precisely the confirmations that matter most, which is the bug fixed on
      2026-07-28 and nearly reintroduced on 07-29. scripts/a11y-flows.js caught
      it; leave this note so nobody "tidies" the flush back in. */
+
+  /* DO, however, drop an announcement that has ALREADY been written. Read the
+     two cases carefully, because they look identical and are opposites:
+
+       PENDING (still inside srSpeak's 150ms window) — describes the action that
+         caused this navigation ("Saved"). Must survive. That is the note above.
+       ALREADY WRITTEN — was spoken on the screen we are leaving. TalkBack has
+         long since queued it, so removing the text cannot truncate anything,
+         but LEAVING it means the sentence is still real text in the
+         accessibility tree, sitting next to the new screen's content where
+         touch exploration finds it.
+
+     That second case is the 2026-07-30 bug: "Saksham School, Noida selected.
+     Enter your login ID and password." was still in #srStatus while the teacher
+     was on Today, so exploring near the heading read the sign-in instructions
+     back at her. srSpeak also self-clears after SR_CLEAR_MS; this covers the
+     case where she moves on faster than that. */
+  if(srStatusEl && !_srState.write){
+    clearTimeout(_srState.clear);
+    _srState.clear = null;
+    srStatusEl.textContent = '';
+  }
+
   if(!opts.skipLedeFocus){ moveScreenFocus(opts); return; }
   /* skipLedeFocus means "I will place focus myself" (the record form, a newly
      added child). If the caller does NOT — because its target was not rendered,
@@ -1358,10 +1521,11 @@ async function handleLogin(schoolId){
   if(!loginId.trim()){ showLoginError('Enter your login ID.'); if(idEl) idEl.focus(); return; }
   if(!password){ showLoginError('Enter your password.'); if(pwEl) pwEl.focus(); return; }
   const btn = document.querySelector('#lg_teacherArea .save');
-  if(btn){ btn.disabled = true; }
+  if(btnBusy(btn)) return;
+  lockBtn(btn);
   const teacher = await verifyCredentials(s, loginId, password);
   if(!teacher){
-    if(btn){ btn.disabled = false; }
+    unlockBtn(btn);
     showLoginError('Login ID or password is incorrect.');
     if(pwEl){ pwEl.value = ''; pwEl.focus(); }
     return;
@@ -1440,6 +1604,7 @@ function showHome(dir){
   // activity is chosen), so the hub deliberately carries no active-child chip
   // and Activities always routes through the activity list.
   paint(`
+    <div class="home-screen">
     <h1 class="lede">Today<small>Pick a student, then run an activity.</small></h1>
     <div class="hub-actions">
       <button class="action-row" onclick="showActivityList('fwd')">
@@ -1452,6 +1617,20 @@ function showHome(dir){
         <span class="action-text"><strong>Students</strong><small>Add a new child, or open an existing one</small></span>
         <span class="action-go">${ICON.chevronRight}</span>
       </button>
+    </div>
+    <!-- Funder credit at the FOOT, after the two actions. A landing page's job
+         is the work; a credit belongs where credits go, under it. Placed last
+         in the DOM it is also last in the screen-reader order, so it costs a
+         teacher nothing on the way to Activities.
+
+         The .home-screen wrapper exists ONLY to push this to the bottom of the
+         viewport (flex column + margin-top:auto in styles.css). Sitting a fixed
+         gap under the last button left it stranded mid-screen with dead space
+         beneath — a footer has to actually be at the foot or it reads as
+         unfinished. The wrapper is scoped to this screen on purpose: making
+         #screen itself a flex column would change every other screen's layout,
+         which is exactly what the a11y-nochange gate is there to prevent. -->
+    ${FUNDER_CREDIT}
     </div>
   `, dir || 'fwd', false);
   setMenuVisible(true); // landing is the only screen with the utilities menu
@@ -1486,6 +1665,11 @@ function showAbout(dir){
     <div class="panel quiet">
       <h2 class="panel-title">Who is behind this</h2>
       <p class="about-body">Built as part of a research pilot by IIT Delhi and NCAHT, working with partner schools for the blind. Teachers run the sessions; the app keeps the record.</p>
+      <!-- The funder mark's substantive home — it sits with the rest of the
+           attribution, on the screen built to survive a screenshot. The launch
+           gate is a 900ms flash you cannot go back and look at; a credit that
+           only exists for a beat is not really a credit. -->
+      ${FUNDER_CREDIT}
     </div>
     <p class="about-version">Version ${APP_VERSION} · ${APP_BUILD}</p>
   `, dir || 'fwd', false);
@@ -1603,6 +1787,18 @@ function showSettings(dir){
       <h2 class="panel-title">${ICON.audio} Narration language</h2>
       <p class="setting-sub">The language spoken when you play an activity's step-by-step guide. More languages arrive as translations are verified.</p>
       <div class="seg" role="group" aria-label="Narration language">${langBtns}</div>
+    </div>
+    <div class="panel">
+      <h2 class="panel-title">${ICON.list} Student list sheet</h2>
+      <p class="setting-sub">Paste the link from your spreadsheet's <strong>File &rsaquo; Share &rsaquo; Publish to web &rsaquo; CSV</strong>. Teachers then tap Sync on the Students screen and whoever is in the sheet appears here. Set this once, for this device.</p>
+      <div class="field">
+        <label for="sheetUrl">Published sheet link</label>
+        <input type="url" id="sheetUrl" inputmode="url" spellcheck="false"
+               placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"
+               value="${esc(getSheetUrl())}" aria-describedby="sheetUrlHelp">
+      </div>
+      <p class="setting-sub" id="sheetUrlHelp">A published link can be read by anyone who has it, without signing in — treat it like a password and keep it off group chats. The app only ever reads the sheet; nothing about a child is written back.</p>
+      <button type="button" class="save" id="sheetUrlBtn" onclick="saveSheetUrl()">Save sheet link</button>
     </div>
     <button class="action-row" onclick="resetTips()" style="margin-bottom:var(--s2)">
       <span class="action-ic">${ICON.info}</span>
@@ -1722,10 +1918,429 @@ function showStudents(dir, opts){
       <summary>${ICON.plus}<span class="disclosure-label">Add a new student</span><span class="chev">${ICON.chevron}</span></summary>
       <div class="sop-body"><div class="sop-inner">${profileFormMarkup(null, true)}</div></div>
     </details>
+    <button type="button" class="action-row" id="sheetSyncBtn" onclick="handleSheetSync()" style="margin-top:var(--s2)">
+      <span class="action-ic">${ICON.download}</span>
+      <span class="action-text"><strong>Sync from the sheet</strong><small>${esc(sheetSyncSub())}</small></span>
+    </button>
+    <button type="button" class="linklike bulk-entry" onclick="showBulkImport('fwd')">No internet? Paste a list instead</button>
     <h2 class="section-label" style="margin-top:var(--s4)">Existing students</h2>
     ${rows}
   `, dir || 'fwd', false);
 }
+/* ---------------------------------------------------------------------------
+   BULK IMPORT — "add several students from a list".
+
+   WHY THIS EXISTS. Typing thirty children into a phone form is the single
+   worst chore in the app, and the obvious teacher request is "can we just use
+   a Google Sheet". We deliberately did NOT do that: a sheet of children's
+   names and dates of birth is identified minors' data sitting in a consumer
+   cloud with link-based access, no row-level isolation and no audit trail. It
+   would undo the pseudonymisation seam (names are supposed to live only in the
+   on-device profile) and it would move children's data offshore, when the
+   Supabase project was put in the India region precisely to avoid that and the
+   DPDP Rules reserve the power to restrict children's transfers to unnotified
+   jurisdictions.
+
+   So the ERGONOMICS are imported, not the architecture. A teacher still builds
+   the list on a laptop in whatever tool they like, then pastes it here. The
+   names never leave our control, and the paste is a one-off buffer rather than
+   a system of record. This mirrors what ODK Central does with Entities: the
+   spreadsheet SEEDS the list, the server stays authoritative.
+
+   WHAT IT DELIBERATELY DOES NOT DO. It does not accept video consent. Consent
+   has to be verifiable per child (DPDP Rule 10) and you cannot paste evidence
+   of a guardian's signature, so imported children arrive with consent FALSE
+   and the video control locked until someone opens their profile and records
+   it properly. Fail-closed is the only defensible default here.
+   --------------------------------------------------------------------------- */
+
+/* Accept what a spreadsheet actually puts on the clipboard. Excel and Sheets
+   copy as TAB-separated; a CSV export gives commas; a human retyping gives
+   runs of spaces. Splitting on all three costs nothing and removes the most
+   likely reason a teacher's paste "doesn't work". */
+function bulkSplitFields(line){ return line.split(/\t|,|\s{2,}/).map(s=>s.trim()); }
+
+/* Normalise a typed date to the YYYY-MM-DD the profile stores.
+   DD/MM/YYYY is accepted because that is what an Indian teacher will type, and
+   silently misreading it as MM/DD would corrupt a child's age — so anything
+   ambiguous or out of range is REJECTED rather than guessed at. */
+function bulkNormalizeDOB(raw){
+  const s = (raw || '').trim();
+  if(!s) return '';
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if(m){
+    const d = +m[1], mo = +m[2];
+    if(d < 1 || d > 31 || mo < 1 || mo > 12) return '';
+    return `${m[3]}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  return '';
+}
+
+/* Parse + classify in one pass. Every row comes back with a status so the
+   preview, the counts and the import all read from ONE source of truth — a
+   second classifier that drifted from the first is how you end up importing
+   something the screen said it would skip. */
+/* ONE classifier, two front doors. The pasted list and the synced sheet both
+   land here, so the duplicate rule, the date rule and the wording a teacher
+   reads cannot drift apart between the two paths. Everything above this point
+   is just getting rows into the same shape: { name, dobRaw }. */
+function classifyRows(pairs){
+  const profiles = loadProfiles();
+  const existing = profiles.map(p=>`${(p.name||'').trim().toLowerCase()}|${p.dob||''}`);
+  const existingNames = profiles.map(p=>(p.name||'').trim().toLowerCase());
+  const seen = new Set();
+  const seenNames = new Set();
+  return pairs.map(({name, dobRaw})=>{
+    name = (name || '').trim();
+    dobRaw = (dobRaw || '').trim();
+    const dob = bulkNormalizeDOB(dobRaw);
+    const row = { name, dob, status:'new', note:'will be added' };
+    const key = `${name.toLowerCase()}|${dob}`;
+    const nkey = name.toLowerCase();
+    if(!name){ row.status = 'bad'; row.note = 'no name on this line'; }
+    else if(!dobRaw){ row.status = 'bad'; row.note = 'date of birth missing'; }
+    else if(!dob){ row.status = 'bad'; row.note = `date "${dobRaw}" not understood — use DD/MM/YYYY`; }
+    else if(seen.has(key)){ row.status = 'dup'; row.note = 'repeated further up this list'; }
+    else if(existing.includes(key)){ row.status = 'dup'; row.note = 'already enrolled — will be skipped'; }
+    /* NAME MATCHES, DATE DOES NOT. Not enough to skip on — two children really
+       can share a name, and refusing the second would be worse than the
+       duplicate. But it is exactly what a re-sync looks like when the child
+       already on the roster was enrolled WITHOUT a date of birth (the demo
+       children and anything added before the field was filled in), so it gets
+       added and flagged rather than added silently. */
+    else if(existingNames.includes(nkey) || seenNames.has(nkey)){
+      row.status = 'warn'; row.note = 'another student is already called this — check it is a different child';
+    }
+    if(row.status === 'new' || row.status === 'warn'){ seen.add(key); seenNames.add(nkey); }
+    return row;
+  });
+}
+
+/* CSV as a spreadsheet actually exports it: quoted fields, commas inside
+   quotes, doubled quotes for a literal one, and CRLF line endings. Hand-rolled
+   because pulling in a parser for two columns is not worth a dependency in a
+   deliberately bundler-free app. */
+function parseCSV(text){
+  const rows = [];
+  let row = [], cell = '', q = false;
+  const s = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for(let i = 0; i < s.length; i++){
+    const c = s[i];
+    if(q){
+      if(c === '"' && s[i+1] === '"'){ cell += '"'; i++; }
+      else if(c === '"'){ q = false; }
+      else cell += c;
+    }
+    else if(c === '"'){ q = true; }
+    else if(c === ','){ row.push(cell); cell = ''; }
+    else if(c === '\n'){ row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  row.push(cell);
+  if(row.some(x=>x !== '')) rows.push(row);
+  return rows.filter(r=>r.some(x=>String(x).trim() !== ''));
+}
+
+/* Drop a header row if the sheet has one. Detected, not assumed: a teacher may
+   or may not include it, and guessing wrong either eats a real child or
+   enrols one called "Name". The tell is that the second column is not a date. */
+function stripSheetHeader(rows){
+  if(!rows.length) return rows;
+  const first = rows[0].map(c=>String(c||'').trim().toLowerCase());
+  const looksLikeHeader = /name/.test(first[0] || '') && !bulkNormalizeDOB(rows[0][1] || '');
+  return looksLikeHeader ? rows.slice(1) : rows;
+}
+
+function parseBulkRows(text){
+  return classifyRows(
+    String(text || '').split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+      const f = bulkSplitFields(line);
+      return { name:f[0] || '', dobRaw:f[1] || '' };
+    })
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   SHEET SYNC — the teacher keeps a spreadsheet, the app pulls from it.
+
+   Same shape as a Google Form writing into a sheet, pointed the other way: the
+   sheet is where a coordinator types, and one tap in the app brings whatever
+   is in it across. No copying, no export, no file to move.
+
+   HOW THE LINK WORKS, AND ITS COST. Reading a sheet without making a teacher
+   sign in to Google means the sheet must be PUBLISHED (File -> Share ->
+   Publish to web -> CSV). The URL is long and random, so in practice it
+   behaves like a password — but it is a password to children's names and dates
+   of birth, and anyone who has it can read them without logging in. That is a
+   real disclosure and it is why the link is set once by a coordinator in
+   Settings rather than being something teachers pass around. The alternative
+   is a full OAuth flow, which is far too heavy for a three-school pilot.
+
+   PULL, NEVER PUSH. The app only reads. Nothing about a child is ever written
+   back to the sheet, so the sheet cannot become a second, unprotected copy of
+   assessment data — it stays a list of who exists, nothing more.
+   --------------------------------------------------------------------------- */
+const SHEET_URL_KEY  = 'studentSheetUrl';
+const SHEET_SYNC_KEY = 'studentSheetLastSync';
+
+/* The button's own subtitle carries the state — no link set, never synced, or
+   when it last ran. Putting it in the label rather than a separate status line
+   means a screen reader gets the state with the control instead of having to
+   go hunting for it somewhere else on the screen. */
+function sheetSyncSub(){
+  if(!getSheetUrl()) return 'No sheet link yet — a coordinator adds it in Settings';
+  const last = Store.getString(SHEET_SYNC_KEY, '');
+  if(!last) return 'Bring in students from the spreadsheet';
+  const d = new Date(last);
+  return isNaN(d) ? 'Bring in students from the spreadsheet'
+                  : `Last synced ${d.toLocaleDateString()} at ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+}
+
+function getSheetUrl(){ return Store.getString(SHEET_URL_KEY, '') || ''; }
+async function saveSheetUrl(){
+  const raw = (document.getElementById('sheetUrl').value || '').trim();
+  if(raw && !/^https:\/\//i.test(raw)){
+    toast('That does not look like a link. Paste the https:// address from Publish to web.');
+    return;
+  }
+  await Store.setString(SHEET_URL_KEY, raw);
+  toast(raw ? 'Sheet link saved.' : 'Sheet link cleared.');
+}
+
+/* Fetch goes through Capacitor's native HTTP (enabled in capacitor.config.json,
+   which patches fetch), because Google redirects a published CSV to a
+   different host and a plain WebView request would be refused by CORS. On web
+   preview there is no native layer, so that case is reported honestly rather
+   than failing with a browser error nobody can act on. */
+/* ACCEPT WHATEVER LINK THE TEACHER PASTES. There are three URLs Google will
+   hand someone for the same sheet — the /edit address from the browser bar,
+   the "share" link, and the Publish-to-web CSV address — and only the last is
+   actually CSV. Asking a coordinator to know the difference is a support call
+   waiting to happen, so any link carrying a spreadsheet ID is rewritten to the
+   CSV export endpoint, preserving the tab (gid) when one is present. A link
+   that is already a published CSV is left exactly as it is. */
+function normalizeSheetUrl(raw){
+  const url = String(raw || '').trim();
+  if(!url) return '';
+  if(/output=csv/i.test(url)) return url;                 // already CSV
+  const id = (url.match(/\/spreadsheets\/d\/(?:e\/)?([a-zA-Z0-9-_]+)/) || [])[1];
+  if(!id) return url;                                     // not a sheets link; let it fail loudly
+  const gid = (url.match(/[#&?]gid=(\d+)/) || [])[1];
+  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`
+       + (gid ? `&gid=${gid}` : '');
+}
+
+/* Go through CapacitorHttp DIRECTLY rather than the patched global fetch.
+   The patch returns a Response-shaped object whose `ok` and `status` do not
+   always mean what the fetch spec says — a sync that failed with "returned
+   101" was this exact assumption. The plugin's own get() has a plain contract:
+   a numeric status and the body in `data`. On web preview there is no plugin,
+   so it falls back to real fetch, where the spec does hold. */
+async function fetchSheetCSV(rawUrl){
+  const url = normalizeSheetUrl(rawUrl);
+  const http = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) || null;
+  let status = 0, text = '';
+  try {
+    if(http){
+      const res = await http.get({ url, headers:{ Accept:'text/csv,*/*' }, responseType:'text' });
+      status = Number(res && res.status) || 0;
+      text = typeof res.data === 'string' ? res.data
+           : (res && res.data != null ? JSON.stringify(res.data) : '');
+    } else {
+      const res = await fetch(url, { method:'GET' });
+      status = res.status;
+      text = await res.text();
+    }
+  } catch(e){
+    return { ok:false, offline:true, error:'could not reach the sheet' };
+  }
+  // Some transports report an informational or zero status while still
+  // delivering the body. Judge the BODY first — if it is CSV, it worked.
+  const looksHtml = /^\s*</.test(text);
+  const hasBody = text && text.trim() !== '';
+  if(hasBody && !looksHtml && (status === 0 || status < 400)) return { ok:true, text };
+  if(looksHtml){
+    return { ok:false, error:'that link opened a Google page instead of the sheet data. In the sheet use File › Share › Publish to web, choose the tab, choose CSV, then paste that link' };
+  }
+  if(status === 401 || status === 403){
+    return { ok:false, error:'Google refused the link (' + status + '). The sheet is not shared — publish it to the web as CSV' };
+  }
+  if(status === 404){
+    return { ok:false, error:'no sheet at that link (404). Check it was copied in full' };
+  }
+  return { ok:false, error:`the sheet link came back empty (status ${status || 'unknown'})` };
+}
+
+async function handleSheetSync(){
+  const btn = document.getElementById('sheetSyncBtn');
+  if(btnBusy(btn)) return;
+  const url = getSheetUrl();
+  if(!url){ toast('No sheet link yet — a coordinator sets it in Settings.'); return; }
+  lockBtn(btn);
+  const got = await fetchSheetCSV(url);
+  if(!got.ok){
+    unlockBtn(btn);
+    toast(got.offline ? 'No internet — connect and tap Sync again.' : 'Could not sync: ' + got.error + '.');
+    return;
+  }
+  const rows = classifyRows(
+    stripSheetHeader(parseCSV(got.text)).map(r=>({ name:r[0], dobRaw:r[1] }))
+  );
+  const todo = rows.filter(r=>r.status === 'new' || r.status === 'warn');
+  const dup  = rows.filter(r=>r.status === 'dup').length;
+  const bad  = rows.filter(r=>r.status === 'bad').length;
+  if(!todo.length){
+    unlockBtn(btn);
+    await Store.setString(SHEET_SYNC_KEY, new Date().toISOString());
+    toast(rows.length
+      ? `Everyone in the sheet is already here${bad ? ` · ${bad} row${bad===1?'':'s'} need a fix` : ''}.`
+      : 'The sheet has no students in it yet.');
+    showStudents('none');
+    return;
+  }
+  let done = 0;
+  for(const r of todo){
+    const res = await importOneChild(r);
+    if(!res.ok){
+      unlockBtn(btn);
+      toast(res.offline
+        ? `Added ${done} of ${todo.length}. The rest need internet — a new child's ID comes from the server.`
+        : `Added ${done} of ${todo.length}, then stopped: ${res.error}`);
+      showStudents('none');
+      return;
+    }
+    done++;
+  }
+  await Store.setString(SHEET_SYNC_KEY, new Date().toISOString());
+  unlockBtn(btn);
+  // Say what happened to EVERY row, not just the happy ones. A sync that
+  // silently drops two malformed rows is how a teacher discovers in the field
+  // that a child they added is missing.
+  toast(`Added ${done}${dup ? ` · ${dup} already here` : ''}${bad ? ` · ${bad} row${bad===1?'':'s'} need a fix in the sheet` : ''}.`);
+  showStudents('none');
+}
+
+function showBulkImport(dir){
+  state = { category:null, activity:null };
+  crumbEl.textContent = 'Add several students';
+  backBtn.style.display = 'flex';
+  backBtn.onclick = ()=>showStudents('back');
+  homeDot.innerHTML = ICON.home;
+  resetTheme();
+  paint(`
+    <h1 class="lede">Add several students<small>Build the list in a spreadsheet, then paste it here. Nothing is sent anywhere — the list stays on this device.</small></h1>
+    <div class="panel">
+      <div class="field">
+        <label for="bulkSrc">One student per line: name, then date of birth</label>
+        <textarea id="bulkSrc" class="bulk-src" rows="8" spellcheck="false"
+          placeholder="Vaishu&#9;02/04/2016&#10;Meera Nair&#9;14/08/2015"
+          oninput="renderBulkPreview()"></textarea>
+        <p class="hint">Separate the two with a tab, a comma, or a couple of spaces — a paste straight from Excel or Google Sheets already works.</p>
+      </div>
+      <div id="bulkPreview"></div>
+      <button type="button" class="save" id="bulkSaveBtn" onclick="handleBulkImport()">Add students</button>
+    </div>
+  `, dir || 'fwd', false);
+  renderBulkPreview();
+}
+
+/* The preview is REAL TEXT in the DOM, not an aria-label on a summary chip.
+   That is the rule the pre-handover bug hunt produced: if a screen reader must
+   hear it, it has to be in the document. It is also why there is no live
+   region here — announcing a recount on every keystroke would talk over a
+   teacher who is still typing. The counts are simply readable, and the one
+   thing worth interrupting for (the result of the import) goes through
+   toast(). */
+function renderBulkPreview(){
+  const el = document.getElementById('bulkPreview');
+  const btn = document.getElementById('bulkSaveBtn');
+  if(!el) return;
+  const rows = parseBulkRows((document.getElementById('bulkSrc')||{}).value || '');
+  const add = rows.filter(r=>r.status==='new' || r.status==='warn');
+  const warn = rows.filter(r=>r.status==='warn');
+  const dup = rows.filter(r=>r.status==='dup');
+  const bad = rows.filter(r=>r.status==='bad');
+  if(btn) btn.textContent = add.length ? `Add ${add.length} student${add.length===1?'':'s'}` : 'Add students';
+  if(!rows.length){ el.innerHTML = ''; return; }
+  const line = [
+    `${add.length} to add`,
+    warn.length ? `${warn.length} to check` : '',
+    dup.length ? `${dup.length} already on the roster` : '',
+    bad.length ? `${bad.length} need a fix` : ''
+  ].filter(Boolean).join(' · ');
+  el.innerHTML = `
+    <h2 class="section-label">What will happen</h2>
+    <p class="bulk-tally">${esc(line)}</p>
+    <div class="bulk-rows" role="group" aria-label="${rows.length} line${rows.length===1?'':'s'} pasted">
+      ${rows.map(r=>`<p class="bulk-row is-${r.status}">
+        <span class="bulk-name">${esc(r.name || '(no name)')}</span>
+        <span class="bulk-note">${esc(r.dob ? r.dob + ' — ' + r.note : r.note)}</span>
+      </p>`).join('')}
+    </div>`;
+}
+
+/* Enrol ONE parsed row. Routes through the same Cloud.enrolChild() seam as the
+   single-child form so there is exactly one place that mints a child identity.
+   Bypassing it here to save a round trip would quietly reintroduce the
+   device-local ID problem in bulk, which is the most expensive bug in the
+   backlog. */
+async function importOneChild(row){
+  let cloudResearchId = '';
+  if(Cloud.enabled()){
+    const res = await Cloud.enrolChild({ name:row.name, dob:row.dob, height:'', weight:'', hand:'',
+      filledBy:'', consent:false, consentBy:'', consentRelation:'', consentMethod:'' });
+    if(!res.ok) return res;
+    cloudResearchId = res.researchId;
+  }
+  await upsertProfile({
+    id: newProfileId(),
+    researchId: cloudResearchId || newResearchId(),
+    schemaVersion: SCHEMA_VERSION,
+    name: row.name, dob: row.dob,
+    height:'', weight:'', dominantHand:'', filledBy:'', photo:'',
+    capturedOn: new Date().toISOString(),
+    // Consent cannot be pasted — see the header note. Locked until recorded.
+    videoConsent:false, videoConsentBy:'', videoConsentRelation:'',
+    videoConsentMethod:'', videoConsentOn:'', videoConsentWithdrawnOn:'',
+    videoConsentFormSerial:'', videoConsentFormPhoto:''
+  });
+  return { ok:true };
+}
+
+async function handleBulkImport(){
+  const btn = document.getElementById('bulkSaveBtn');
+  if(btnBusy(btn)) return;
+  const rows = parseBulkRows((document.getElementById('bulkSrc')||{}).value || '')
+    .filter(r=>r.status==='new' || r.status==='warn');
+  if(!rows.length){ toast('Nothing to add yet — paste a list above.'); return; }
+  lockBtn(btn);
+  // Sequential, not Promise.all: with cloud on, each child is an enrol_child()
+  // round trip, and firing thirty at once is how you rate-limit yourself and
+  // lose track of which ones landed.
+  let done = 0;
+  for(const r of rows){
+    const res = await importOneChild(r);
+    if(!res.ok){
+      unlockBtn(btn);
+      // Report the PARTIAL result honestly. Children already written are real
+      // and must not be silently re-added on a retry — the duplicate check
+      // catches them on the next parse, which is why it runs against the saved
+      // roster rather than a snapshot taken when the screen opened.
+      toast(res.offline
+        ? `Added ${done} of ${rows.length}. The rest need internet — a new child's ID comes from the server.`
+        : `Added ${done} of ${rows.length}, then stopped: ${res.error}`);
+      showStudents('back');
+      return;
+    }
+    done++;
+  }
+  unlockBtn(btn);
+  toast(`Added ${done} student${done===1?'':'s'}.`);
+  showStudents('back');
+}
+
 function childSub(p){
   const age = ageFromDOB(p.dob);
   return [age?age+' yrs':'', p.dominantHand?p.dominantHand+'-handed':''].filter(Boolean).join(' · ');
@@ -2265,7 +2880,8 @@ async function handleProfileSave(existingId){
   if(consentChecked && !consentBy){ toast('Enter the guardian\u2019s name who gave video consent.'); return; }
   if(consentChecked && !consentRel){ toast('Pick the guardian\u2019s relation to the child.'); return; }
   const btn = document.getElementById('saveProfileBtn');
-  if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
+  if(btnBusy(btn)) return;
+  lockBtn(btn); setTimeout(()=>unlockBtn(btn), 300);
   // >>> CLOUD ENROLMENT (Architecture A) — server-assigned child ID. <<<
   // With CLOUD_SYNC on, a NEW child is enrolled through the enrol_child() RPC:
   // the SERVER mints research_id and creates the children row (school stamped
@@ -2290,7 +2906,7 @@ async function handleProfileSave(existingId){
       consentMethod: consentChecked ? ((document.getElementById('p_consentmethod')||{}).value || 'Signed paper form') : ''
     });
     if(!res.ok){
-      if(btn) btn.disabled = false;
+      unlockBtn(btn);
       toast(res.offline
         ? 'No internet — a new child can only be enrolled online (their ID comes from the server). Connect and try again. Existing children keep working offline.'
         : 'Could not enrol this child: ' + res.error + '. Make sure you signed in while online, then try again.');
@@ -2530,10 +3146,19 @@ function showChildPicker(catIndex, actIndex, dir, opts){
       : `<span class="face" aria-hidden="true">${initial}</span>`;
     const sel = rosterSel.includes(p.id);
     const isNew = opts.newId === p.id;
-    // "Vaishu, student 3 of 12" — the position is the whole point; this grid is
-    // the one place a teacher genuinely needs to know how many children there
-    // are and where they have got to. "New" is visual-only otherwise.
-    const label = posLabel(p.name, i, profiles.length, 'student') + (isNew ? ', just added' : '');
+    /* Just the name — REVISED 2026-07-30 from reviewer feedback ("too
+       accessible", and "the student name is only said after selection").
+
+       This used to be "Vaishu, student 3 of 12". Two problems. Screen readers
+       announce STATE BEFORE the accessible name, so every swipe was "Not
+       selected. Vaishu, student three of twelve. Button." — the child's name
+       arrived third, behind a state word, and was easy to miss entirely.
+       And the position is useful ONCE, not on all twelve swipes.
+
+       The grid already carries its size via groupAttrs on the container, which
+       a screen reader reads on entry, so nothing is lost. Now the name is the
+       first content word after the unavoidable state. */
+    const label = p.name + (isNew ? ', just added' : '');
     return `<button type="button" class="pick-tile roster-tile${sel?' sel':''}" id="tile_${p.id}"
       aria-pressed="${sel}" aria-label="${esc(label)}" onclick="rosterToggle('${p.id}')">
       ${face}<span class="roster-tick" aria-hidden="true">${ICON.check}</span>
@@ -2726,8 +3351,8 @@ async function dismissHint(id, btn){
   const m = Store.getJSON(k, {}) || {};
   m[id] = true;
   await Store.setJSON(k, m);
-  const box = btn.closest('.hint');
-  if(box){ box.classList.add('gone'); setTimeout(()=>box.remove(), 260); }
+  // Same focus trap as dismissHelpTip — the button lives inside the box.
+  removeAfterFocus(btn.closest('.hint'), null, 'Tip dismissed.');
 }
 function hintOnce(id, html){
   if(hintSeen(id)) return '';
@@ -2751,11 +3376,41 @@ function helpCallout(){
     <button type="button" class="help-tip-ok" onclick="dismissHelpTip(this)">Don't show again</button>
   </div>`;
 }
+/* Remove an element that CONTAINS the control the user just pressed.
+
+   Doing it naively destroys focus: the focused node disappears, focus falls to
+   <body>, the screen reader loses its cursor and TalkBack reads the window from
+   the top. It is the same failure as setting `.disabled` on a focused button
+   (see lockBtn), and it is why "Don't show again" misbehaved for the reviewer
+   on 2026-07-30 — the tap worked, but the app then read itself out again.
+
+   So: move focus somewhere real FIRST, say what happened, then remove. */
+function removeAfterFocus(el, preferred, spoken){
+  if(!el) return;
+  const target = (preferred && document.contains(preferred) ? preferred : null)
+              || el.nextElementSibling
+              || el.previousElementSibling
+              || screen.querySelector('.lede')
+              || screen;
+  if(target){
+    if(!target.matches('a,button,input,select,textarea,[tabindex]')){
+      target.setAttribute('tabindex','-1');
+    }
+    try{ target.focus({preventScroll:true}); }catch(_){}
+  }
+  if(spoken) announce(spoken);
+  el.classList.add('gone');
+  setTimeout(()=>{ try{ el.remove(); }catch(_){} }, 260);
+}
+
 async function dismissHelpTip(btn){
   await Store.setString(_obKey(HELP_USED_KEY), '1');
   document.querySelectorAll('.help-btn.pulse').forEach(b=>b.classList.remove('pulse'));
-  const t = btn.closest('.help-tip');
-  if(t){ t.classList.add('gone'); setTimeout(()=>t.remove(), 240); }
+  // The ? button is the right landing place: the tip was describing it, and it
+  // is still on screen after the tip goes.
+  removeAfterFocus(btn.closest('.help-tip'),
+                   document.querySelector('.help-btn'),
+                   'Tip dismissed. The question mark button stays available.');
 }
 /* ---- HELP POPUP — one dialog, lazily created, shared by every ? ---------- */
 let helpPopupState = null; // { src, opener } while open — where to return content/focus
@@ -3222,7 +3877,10 @@ const SB = {
     });
   },
   _pendingAnnounce: '',
-  _announce(msg){ const a = SB._el('sbLive'); if(a) a.textContent = msg; },
+  /* Self-clearing, same reason as announce() — a stale "Stopped dog" left in
+     the tree is another sentence for a teacher to stumble on by touch. */
+  _srState: { write:null, clear:null },
+  _announce(msg){ srSpeak(SB._el('sbLive'), msg, SB._srState); },
   _fmt(sec){ sec = Math.max(0, Math.floor(sec||0)); const m = Math.floor(sec/60); const s = sec%60; return m+':'+(s<10?'0':'')+s; },
   // Stop and fully reset when navigating between screens (no cross-screen audio).
   reset(){
@@ -3273,7 +3931,7 @@ function buildCommandBoard(act){
    SOP narration, not cues); missing file → teacher toast, and the pad still
    flashes so the drill can continue by voice. */
 const CB = {
-  audio:null, cmds:[], last:-1, _timer:null,
+  audio:null, cmds:[], last:-1, _timer:null, _srState:{ write:null, clear:null },
   play(i){
     const c = CB.cmds[i]; if(!c) return;
     if(!CB.audio) CB.audio = new Audio();
@@ -3301,7 +3959,9 @@ const CB = {
       p.setAttribute('aria-pressed', String(Number(p.dataset.idx)===i));
       p.classList.toggle('is-speaking', Number(p.dataset.idx)===i);
     });
-    const live = document.getElementById('cmdLive'); if(live) live.textContent = label;
+    // Self-clearing (see srSpeak): a command label left sitting in the tree is
+    // read back later by touch exploration, out of context.
+    srSpeak(document.getElementById('cmdLive'), label, CB._srState);
     clearTimeout(CB._timer);
     CB._timer = setTimeout(()=>{
       document.querySelectorAll('#commandBoardPanel .cmd-pad.is-speaking').forEach(p=>{
@@ -3583,7 +4243,8 @@ async function handleSave(activityId){
   // researchId is the portable pseudonym that survives export and (future) sync.
   const researchId = isGroup ? '' : child.researchId;
   const btn = document.getElementById('saveBtn');
-  if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 300); }
+  if(btnBusy(btn)) return;
+  lockBtn(btn); setTimeout(()=>unlockBtn(btn), 300);
   const values = {};
   // Same null guard as pickSeg: if the form is not on screen any more (a
   // re-render raced the tap — likelier with a screen reader's double-tap),
@@ -3770,7 +4431,8 @@ async function handleBatchSave(activityId){
   const cat = ACTIVITY_DATA[state.category];
   const act = cat.activities[state.activity];
   const btn = document.getElementById('saveBtn');
-  if(btn){ btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; }, 400); }
+  if(btnBusy(btn)) return;
+  lockBtn(btn); setTimeout(()=>unlockBtn(btn), 400);
   let saved = 0, failed = 0;
   for(const pid of batchKids){
     const child = profileById(pid);
@@ -3887,7 +4549,50 @@ async function confirmDeleteRecord(activityId, recordId){
   catch(e){ setTimeout(()=>toast('Storage failed to load — please restart the app.'), 400); }
   // Login gates the app. Once signed in, the welcome-seen flag decides whether
   // to show the one-time welcome or drop straight into the hub.
-  if(!isLoggedIn()){ showLogin('fwd'); }
-  else if(Store.getString(WELCOME_SEEN,'') !== '1'){ showWelcome('fwd'); }
-  else { showHome('fwd'); }
+  try {
+    if(!isLoggedIn()){ showLogin('fwd'); }
+    else if(Store.getString(WELCOME_SEEN,'') !== '1'){ showWelcome('fwd'); }
+    else { showHome('fwd'); }
+  }
+  // finally, NOT catch: launchAutoHide is off, so the native splash now stays
+  // up until we take it down. If a render throw skipped that call the app
+  // would sit on a black screen forever — the handover must happen on every
+  // path out of boot, including the failing ones.
+  finally { revealApp(); }
 })();
+
+/* BRAND MOMENT — hand the screen from the native splash to our own gate, hold,
+   then retire it. See index.html for why the mark is drawn in the web layer at
+   all (Android 12+ ignores the legacy splash drawable and circle-masks its
+   icon, so a 5:1 wordmark cannot render natively).
+
+   ORDER IS THE WHOLE POINT, and getting it wrong is what made the mark
+   invisible on the first two attempts. The web gate paints UNDERNEATH the
+   native splash, so a hold started when app.js parsed was already running
+   while nothing was on screen. With launchAutoHide left on, Capacitor dropped
+   its splash at the same moment our timer expired and the logo got a few
+   dozen frames, most of them mid-fade.
+
+   So: launchAutoHide is now FALSE in capacitor.config.json, the native splash
+   stays until we hide it here, and only THEN does the hold start. The mark is
+   guaranteed a full BRAND_GATE_HOLD_MS on screen because the clock cannot
+   start before it is visible.
+
+   The node is removed, not just hidden — a permanently-present full-screen
+   element is the kind of thing that later swallows a tap or turns up in an axe
+   run. Nothing inside it is focusable, so removal cannot strand a screen
+   reader (the removeAfterFocus lesson). */
+const BRAND_GATE_HOLD_MS = 1000;
+async function revealApp(){
+  // Web preview has no plugin; the optional chaining and the catch cover both
+  // "not native" and "plugin missing", and neither is worth surfacing.
+  try { await window.Capacitor?.Plugins?.SplashScreen?.hide(); } catch(e){}
+  const el = document.getElementById('brandGate');
+  if(!el) return;
+  setTimeout(()=>{
+    el.classList.add('gone');
+    // Match the CSS fade, then drop it. Reduced-motion users get no fade, so
+    // the same timer simply removes it a moment later — harmless either way.
+    setTimeout(()=>el.remove(), 320);
+  }, BRAND_GATE_HOLD_MS);
+}

@@ -34,6 +34,29 @@ checklist of attributes.
 4. **Turn the screen off.** Settings → Accessibility → TalkBack → Settings →
    Advanced → **Screen curtain**, or just do not look. This is the whole point.
    A test done while glancing at the screen tests nothing.
+5. **Set the speech rate SLOW for at least one pass.** Settings → Accessibility
+   → Text-to-speech → Speech rate, somewhere around 30.
+
+### Why the speech rate matters more than it looks (2026-07-30)
+
+The sign-in bug the blind reviewer found appeared on one phone and not another
+with near-identical hardware. The difference was not the hardware — it was the
+speech rate: 30 on one, 100 on the other.
+
+The defect fired on **both**. When focus is lost, TalkBack queues the whole
+screen and starts reading from the top. Speech rate does not change whether
+that queue is generated, only how long it stays audible. At 30 it was still
+talking seconds after the screen had changed — obvious. At 100 the same queue
+drained about three times faster and got cut off almost immediately, reading as
+"TalkBack being a bit chatty" rather than a bug.
+
+**A fast speech rate hides this entire class of defect** — lost focus, doubled
+announcements, interrupted utterances. Slow speech is the magnifying glass.
+
+Note who this hits hardest: fast rates are what fluent screen-reader users set,
+slow rates are typical of people newer to TalkBack. The teachers with the least
+screen-reader experience get the worst version of any bug like this, and they
+are the least likely to report it as a bug rather than assume they misheard.
 
 If you can, do the second half of this with a blind colleague at one of the pilot
 schools driving and you listening. You will learn more in ten minutes than from

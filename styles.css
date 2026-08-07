@@ -532,7 +532,7 @@
     .save:hover{ filter:brightness(1.07); transform:translateY(-1px); }
   }
   .save:active{ transform:translateY(0) scale(.99); }
-  .save:disabled{ opacity:.55; cursor:default; transform:none; filter:none; }
+  .save:disabled, .save[aria-disabled="true"]{ opacity:.55; cursor:default; transform:none; filter:none; }
   .save:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
   .record{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-md);
     padding:var(--s2) var(--s3); margin-bottom:10px; }
@@ -650,7 +650,7 @@
     background:none; border:0; cursor:pointer; padding:6px 2px; }
   .roster-all:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; border-radius:6px; }
   .roster-cta{ margin-top:var(--s2); }
-  .roster-cta[disabled]{ opacity:.45; cursor:not-allowed; }
+  .roster-cta[disabled], .roster-cta[aria-disabled="true"]{ opacity:.45; cursor:not-allowed; }
   /* FOCUS FLOW (batches of 2+): chip strip + one scorecard at a time. */
   .bchips{ display:flex; gap:10px; flex-wrap:wrap; margin:0 0 var(--s2); }
   .bchip{ position:relative; width:52px; border:0; background:none; padding:0; cursor:pointer;
@@ -712,7 +712,7 @@
     background:none; border:1px solid var(--cat-line); border-radius:999px; padding:5px 12px; cursor:pointer; }
   .sumedit:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
   #batchSummary .save{ margin-top:var(--s1); }
-  #batchSummary .save[disabled]{ opacity:.45; cursor:not-allowed; }
+  #batchSummary .save[disabled], #batchSummary .save[aria-disabled="true"]{ opacity:.45; cursor:not-allowed; }
   .student-pick{ flex:1; min-width:0; display:flex; align-items:center; gap:12px; padding:12px 15px;
     background:transparent; border:0; font:inherit; text-align:left; color:var(--ink); cursor:pointer; }
   .student-pick .avatar{ width:38px; height:38px; border-radius:10px; flex:0 0 auto; object-fit:cover;
@@ -890,7 +890,7 @@
   @media (hover:hover){ .confirm-cancel:hover{ background:var(--paper); } }
   .confirm-cancel:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
   .confirm-actions .save{ width:auto; margin:0; padding:12px 18px; }
-  .confirm-go[disabled]{ opacity:.45; cursor:not-allowed; }
+  .confirm-go[disabled], .confirm-go[aria-disabled="true"]{ opacity:.45; cursor:not-allowed; }
   .confirm-export{ display:inline-flex; align-items:center; gap:8px; font:inherit; font-weight:600;
     font-size:var(--t-bodysm); color:var(--cat-deep); background:var(--cat-soft);
     border:1px solid var(--cat-line); border-radius:var(--r-sm); padding:10px 14px;
@@ -976,7 +976,7 @@
   .action-row .action-go svg{ width:20px; height:20px; }
   @media (hover:hover){ .action-row:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lift); border-color:var(--cat); } }
   .action-row:active{ transform:translateY(0); box-shadow:var(--shadow-lift); }
-  .action-row:disabled{ opacity:.55; cursor:default; }
+  .action-row:disabled, .action-row[aria-disabled="true"]{ opacity:.55; cursor:default; }
   .action-row:disabled:hover, .action-row:disabled:active{ transform:none; box-shadow:none; border-color:var(--line); }
   .action-row:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
   /* Flat activity card (page 3) — keeps the colour spine; adds a category line. */
@@ -1043,6 +1043,97 @@
     .panel{ padding:var(--s3); }
     .card{ padding:var(--s3); }
   }
+
+/* =========================================================================
+   BRAND + HOME MASTHEAD — added 2026-07-31. Scoped block, so reverting is
+   "delete this block" and nothing above it moves.
+   ========================================================================= */
+
+/* The launch brand moment. Full-bleed black behind the funder mark, faded out
+   by dismissBrandGate() once the first screen has painted, then removed from
+   the DOM. Black on purpose: it matches the mark's own artwork and the
+   values-v31 system-splash background, so the handoff from the Android splash
+   to the web layer has no colour seam. The global prefers-reduced-motion rule
+   at the foot of this file already flattens the fade. */
+  #brandGate{
+    position:fixed; inset:0; z-index:9999;
+    display:flex; align-items:center; justify-content:center;
+    background:#000; transition:opacity .3s ease; }
+  #brandGate img{ width:72%; max-width:420px; height:auto; }
+  #brandGate.gone{ opacity:0; pointer-events:none; }
+
+/* FUNDER CREDIT — landing foot and About panel. Quiet by construction: a
+   small uppercase label in --ink-faint over the mark, centred, with generous
+   space above so it reads as a footer rather than another row of content.
+
+   The white-on-transparent artwork is invisible on the warm paper, so light
+   surfaces get the ink recolour and dark mode swaps to the original. Only one
+   of the two is ever displayed; the hidden one carries the empty alt so the
+   credit is announced once, not twice. See FUNDER_CREDIT in app.js for the
+   note about the ink variant being our adaptation, not Bosch's artwork. */
+  .funder{
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    margin:var(--s5) 0 var(--s2); }
+  .funder-label{
+    font-size:var(--t-micro); color:var(--ink-faint);
+    letter-spacing:.06em; text-transform:uppercase; }
+  .funder-mark{ display:block; width:100%; max-width:172px; height:auto; }
+  .funder .m-white{ display:none; }
+  [data-theme="dark"] .funder .m-ink{ display:none; }
+  [data-theme="dark"] .funder .m-white{ display:block; }
+
+/* Inside the About panel the credit is already surrounded by chrome, so it
+   needs less air above it than it does at the foot of the landing. */
+  .panel .funder{ margin:var(--s3) 0 0; }
+
+/* Landing footer. The home screen's content is fixed at three blocks (title,
+   two actions, credit) and never grows, so it is safe to make this one screen
+   a flex column and push the credit to the bottom with margin-top:auto.
+
+   The min-height subtraction is deliberately CONSERVATIVE — header, .wrap's
+   top padding and its 120px bottom padding come to roughly 230px, and
+   under-reserving here only means the credit sits a little high, while
+   over-reserving would introduce a scrollbar on a screen that should never
+   have one. Erring low is the cheaper mistake.
+
+   Scoped to .home-screen and nowhere else: making #screen a flex column would
+   turn every screen's children into flex items and quietly change layouts the
+   a11y-nochange gate is meant to hold still. */
+  .home-screen{
+    display:flex; flex-direction:column;
+    min-height:calc(100dvh - 260px); }
+  .home-screen .funder{ margin-top:auto; margin-bottom:0; }
+
+/* BULK IMPORT — the paste-a-list screen. Borrows the form panel and .field
+   that the child form already uses, so this adds surface, not a new visual
+   language. No accent, no shadow: the status colours below are the SAME
+   --code-* family the record form already uses for its field types, reused
+   rather than a new palette (guardrail 1 — if you are tempted to colour a
+   third thing, don't).
+
+   Status is NEVER colour alone. Each row states its outcome in words
+   ("already enrolled — will be skipped"), so the colour is reinforcement for
+   sighted users and carries no information on its own. That matters more than
+   usual here: this is a tool for a blindness-community app and the teacher
+   reading it may be using a screen reader. */
+  .bulk-entry{ margin-top:var(--s2); }
+  .bulk-src{
+    width:100%; box-sizing:border-box; font-family:inherit;
+    font-size:var(--t-bodysm); line-height:1.7; resize:vertical;
+    padding:var(--s1); border:1px solid var(--line); border-radius:11px;
+    background:var(--card); color:var(--ink); }
+  .bulk-tally{ margin:0 0 var(--s2); font-size:var(--t-bodysm); color:var(--ink-soft); }
+  .bulk-rows{ display:flex; flex-direction:column; gap:6px; }
+  .bulk-row{
+    display:flex; flex-wrap:wrap; gap:2px var(--s1); align-items:baseline;
+    margin:0; padding:8px 10px; border-radius:11px;
+    border-left:4px solid var(--line); background:var(--paper); }
+  .bulk-name{ font-weight:600; font-size:var(--t-bodysm); }
+  .bulk-note{ font-size:var(--t-caption); color:var(--ink-soft); }
+  .bulk-row.is-new{ border-left-color:var(--code-judge-deep); }
+  .bulk-row.is-warn{ border-left-color:var(--code-count-deep); }
+  .bulk-row.is-dup{ border-left-color:var(--code-notes-deep); }
+  .bulk-row.is-bad{ border-left-color:var(--code-video-deep); }
 
 /* ===========================================================================
    ACCESSIBILITY BLOCK — added 2026-07-28.

@@ -268,7 +268,9 @@ function boot(){
        'tapping the SAME pad AFTER it finished replays it — the sighted workflow is untouched');
 
     // Repeat-one is the mode with no natural end; it must say so.
-    w.eval("SB.repeat='all'; SB.cycleRepeat()"); await sleep(120);
+    // 300ms, not 120: SB._announce now goes through srSpeak, which clears the
+    // region and writes 150ms later so the change always registers as a change.
+    w.eval("SB.repeat='all'; SB.cycleRepeat()"); await sleep(300);
     ok(/loop/i.test(w.document.getElementById('sbLive').textContent || ''),
        'repeat-one warns that the sound will loop until stopped');
   } else {
@@ -285,6 +287,256 @@ function boot(){
   ok(inDrawer && inDrawer.closest('.drawer'), 'focus is inside the drawer');
   w.closeMenu(true); await sleep(150);
   ok(!D.querySelector('body > main').hasAttribute('inert'), 'inert is released on close');
+
+  /* ---- FLOW 8: a submit must not steal the screen reader cursor ----------
+     Reported 2026-07-30, blind reviewer round 2: "after moving from the login
+     page the talkback still says the details about the sign in page."
+
+     Cause: the double-tap guard was `btn.disabled = true` on the button the
+     teacher had just activated. Disabling a focused element blurs it, focus
+     falls to <body>, the screen reader loses its cursor, and TalkBack's
+     recovery is to read the window from the top — which at that instant is
+     still the sign-in screen. handleLogin held that state across two awaits
+     before showHub painted, so there was ample time to hear it.
+
+     These assertions pin the MECHANISM, not the symptom: if anyone reaches for
+     .disabled in a handler again, this fails. */
+  console.log('\nFLOW 8 — a submit must not drop focus to <body>');
+  w.showLogin('none'); await sleep(140);
+  const sel8 = D.getElementById('lg_school');
+  sel8.value = schoolId; w.onSchoolPick(schoolId); await sleep(220);
+  D.getElementById('lg_id').value = 'saksham01';
+  D.getElementById('lg_pw').value = 'pilot';
+
+  /* IMPORTANT — READ BEFORE ADDING A "focus is still on the button" CHECK.
+     jsdom does NOT implement the blur-on-disable behaviour that Chrome and
+     Android WebView have: setting .disabled on a focused element leaves
+     document.activeElement untouched here, but moves it to <body> on a real
+     device. Verified 2026-07-30.
+     So a behavioural assertion CANNOT fail in this harness — it would pass on
+     the broken code and give false confidence. That is exactly how this bug
+     reached a blind tester in the first place.
+     The two guards below are therefore STRUCTURAL, and they do fail on the old
+     code: the attribute contract, and a source scan for the banned pattern. */
+  const submit = D.querySelector('#lg_teacherArea .save');
+  ok(!!submit, 'the sign-in button is there to press');
+  submit.focus();
+
+  w.lockBtn(submit);
+  ok(submit.getAttribute('aria-disabled') === 'true',
+     'the guard marks the button aria-disabled, so it still reads as unavailable');
+  ok(submit.disabled === false,
+     'the guard does NOT touch .disabled — that property is what blurs it on a real device');
+  w.unlockBtn(submit);
+  ok(!submit.hasAttribute('aria-disabled'), 'and unlocking clears it');
+
+  // Re-entrancy: the busy flag, not the browser, is what stops a double tap.
+  w.lockBtn(submit);
+  ok(w.btnBusy(submit) === true, 'a locked button reports busy, so handlers can reject a second tap');
+  w.unlockBtn(submit);
+  ok(w.btnBusy(submit) === false, 'and is accepted again once unlocked');
+
+  // THE REAL GUARD: nothing in app.js may disable a control imperatively.
+  // `x.disabled = !cond` (state-driven, on a control the user is not on) is
+  // fine; `x.disabled = true/false` inside a handler is the banned pattern.
+  // Strip comments FIRST — the block comment above handleLogin names the
+  // banned pattern in prose, and a naive line filter flags its own warning.
+  const src = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8')
+                .replace(/\/\*[\s\S]*?\*\//g, '')
+                .replace(/^\s*\/\/.*$/gm, '')
+                .split('\n');
+  const banned = src.filter(l => /\.disabled\s*=\s*(true|false)\b/.test(l));
+  ok(banned.length === 0,
+     banned.length === 0
+       ? 'no handler sets .disabled — the focus-stealing pattern is gone from app.js'
+       : `${banned.length} line(s) still set .disabled directly: ${banned[0].trim()}`);
+
+  await w.handleLogin(schoolId); await sleep(400);
+  const a8 = active();
+  ok(a8 && D.getElementById('screen').contains(a8),
+     'and sign-in still lands focus inside the new screen');
+  w.localStorage.setItem('welcomeSeen','1');
+
+  /* ---- FLOW 9: an announcement must not outlive its screen ---------------
+     Reported 2026-07-30 from Mansi's phone: on the Today screen, exploring by
+     touch read out "Saksham School, Noida selected. Enter your login ID and
+     password." — the sign-in announcement, still sitting in #srStatus.
+
+     A live region KEEPS its last text, and .visually-hidden is clipped rather
+     than display:none, so that text stays real, readable content in the
+     accessibility tree right next to the new screen.
+
+     It looked device-specific and was not: the phone that seemed fine had a
+     saved session, skipped the sign-in screen entirely, and so never populated
+     the region. Reinstalling wiped the session, which is why reinstalling
+     appeared to cause it. */
+  console.log('\nFLOW 9 — an announcement must not outlive its screen');
+  w.showLogin('none'); await sleep(140);
+  const sel9 = D.getElementById('lg_school');
+  sel9.value = schoolId; w.onSchoolPick(schoolId); await sleep(300);
+  ok(/login id/i.test(spoken()), 'picking a school announces what to do next');
+
+  D.getElementById('lg_id').value = 'saksham01';
+  D.getElementById('lg_pw').value = 'pilot';
+  await w.handleLogin(schoolId); await sleep(400);
+  ok(spoken() === '',
+     'once on the next screen that sentence is GONE from the live region');
+  ok(!/saksham|login id|password/i.test(D.getElementById('main').textContent + spoken()),
+     'and no sign-in text is reachable anywhere on the new screen');
+
+  /* The self-clear must ALSO work without a navigation — a teacher can sit on
+     one screen and explore. This waits out the real SR_CLEAR_MS rather than
+     asserting a constant exists: a check that cannot fail is worse than none,
+     which is the lesson from FLOW 8's first draft. SR_CLEAR_MS is a top-level
+     const so it is NOT on window — reach it with eval. */
+  const CLEAR_MS = w.eval('SR_CLEAR_MS');
+  ok(typeof CLEAR_MS === 'number' && CLEAR_MS > 0, `SR_CLEAR_MS is set (${CLEAR_MS}ms)`);
+  w.announce('Standalone message'); await sleep(300);
+  ok(spoken() === 'Standalone message', 'a standalone announcement is written');
+  await sleep(CLEAR_MS + 400);
+  ok(spoken() === '',
+     `and it clears itself after ${CLEAR_MS}ms with no navigation at all`);
+
+  /* ---- FLOW 10: dismissing a tip must not strand the cursor --------------
+     Reported 2026-07-30: "the elements in the do not show again thing are kinda
+     not working properly with TalkBack." The tap worked; what failed was after
+     it. dismissHelpTip() removed the element CONTAINING the button just
+     pressed, so focus fell to <body> and TalkBack restarted from the top.
+
+     Unlike the .disabled case in FLOW 8, jsdom DOES blur on element removal
+     (verified 2026-07-30), so this one can be asserted behaviourally. */
+  console.log('\nFLOW 10 — dismissing a tip must not destroy focus');
+  // The callout only renders while the teacher has never dismissed it, and
+  // earlier flows set that flag. Clear it, then open a screen that has a ?.
+  await w.eval(`Store._remove(_obKey(HELP_USED_KEY))`);
+  w.showActivity(solo.ci, solo.ai); await sleep(300);
+  const tipBtn = D.querySelector('.help-tip-ok');
+  ok(!!tipBtn, 'the "Don\'t show again" button is on screen to test');
+  if(tipBtn){
+    tipBtn.focus();
+    ok(active() === tipBtn, 'focus starts on the dismiss button, as after a double-tap');
+    await w.dismissHelpTip(tipBtn);
+    /* Wait PAST the removal timeout before judging focus. The old code removed
+       the element on a 240ms timer, so checking at 150ms saw focus still on the
+       doomed button and passed on broken code — the same can't-fail assertion
+       trap as FLOW 8's first draft. Judge focus only after the DOM has settled. */
+    await sleep(450);
+    ok(!D.body.contains(tipBtn), 'the tip is removed');
+    const a10 = active();
+    ok(a10 && a10 !== D.body && a10 !== D.documentElement,
+       'and focus is NOT left on <body> once it is gone');
+    ok(a10 && D.body.contains(a10), 'it is on something still in the page');
+    ok(/dismissed/i.test(spoken()), 'and the dismissal is announced');
+  }
+
+  /* ---- FLOW 11: bulk import ----------------------------------------------
+     The screen's whole safety property is that what it SAYS it will do and
+     what it ACTUALLY does come from one classifier. If the preview and the
+     import ever drift apart, a teacher gets silent duplicates of real children
+     — the exact failure the duplicate check exists to prevent. So this asserts
+     the classifier directly, on the nastiest paste we can write: a duplicate
+     of an already-enrolled child, a duplicate within the paste itself, a
+     British-format date, and a date that cannot be read at all. */
+  console.log('\nFLOW 11 — bulk import must not silently create duplicates');
+  // Seed a child WITH a date of birth: the seeded flow children have none, and
+  // the exact-match roster check needs both halves of the key to be real.
+  await w.eval(`upsertProfile({ id:'flow-dup', name:'Roster Child', dob:'2015-03-11', researchId:'OM-FLOW-DUP' })`);
+  const known = 'Roster Child', knownDob = '2015-03-11';
+  ok(!!(await w.eval(`loadProfiles().some(p=>p.name==='Roster Child')`)),
+     'there is an existing child with a date of birth to test the roster check against');
+  const rosterBefore = (await w.eval(`loadProfiles().length`));
+
+  const paste = [
+    'Ananya Bose\t14/08/2015',
+    'Ananya Bose\t14/08/2015',
+    `${known}\t${knownDob}`,
+    'Kabir\t2017-01-09',
+    'Roster Child\t01/01/2011',
+    'No Date Here',
+    'Bad Date\t31/31/2015'
+  ].join('\n');
+  const rows = await w.eval(`parseBulkRows(${JSON.stringify(paste)})`);
+  const by = s => rows.filter(r => r.status === s).length;
+
+  ok(rows.length === 7, 'every non-empty line is classified, none dropped');
+  ok(by('new') === 2, 'only the two genuinely new children are marked as plain adds');
+  ok(rows[1].status === 'dup', 'a line repeated inside the paste is caught');
+  ok(rows[2].status === 'dup', 'a child already on the roster is caught');
+  ok(rows[4].status === 'warn',
+     'a NAME that already exists with a different date is flagged, not silently added');
+  ok(rows[5].status === 'bad', 'a missing date of birth is refused, not defaulted');
+  ok(rows[6].status === 'bad', 'an impossible date is refused rather than guessed at');
+  ok(by('dup') === 2 && by('bad') === 2 && by('warn') === 1,
+     'the tally the teacher reads matches the rows');
+  // DD/MM must never be silently read as MM/DD — that would corrupt a child's age.
+  ok(rows[0].dob === '2015-08-14', 'DD/MM/YYYY is normalised, not transposed');
+  // Nothing may be written by parsing alone; the import is the only writer.
+  ok((await w.eval(`loadProfiles().length`)) === rosterBefore,
+     'previewing a paste writes nothing to storage');
+  // Consent cannot be pasted — imported children must arrive locked.
+  await w.eval(`importOneChild({name:'Import Test Child', dob:'2016-06-06'})`);
+  const made = await w.eval(`loadProfiles().find(p=>p.name==='Import Test Child')||{}`);
+  ok(!!made.researchId, 'an imported child still gets a research ID');
+  ok(made.videoConsent === false, 'and arrives with video consent OFF — consent is not pasteable');
+
+  /* ---- FLOW 12: the sheet sync ------------------------------------------
+     Sync and paste must agree. They share classifyRows(), and this asserts
+     that a CSV straight out of a spreadsheet — header row, quoted field with a
+     comma in it, CRLF endings — reaches the same verdicts the pasted version
+     would. A sheet the teacher never published answers with an HTML sign-in
+     page and a 200, so that has to be caught too or the app would try to
+     enrol children called "<!doctype html>". */
+  console.log('\nFLOW 12 — a synced sheet is judged exactly like a pasted list');
+  const csv = 'Name,Date of birth\r\n"Nair, Meera",14/08/2015\r\nKabir Sen,2017-01-09\r\nKabir Sen,2017-01-09\r\nNo Date,\r\n';
+  const parsed = await w.eval(`parseCSV(${JSON.stringify(csv)})`);
+  ok(parsed.length === 5, 'every CSV line is read, header included');
+  ok(parsed[1][0] === 'Nair, Meera', 'a quoted field keeps its comma instead of splitting');
+
+  const stripped = await w.eval(`stripSheetHeader(parseCSV(${JSON.stringify(csv)}))`);
+  ok(stripped.length === 4, 'a header row is detected and dropped');
+  ok(stripped[0][0] === 'Nair, Meera', 'and the first real child survives it');
+
+  const sheetRows = await w.eval(
+    `classifyRows(stripSheetHeader(parseCSV(${JSON.stringify(csv)})).map(r=>({name:r[0], dobRaw:r[1]})))`);
+  const st = s => sheetRows.filter(r=>r.status === s).length;
+  ok(sheetRows.length === 4, 'the sheet classifies every data row');
+  ok(st('new') === 2, 'the two distinct children are marked for adding');
+  ok(sheetRows[2].status === 'dup', 'a row repeated in the SHEET is caught, same as in a paste');
+  ok(sheetRows[3].status === 'bad', 'a blank date of birth from a sheet cell is refused');
+
+  // A sheet with no header must not lose its first child.
+  const noHead = await w.eval(`stripSheetHeader(parseCSV('Asha,01/02/2016\\nBimal,03/04/2015'))`);
+  ok(noHead.length === 2 && noHead[0][0] === 'Asha',
+     'a sheet WITHOUT a header keeps its first row — the header is detected, not assumed');
+
+  /* Any of the three links Google hands out for the same sheet must work.
+     Requiring a coordinator to tell them apart is a support call waiting to
+     happen, and pasting the /edit address is the single most likely mistake. */
+  const SID = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+  const fromEdit = await w.eval(`normalizeSheetUrl('https://docs.google.com/spreadsheets/d/${SID}/edit#gid=0')`);
+  ok(/output=csv|format=csv/.test(fromEdit), 'an /edit link is rewritten to a CSV export');
+  ok(fromEdit.includes(SID), 'and keeps the spreadsheet id');
+  ok(/gid=0/.test(fromEdit), 'and keeps the tab it was pointing at');
+  const alreadyCsv = 'https://docs.google.com/spreadsheets/d/e/2PACX-xyz/pub?gid=0&single=true&output=csv';
+  ok((await w.eval(`normalizeSheetUrl(${JSON.stringify(alreadyCsv)})`)) === alreadyCsv,
+     'a published CSV link is left untouched');
+
+  // An unpublished sheet returns a Google page, sometimes with a 200.
+  await w.eval(`window.fetch = () => Promise.resolve({ ok:true, status:200, text:()=>Promise.resolve('<!doctype html><html>Sign in</html>') })`);
+  const html = await w.eval(`fetchSheetCSV('https://example.com/pub?output=csv')`);
+  ok(html.ok === false, 'an HTML page is rejected rather than parsed as students');
+  ok(/Publish to web/i.test(html.error || ''), 'and the message says exactly which menu to use');
+
+  /* The bug behind "the sheet link returned 101": the transport reported an
+     odd status while handing over a perfectly good body. Judge the body. */
+  await w.eval(`window.fetch = () => Promise.resolve({ ok:false, status:101, text:()=>Promise.resolve('Name,Date of birth\\nAsha,01/02/2016') })`);
+  const odd = await w.eval(`fetchSheetCSV('https://example.com/pub?output=csv')`);
+  ok(odd.ok === true, 'a real CSV body is accepted even when the status code is strange');
+
+  // A dead network must read as offline, not as a mysterious failure.
+  await w.eval(`window.fetch = () => Promise.reject(new Error('offline'))`);
+  const down = await w.eval(`fetchSheetCSV('https://example.com/pub?output=csv')`);
+  ok(down.ok === false && down.offline === true, 'an unreachable sheet is reported as offline');
 
   console.log(`\n  ========== ${pass} passed, ${fail} failed ==========`);
   dom.window.close();

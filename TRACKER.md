@@ -1,8 +1,198 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-07-29 (blind-reviewer round 1: two defects fixed, sound stop)_
+_Last updated: 2026-07-31 pm (branding, bulk import, sheet sync)_
+
+## STATE (2026-07-31 pm) — branding + student intake. UNCOMMITTED.
+Everything below is in the working tree on `feat/a11y-blind-teacher` and NOT
+committed. Gates all green: **40/40 · 93/93 flows · 22/22 · 7/7 · 32/32 axe ·
+contrast pass · 546 controls**.
+
+**1. SPEC.md is new and is now the definition of done** for accounts, children
+and data custody — Aditya's own eight-line description of the app, with a
+verified status column and file:line evidence. TRACKER is history; SPEC is the
+target. Committed earlier as `3dff39f`.
+
+**2. Brand moment moved to the WEB LAYER.** The native splash never appeared
+because `AppTheme.NoActionBarLaunch` inherits `Theme.SplashScreen`, so from
+Android 12 the system draws the launch screen and IGNORES
+`android:background="@drawable/splash"`. It also circle-masks its icon, so the
+~5:1 BIF wordmark can never render natively at any size. Now `#brandGate` in
+index.html: full-bleed black, mark centred, held 1000ms, faded, removed from
+the DOM. `launchAutoHide:false` + an explicit `SplashScreen.hide()` in a
+`finally` — the hold starts only AFTER the native splash lifts, which is what
+fixed "I see black but no logo" (both timers were previously racing and the
+mark got a few dozen frames, most mid-fade). `values-v31/styles.xml` makes the
+system's own moment black so there is no cream→black→cream flash.
+
+**3. Funder credit** pinned to the foot of the landing (a `.home-screen` flex
+column, `margin-top:auto`) and repeated in About. The cane-child illustration
+Aditya asked for was added, then REMOVED at his request — markup, CSS and file
+all gone.
+
+**4. Bulk import** ("Add several students from a list") — paste rows, live
+preview, four verdicts. Then **sheet sync** replaced it as the primary path
+after Aditya said the paste step was the very thing he wanted to avoid: a
+coordinator sets a published-CSV link once in Settings, teachers tap **Sync
+from the sheet** on Students. Paste survives as the offline fallback, one line
+below Sync — DELETE IT if he confirms he does not want it.
+
+## NEXT — the one list (2026-07-31)
+_Replaces five competing "NEXT" sections dated 14, 21, 21 pm, 22 and 29 July.
+History stays in the STATE / Done sections below. New work is added HERE, not in
+a new section. Target state for accounts and data custody lives in `SPEC.md`._
+
+### FIRST — commit and verify the 31 Jul pm work
+- [ ] **Commit it.** Three focused commits (see MEMORY for what is in each):
+      brand/web gate · student intake (import + sync) · MEMORY/TRACKER.
+      Then `git push origin feat/a11y-blind-teacher`.
+- [x] **Sheet sync WORKS against a real published sheet** — confirmed on device
+      2026-07-31 pm. Route to get there: an `/edit` link 401s because the sheet
+      is private; File › Share › Publish to web › the tab › CSV gives the
+      `/d/e/2PACX-…/pub?…output=csv` link that works. Still worth confirming
+      once: tap Sync a SECOND time and check it adds nobody.
+- [ ] **Decide the paste screen's fate** — keep as the offline fallback, or
+      delete. Aditya disliked it; it is currently one line under Sync.
+- [ ] **Before real children go in any sheet:** un-publish and re-publish to
+      mint a fresh URL. The current one was pasted into a chat, and a published
+      link is unauthenticated — the URL IS the credential.
+
+### BLOCKING EVERYTHING — one build ships rounds 2–4
+- [ ] `./scripts/build.sh` → `cd android && ./gradlew assembleDebug` on the Mac.
+      Rounds 2, 3, 4 and 4b are all in source + `www/` and in NO APK. Nothing
+      below matters until this runs.
+- [ ] Consent-clean it before it leaves the team: empty `faces/`, then verify
+      `unzip -l app-debug.apk | grep -c faces/` → 0.
+
+### Close the accessibility loop
+- [ ] Send the build to the blind reviewer.
+- [ ] Ask him exactly three things: (1) does selecting a student say the NAME?
+      (2) did he FIND pad-tap-to-stop himself, or only because he was told?
+      (3) does it still read from the top anywhere — and on WHICH screen?
+- [ ] On his round-2 answers: merge `feat/a11y-blind-teacher` → main, delete the
+      branch, push. (15 commits ahead of main as of 31 Jul.)
+- [ ] Send `docs/a11y-preview.html` (`node scripts/a11y-preview.js`) to the
+      Flipkart designer — high contrast deliberately breaks the accent guardrails.
+
+### Clear the branch backlog
+- [ ] `feat/section-color-zones` (1 commit, 23 Jul): checkout → `build.sh` →
+      `installDebug` → open a soundboard activity to see all four bands at once
+      → merge, or tweak hues first if the manager wants.
+- [ ] **Delete `shell-login-home`** (local + origin). It predates the file split;
+      merging it would REVERT the split. Confirm its BYOD/child-id research is
+      captured in MEMORY first.
+
+### Then: backend P0 — this is the SPEC.md work
+- [ ] Deferred 2026-07-22, now the critical path. `SPEC.md` holds the eight
+      requirements and the order. Solve 3→2→1: cloud-first enrolment +
+      `backfill_child` RPC for children already enrolled locally; device-test
+      matrix (`CLOUD_SYNC=true`: wrong password fails online, server-minted
+      `OM-XXXX-XXXX` lands in `children`, airplane-mode enrolment blocked, edits
+      still work, cross-school RLS returns nothing); then `Cloud.syncRecords()`
+      + `Cloud.uploadVideo()` + `syncPending` + delete-everywhere.
+- [ ] Two schema gaps to fix first: group records (`records.research_id` is NOT
+      NULL, which blocks them) and the `teacher_id` FK (resolve server-side).
+- [ ] Un-backfillable, watch it: children enrolled offline are un-syncable by FK.
+      Every one created before cloud-first enrolment lands is a migration later.
+
+### Decisions needed from humans
+- [ ] **Video + a blind teacher** (Aditya + Mansi; legal if (b)). He cannot frame
+      a shot, tell whether the child is in it, or check the clip afterwards.
+      (a) leave it — video is optional per child and he doesn't use it;
+      (b) a sighted colleague captures; (c) hide the control when a screen reader
+      is detected — unreliable to detect, paternalistic when wrong.
+      Recommend (a) or (b).
+- [ ] **Video retention** (Mansi) — research data kept and analysed for years, or
+      fidelity QA watched once, scored and deleted? Blocks the uploader design.
+      Note the ship decision is already locked (R&D, 2026-07-03): video ships.
+- [ ] **Legal:** group activities save no video by design — per-child consent
+      can't cover an unidentified group. If researchers want group footage, legal
+      must define a group-consent envelope first.
+- [ ] **Legal:** fiduciary entity of record, grievance officer, effective date,
+      Rule 10 due-diligence sign-off, educational-institution exemption. All
+      flagged in `compliance/DPDP-COMPLIANCE-MAP.md`.
+- [ ] **Mansi:** real teacher names for the seed.
+- [ ] Print consent forms WITH serial numbers once the legal placeholders fill in.
+
+### Content team
+- [ ] Hindi SOP drafts are machine-drafted — verify before pilot. Deliver ta/bn
+      text (paste into `sopTranslations`, run the generator — no code needed).
+- [ ] FAQ copy (6 original + 3 new accessibility entries) and the Sound `help[]`
+      wording are drafts. "Other Activities" has no `help[]` — add if wanted.
+- [ ] Real recordings for `clap.mp3` + `whistle.mp3` (currently synthetic).
+- [ ] Narrated welcome — Sarvam script EN/HI. The script is the blocker; no code
+      slot is built yet.
+- [ ] Demo clips are SILENT. The `?` sheet now says so; a narrated demo would
+      remove the caveat.
+- [ ] Film + wire the toy-faded `slt-withcane` demo — its `videoFile` is empty.
+
+### Housekeeping / optional
+- [ ] Get `~/om-media-backup` OFF the Mac (Drive or an external disk) — 39 audio,
+      22 sounds, 2 faces, 8 videos. It would not survive the laptop.
+- [ ] SLT English narration: `node scripts/generate-audio.js --only slt-nocane
+      slt-withcane-toy slt-withcane`, then `build.sh` + `installDebug`.
+- [ ] `./scripts/generate-thumbs.sh` on the Mac.
+- [ ] Trim `demo-snddir-steps-solo.mp4` (23 MB, 9½ min) if APK size bites —
+      filename stays, no code change.
+- [ ] Prune `prototypes/` — 5 draft HTML files.
+- [ ] Validate the focus-flow 350 ms auto-advance beat with real teachers (the
+      dial is in `batchFlowInit`'s setTimeout).
+- [ ] Untested, flagged honestly: braille display, Switch Access, Voice Access.
+      If a pilot teacher uses one, test before assuming.
+- [ ] Video #4 content workflow: deduce SOP from the demo video → simplify to ≤4
+      steps → wire `videoFile` → mastery + teacherNotes fields.
+
+## ROUND 4b (2026-07-30) — last two round-3 items, DONE. Needs one APK.
+1. **"Don't show again" destroyed focus.** It removed the element CONTAINING the
+   button just pressed, so focus fell to `<body>` and TalkBack restarted from
+   the top. New `removeAfterFocus()` moves focus to the `?` button first and
+   announces the dismissal. `dismissHint` had the same shape; both fixed.
+2. **Verbosity trim.** Child tiles were labelled "Vaishu, student 3 of 12".
+   Screen readers announce STATE BEFORE the name, so every swipe was "Not
+   selected. Vaishu, student three of twelve. Button." Tiles now carry the NAME
+   ONLY — the grid container already announces "12 students" on entry. This is
+   both the "too accessible" fix and the "name comes too late" fix.
+**Gates: 63/63 flows · 7/7 runtime theme · 32/32 axe · 22/22 · 55/55 · 40/40.**
+**EVERYTHING for rounds 2-4 is now in source + www/ and NOT in any APK.
+One build ships all of it.**
+
+## ROUND 4 (2026-07-30) — dark / high-contrast modes were being defeated
+"When the contrast changes we cannot see the text." Root cause was NOT a bad
+colour pair: `themeFor()` wrote the light category palette as an INLINE style on
+`<body>`, which beats the mode blocks on `<html>`. Dark mode therefore rendered
+light `--cat-soft` under light `--ink` at **1.02:1 — invisible**. High contrast
+was equally defeated, just less visibly. Fixed; `a11y-runtime-theme.js` is a new
+build gate (7 assertions) because the existing contrast gate reads the
+stylesheet and so passed 55/55 the whole time.
+STILL OPEN from round 3 feedback: "Don't show again" destroys focus; the
+verbosity trim (drop ", student 3 of 12" from tile labels).
+SCOPE NOTE: Aditya clarified the app is NOT for blind users — accessible, not
+blind-first. The grid redesign and Brief/Full setting are dropped.
+
+## ROUND 3 (2026-07-30) — stale live region. FIXED, needs a new APK.
+"On Today, TalkBack reads out Saksham School / enter your login ID."
+`#srStatus` kept the school-pick announcement forever; `.visually-hidden` is
+clipped, not hidden, so it stayed readable beside every later screen.
+Surfaced only after Mansi REINSTALLED, because the other phone had a saved
+session and skipped sign-in entirely — NOT a speed or speech-rate difference.
+`#sbLive` and `#cmdLive` had the same flaw. All three self-clear now and are
+dropped on navigation once written. FLOW 9 fails the build on a regression.
+**Gates: 57/57 flows · 22/22 · 55/55 · 40/40 · axe clean · 546 controls.**
+**BLOCKING: needs ./scripts/build.sh + assembleDebug on the Mac — not in any APK.**
+
+## ROUND 2 FEEDBACK (2026-07-30) — one defect, fixed, NOT yet on his phone
+Reviewer confirmed FIXED: student names, and stopping a sound from the pad.
+Still broken then: after sign-in, TalkBack recited the sign-in page.
+CAUSE: `btn.disabled = true` as a double-tap guard blurred the button he had
+just pressed → focus to `<body>` → TalkBack reads the window from the top, and
+`handleLogin` held that across two awaits before painting. Three more sites had
+the same pattern. All four now use `lockBtn`/`unlockBtn` (aria-disabled + busy
+flag); CSS matches `[aria-disabled="true"]` so sighted users see no change.
+`a11y-flows.js` FLOW 8 now fails the build on the banned pattern.
+**Gates: 51/51 flows · 22/22 default look · 55/55 contrast · 40/40 · axe clean.**
+**NEXT: Aditya must run ./scripts/build.sh + assembleDebug and send the APK —
+the fix is in git and www/, but NOT in any APK yet.**
 
 ## STATE (2026-07-29) — accessibility work reviewed by a blind person, round 1
-`feat/a11y-blind-teacher`, 8 commits, **pushed**. Built and verified on the Mac.
+`feat/a11y-blind-teacher`, **pushed**, in sync with origin. Built and verified on the Mac.
 NOT merged to main on purpose — the reviewer is mid-loop and fixes should land
 here, not on main.
 
@@ -56,43 +246,6 @@ announcement here describes the action that CAUSED the navigation.
 axe-clean · 546 controls, zero exceptions. The 1x default look is unchanged and
 proven on every build.
 
-## NEXT (2026-07-29) — in order
-- [ ] **Send the new build to the reviewer** (consent-clean: see the runbook
-      section on emptying `faces/`, and verify with
-      `unzip -l app-debug.apk | grep -c faces/` → 0).
-- [ ] **Ask him three things specifically:**
-      1. Selecting a student — does it say the NAME now?
-      2. Tapping the pad again to stop — did he FIND that himself, or only
-         because he was told? If the latter, the label change is not carrying
-         its weight and a spoken hint is needed.
-      3. Does it still read from the top anywhere? If yes, WHICH SCREEN — that
-         one detail pins it immediately.
-- [ ] **Then merge:** `git checkout main && git merge feat/a11y-blind-teacher`,
-      delete the branch, push. Hold until his round-2 feedback is in.
-- [ ] **Get `~/om-media-backup` OFF the Mac** — Drive or an external disk. It
-      holds audio (28), sounds (22), 8 demo videos, 2 faces. Survived `/tmp`
-      today; would not survive the laptop.
-- [ ] **DECISION NEEDED — video evidence + a blind teacher.** The one thing with
-      NO non-visual equivalent: he cannot frame a shot, cannot tell whether the
-      child is in it, cannot check the clip after. Filming a child you cannot
-      see, for a research record, is a consent question too. Options: (a) leave
-      it — video is optional per-child and he simply does not use it; (b) a
-      sighted colleague captures video when needed; (c) hide the control when a
-      screen reader is detected — unreliable to detect, paternalistic when
-      wrong. Recommend (a) or (b). Needs Aditya + Mansi, legal if (b).
-- [ ] **Designer:** send `docs/a11y-preview.html` (regenerate with
-      `node scripts/a11y-preview.js`) to the Flipkart reviewer. High-contrast
-      mode deliberately overrides the "one accent, one shadow tier" guardrails
-      — a considered exception for low vision, worth a second opinion.
-- [ ] **Untested, flagged honestly:** braille display, Switch Access, Voice
-      Access. If any pilot teacher uses one, test before assuming.
-- [ ] **Content team:** three new FAQ entries (text size, easier to see, screen
-      reader) are DRAFT copy. Also: the demo clips are SILENT — the `?` sheet
-      now says so, but a narrated demo would remove the caveat.
-- [ ] **Then resume the roadmap** — backend P0 (deferred 2026-07-22) and the
-      `feat/section-color-zones` emulator verify below. A dedicated UI session
-      is also queued (Aditya, 2026-07-29).
-
 ## Done 2026-07-29 — the whole day
 - [x] Reviewer defect 1: student name spoken on selection (`1219e2d`).
 - [x] Reviewer defect 2: `paint()` never leaves focus destroyed (`1219e2d`).
@@ -105,7 +258,8 @@ proven on every build.
       existed. **Recovered from the emulator's installed APK** — every build
       carries the media at `assets/public/faces/`, which makes ANY INSTALLED
       BUILD A BACKUP. `scripts/recover-faces.sh` automates the search
-      (`f8b5391`). `~/om-media-backup/` now exists.
+      (see `git log` for the tooling commit). `~/om-media-backup/` now exists and was verified complete on 2026-07-30
+      (39 audio, 22 sounds, 2 faces, 8 videos). Getting it OFF the Mac is still open.
 - [x] RUNBOOK corrected three times over: never stash media in `/tmp`; `cp`
       then `rm`, not `mv`; no inline `#` comments in pasteable snippets
       (interactive zsh does not honour them); emulator must be BOOTED before
@@ -193,28 +347,6 @@ and video have NO client cloud path (confirmed: no `.upload(`/`storage.from` in
 source), while `schema.sql` already has the `records` table + `videos` bucket
 ready. Plus two un-backfillables (offline-enrolled children are un-syncable by
 FK; stale `shell-login-home` branch pre-dates the file split — delete it).
-## NEXT (2026-07-22) — in order
-- [ ] **Aditya, Mac — finish this session's git (sandbox hit the lock wall):**
-      `cd ~/Desktop/om-app && rm -f .git/index.lock .git/HEAD.lock` then
-      `git checkout -- app.js styles.css` (discard the messy working copies —
-      they're safe in commit `b705487`), `git reset`, then `git checkout main`
-      (carries the MEMORY/TRACKER edits onto main), `git add MEMORY.md TRACKER.md
-      && git commit -m "MEMORY/TRACKER: 2026-07-22 wrap"` and
-      `git push origin main feat/section-color-zones`. `git log --oneline -3` to confirm.
-- [ ] **Aditya, Mac — verify the color zones:** `git checkout feat/section-color-zones`,
-      `./scripts/build.sh`, `cd android && ./gradlew installDebug`. Open a
-      SOUNDBOARD activity (Counting Steps) to see all four bands at once. Check
-      the blue player accents, the green form with edge-accent fields, plum past
-      results. If it reads well → `git checkout main && git merge feat/section-color-zones`,
-      delete the branch. Tweak hues first if the manager wants.
-- [ ] **Later (deferred): backend P0** — solve order 3→2→1: cloud-first enrolment
-      + `backfill_child` RPC for existing local kids; device-test matrix (esp.
-      cross-school RLS); then `Cloud.syncRecords()` + `Cloud.uploadVideo()` +
-      `syncPending` + delete-everywhere. Two schema gaps to fix: group records
-      (research_id NOT NULL blocks them) and teacher_id FK (resolve server-side).
-- [ ] **Also delete** the stale `shell-login-home` branch (local + origin) once
-      its BYOD/child-id research is confirmed captured in MEMORY — merging it
-      would revert the file split.
 ## STATE (2026-07-21 pm) — sidebar drawer, record color code, Android back fix
 Follow-on session after the design overhaul. Sound `?` help COMMITTED
 (`ab59713`); the app-shell changes (drawer + color code + back fix) are in the
@@ -236,24 +368,6 @@ the plugin was never installed → back exited the app. The popstate history
 sentinel (first attempt) failed on device; kept as web-preview fallback only.
 Verified: 40/40 suite, parse OK, 8/8 color assertions, contrast 6.2–9.7:1.
 APP_VERSION → 0.9.0 (21 Jul 2026).
-## NEXT (2026-07-21 pm refresh) — in order
-- [ ] **Aditya, Mac:** finish the app-shell commit from the REPO ROOT (`cd
-      ~/Desktop/om-app`, NOT android/): `rm -f .git/index.lock .git/HEAD.lock`
-      then `git add app.js styles.css index.html package.json package-lock.json
-      && git commit -m "app shell (2026-07-21): drawer, record color code,
-      android back fix"`. Confirm with `git log --oneline -3`.
-- [ ] **Aditya, Mac:** `./scripts/build.sh` then `cd android && ./gradlew clean
-      installDebug` (CLEAN — new native plugin). Walk a deep record screen →
-      system back retraces each step → Home → toast → second press exits; back
-      also cancels an open confirm dialog.
-- [ ] **Aditya:** `git push origin main` (refreshes the project-knowledge sync).
-- [ ] **Aditya:** fresh `assembleDebug` APK → Mansi (drawer + Settings/FAQs +
-      color code + back fix; batch flow already in her last drop).
-- [ ] **Content:** verify FAQ copy + the Sound `help[]` wording (both drafts);
-      "Other Activities" still has no help[] — add if wanted.
-- [ ] Still open from prior sessions: narrated welcome (Sarvam script), run
-      `generate-thumbs.sh` on the Mac, Hindi SOP verify, focus-flow 350ms timing
-      check with real teachers (details in the design-overhaul NEXT below).
 ## STATE (2026-07-21) — full UX overhaul landed; batch flow replaces single-child
 Big design session, all committed on main (through `0efdedb`), working tree
 clean, ~6 commits ahead of origin at wrap-up (push may already be done).
@@ -267,20 +381,6 @@ contextual onboarding (hints + persistent ? callout, per-teacher flags);
 home-dot removed from header; font Inter → Arimo. NOTE for older docs: any
 instruction that says "card → child picker → record screen" now reads
 "card → roster select → focus flow".
-## NEXT — one list, in order (2026-07-21 refresh)
-- [ ] **Aditya:** `git push origin main` if not yet pushed (check `git status`).
-- [ ] **Aditya:** fresh `assembleDebug` APK → Mansi via the documented loop
-      below (batch flow + new design is a big review drop; login unchanged).
-- [ ] **Aditya, Mac:** run `./scripts/generate-thumbs.sh` — the two SLT demo
-      clips exist only on the Mac (posters unused on cards now, but the script
-      + build copying stay ready for when videos finalise).
-- [ ] **Content:** narrated welcome — "listen to how this app works" on the
-      welcome screen (Sarvam script EN/HI + generate-audio run). Script is the
-      blocker; no code slot built yet.
-- [ ] **Content:** Hindi SOP drafts still machine-drafted — verify before pilot.
-- [ ] **Pilot watch-item:** focus-flow auto-advance beat is 350ms — validate
-      with real teachers; dial lives in batchFlowInit's setTimeout.
-- [ ] Optional housekeeping: prototypes/ has 5 draft HTML files (safe to prune).
 ## STATE (2026-07-14 pm) — reconcile resolved; repo clean
 Soundboard player code confirmed ON main (`git grep buildSoundboard HEAD -- app.js`
 = 2 hits — it landed via an earlier merge, outside the recent-log window).
@@ -313,59 +413,6 @@ non-empty password (offline stub — password not verified until the cloud
 flag flips; told to Mansi). CONSENT CAVEAT: bundled faces/ photos ride
 along in every APK — strict option is to empty faces/ for her builds.
 Debug key = only Aditya's Mac can build over-installing updates.
-## NEXT — one list, in order
-- [ ] **Aditya, Mac:** emulator-verify Straight Line Travel — three cards
-      (Without Cane / With Cane + Push Toy / With Cane), each → child picker →
-      record screen with the sound player + four fields (steps, times drifted,
-      Got it/With help/Not yet, notes), `?` plays the demo (3rd card has none),
-      test save lands. Stale APK → `cd android && ./gradlew clean installDebug`.
-- [ ] **Aditya, Mac:** SLT English narration —
-      `node scripts/generate-audio.js --only slt-nocane slt-withcane-toy slt-withcane`,
-      then `./scripts/build.sh`, `cd android && ./gradlew installDebug`.
-- [x] **RECONCILE the soundboard branch state — RESOLVED 2026-07-14:**
-      `buildSoundboard`/`SB` IS in main's `app.js` (landed via an earlier
-      merge — just outside the recent-log window checked last session).
-      `origin/feat/soundboard` has 0 commits not in main; a fresh clone
-      builds the player fine. Fully merged branches (feat/cloud-sync,
-      feat/password-login, feat/sop-content, feat/soundboard) pruned local
-      + remote; `shell-login-home` kept (2 unmerged prototype commits).
-- [ ] **Film + wire the toy-faded demo** for `slt-withcane` (its `videoFile`
-      is empty — no clip of plain-cane travel yet). Compress + drop in root.
-- [ ] **Content team:** verify the SLT Hindi SOP drafts (machine-drafted).
-- [ ] **Aditya, Mac:** emulator-verify Sound + Direction (ALREADY ON MAIN —
-      `f406c55`/`21d1c7d`; the `feat/sound-direction` branch is gone, no merge
-      needed; stale merge instruction removed 2026-07-14): card grid
-      (4 activities, Group pill on Counting Steps — Group) → group card goes
-      STRAIGHT to record screen (no child picker, "Whole group" bar, NO video
-      control) → save → record shows "Group" → per-child activity still asks
-      for a child and shows video control.
-      Stale APK → `cd android && ./gradlew clean installDebug`.
-- [ ] **Aditya, Mac (10 min):** English narration —
-      `node scripts/generate-audio.js --only dir-basic-commands` (+ advanced;
-      after merge add the four snddir-* ids; plain run for ALL activities
-      before the next school demo). Then `./scripts/build.sh`,
-      `cd android && ./gradlew installDebug`.
-- [ ] **Aditya:** push everything — `git push origin main`
-      (main's push is what refreshes project-knowledge sync).
-- [ ] **Optional trim:** `demo-snddir-steps-solo.mp4` is 23 MB (9½ min,
-      already re-encoded from 87 MB). If APK size bites, trim to the best
-      ~2 min on the Mac; filename stays, no code change.
-- [ ] **Cloud device test** (when the real device is handy): flip
-      `CLOUD_SYNC=true`, build, install. Matrix: wrong password online FAILS;
-      new child online → `OM-XXXX-XXXX` in `children`; airplane mode → new
-      child blocked, edit works; cross-school RLS (second user, different
-      school_id, sees none); parked video-picker test (`content://` URI →
-      `commitPendingVideo`). Flag back to false after.
-- [ ] **Video #4** (next chat): per-activity workflow — deduce SOP from
-      video, simplify to ≤4 steps, wire demo file, mastery+teacherNotes.
-- [ ] **Content team:** verify Direction + Sound + Direction Hindi SOP drafts;
-      deliver ta/bn text (paste into sopTranslations → run generator — no code).
-- [ ] **Consent check** before any APK leaves the team: bundled photos of the
-      demo children (faces/) need guardian consent on file.
-- [ ] **Legal (flagged):** group activities save no video by design (consent
-      is per-child; a group clip can't be verified against unidentified
-      children). If researchers want group footage, legal must define a
-      group-consent envelope first.
 ## Done 2026-07-14 (Straight Line Travel three-stage + soundboard commit landed)
 - [x] **Category 4 rebuilt from 3 demo videos into THREE stages**:
       `slt-nocane` (travel by ear) → `slt-withcane-toy` (push toy on the cane —

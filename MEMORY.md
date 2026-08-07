@@ -1,14 +1,123 @@
 # MEMORY.md — O&M Cane Training
-_Last updated: 2026-07-29 (accessibility: built, reviewed by a blind person, round 1 fixed)_
 
-## ACCESSIBILITY (2026-07-28/29, `feat/a11y-blind-teacher` @ `f8b5391`, 8 commits, pushed, NOT merged)
+## SPEC.md is the definition of done (new 2026-07-31)
+Aditya's own eight-line description of the app — schools added by us, teacher
+logins issued by us, changeable passwords, teacher-added children that are
+never overwritten, videos that come to US and not the school, CSV export, and
+export scoped to the children a teacher works with. Status column is verified
+against the tree with file:line evidence. **TRACKER is history; SPEC is the
+target.** Order of work: `2 → 5 → 6 → 8 → 3 → 1`.
+Headline finding behind it: the `Cloud` seam has ONLY `signIn` + `enrolChild`.
+No `.upload(`, no `storage.from`, no `syncRecords` — **records never leave the
+device either**, so "we hold the videos" is not an uploader, it is the whole
+sync layer. `records.teacher_id` already exists in `schema.sql:106` and is dead
+because nothing ever reaches the server.
 
-### The scope decision
-Users are still SIGHTED teachers. The team requires the app to be **fully
-operable by a blind person**. So: **TalkBack-native** — semantic HTML, ARIA and
-focus management driving the user's OWN screen reader — NOT self-voicing via
-Sarvam. Children never operate the app, so the **Play Store 18+ target-audience
-declaration is UNCHANGED** and Designed-for-Families still should not trigger.
+## Android 12+ kills the native splash (settled 2026-07-31)
+`AppTheme.NoActionBarLaunch` inherits `Theme.SplashScreen`, so from API 31 the
+SYSTEM draws the launch screen and **ignores `android:background`** — the
+legacy `drawable/splash.png` never appears. It also **circle-masks** its icon,
+so a ~5:1 wordmark cannot render there at any size. The BIF mark therefore
+lives in the WEB layer (`#brandGate`), which also means it is in git, unlike
+anything under the gitignored `android/`.
+- `launchAutoHide:false` + an explicit `SplashScreen.hide()` inside a
+  **`finally`** (not `catch` — with auto-hide off, a render throw on any boot
+  path would strand the app on a black screen forever).
+- The hold starts AFTER that hide, never at parse time. The first attempt
+  counted down while the web gate was still behind the native splash, so both
+  expired together and the mark got a few dozen frames, most of them mid-fade.
+  That is the whole reason "I see black but no logo" happened twice.
+- `values-v31/styles.xml` sets `windowSplashScreenBackground` to black so there
+  is no cream→black→cream flash. **LOCAL ONLY** — `android/` is gitignored, so
+  this joins `allowBackup="false"` and `forceDarkAllowed="false"` on the
+  re-apply-if-android-is-regenerated list.
+
+## Brand assets (2026-07-31)
+- `img/` is a NEW committed directory and the odd one out: `audio/`, `sounds/`
+  and `faces/` are gitignored, `img/` is not, because it is artwork rather than
+  personal data. It rides the same mirror loop in `build.sh` step 3b.
+- **Never reference `img/bif-logo.png`.** The supplied master is 6000×3375 —
+  about 81 MB decoded — and Android's WebView silently declines to paint it.
+  That, not placement, is why the mark was invisible. Ship the 1000px
+  derivatives; the master stays only as the source to regenerate from.
+- The artwork is TRANSPARENT with a **white** wordmark, so it is invisible on
+  the warm paper. `bif-mark-white.png` is used on the black launch gate and in
+  dark mode; `bif-mark-ink.png` is **our recolour** (white ink → `--ink`, purple
+  untouched) for light surfaces, swapped by `[data-theme="dark"]`.
+  ⚠ **The ink variant is not Bosch's artwork.** Ask BIF for an official
+  light-background lockup before anything goes to them, and flag it if the APK
+  leaves the team.
+- Rejected: a black plate behind the white mark. A black slab in a design whose
+  first guardrail is "the page stays flat" reads as a sticker.
+
+## Student intake — paste AND sheet sync (2026-07-31)
+**One classifier, two front doors.** `classifyRows()` owns the duplicate rule,
+the date rule and the wording a teacher reads. `parseBulkRows()` (paste) and
+the sheet sync both feed it `{name, dobRaw}`. Two classifiers that drifted is
+the failure this is designed against — the preview must never promise something
+the import does not do.
+- Four verdicts: **new** · **warn** (name matches, date does not — ADDED and
+  flagged, because two children really can share a name and refusing the second
+  is worse than the duplicate) · **dup** (skipped) · **bad** (refused).
+- The `warn` state exists because writing the test found a real bug: the check
+  keyed on name+DOB, but the demo children have no DOB, so a re-run sailed
+  through as new and would have duplicated them.
+- `DD/MM/YYYY` normalises; anything ambiguous or out of range is **refused, not
+  guessed** — misreading 04/02 as April 2nd corrupts a child's age and nothing
+  downstream would flag it.
+- **Consent is not pasteable.** Imported children arrive `videoConsent:false`
+  with the video control locked (DPDP Rule 10 wants it verifiable). Fail-closed.
+- Import routes through `Cloud.enrolChild()`, the same seam as the single-child
+  form. Skipping it in bulk would mass-produce device-local IDs — the most
+  expensive bug in the backlog, thirty at a time. Sequential, not `Promise.all`.
+- **Why not a live Google Sheet as backend:** identified minors' data in a
+  consumer cloud with link-based access, no row-level isolation, no audit
+  trail. It undoes the pseudonymisation seam and moves children's data offshore
+  when Supabase was put in the India region precisely to avoid that. Prior art
+  is ODK Central Entities — the spreadsheet SEEDS the list, the server stays
+  authoritative. Aditya chose sheet-sync anyway (his call, stated once); the
+  app therefore only ever READS, and never writes a child back to the sheet.
+- **A published link is unauthenticated — the URL IS the credential.** Set once
+  by a coordinator in Settings, kept off group chats, re-minted before real
+  children go in.
+
+## Fetching from Google (2026-07-31)
+- `CapacitorHttp` is enabled in `capacitor.config.json`. Without it the fetch
+  dies on CORS, because Google redirects a published CSV to another host.
+- **Do not trust `res.ok` from Capacitor's patched `fetch`** — it does not
+  follow the fetch spec, and a good CSV body arriving with an odd status was
+  being thrown away (this produced Aditya's "returned 101"). `fetchSheetCSV()`
+  calls `CapacitorHttp.get()` directly and **judges the body first**: if it is
+  CSV, it worked, whatever the status says.
+- `normalizeSheetUrl()` accepts any of the three links Google hands out for one
+  sheet and rewrites anything carrying a spreadsheet id to a CSV export,
+  preserving `gid`. A `/pub?…output=csv` link passes through untouched.
+- **401 means the sheet is private** — a Google setting, not an app bug.
+  Publish to web → the tab → CSV. The `/d/e/2PACX-…` shape is the tell it was
+  done right; the `/edit` address alone can never work.
+- An unpublished sheet answers with a Google sign-in PAGE and a 200, so a
+  status check alone is not enough — `/^\s*</` on the body catches it.
+
+_Last updated: 2026-07-30 (rounds 2-4 — focus guard, stale live region, defeated display modes)_
+
+## ACCESSIBILITY (2026-07-28 → 30, `feat/a11y-blind-teacher`, NOT merged to main)
+_Don't pin a commit SHA in these files — committing the file invalidates it. Use `git log --oneline main..HEAD`._
+
+### The scope decision — REVISED 2026-07-30, read this before designing anything
+Users are SIGHTED teachers. Aditya's words: **"this app is not for the blind at
+all, I just want it to be accessible."**
+So the aim is **accessible, NOT blind-first**. Meet the standard, fix real
+defects, keep the sighted design primary. Do NOT redesign flows around
+non-visual navigation. Dropped on this basis: the grid-of-faces redesign
+(summary line / heading groups / search) and a Brief-vs-Full verbosity setting —
+a verbosity setting only earns its keep with two audiences, and there is one.
+Mechanism stays **TalkBack-native** (semantic HTML, ARIA, focus management
+driving the user's own screen reader) — NOT self-voicing via Sarvam.
+Children never operate the app, so the **Play Store 18+ target-audience
+declaration is UNCHANGED** and Designed-for-Families should still not trigger.
+_Earlier drafts of this file said "fully operable by a blind person". That
+overshot. A blind reviewer is still the best defect-finder we have — his three
+rounds found real bugs — but he is a TESTER, not the target user._
 
 ### The baseline was already good
 axe-core over all 21 screens found ONE minor violation. Zero `div onclick` —
@@ -21,9 +130,11 @@ a two-day job and not a rewrite.** Every real defect was invisible to axe.
 |----------|-----|
 | `moveScreenFocus(opts)` | after every screen swap: focus `.lede` → first heading → labelled `#screen`. Nothing may leave focus destroyed. |
 | `setBackgroundInert(on)` | depth-COUNTED `inert` on header+main while any modal is open (a confirm can open on top of the help sheet). |
-| `announce(msg)` | speak without a visible toast. Clears `#srStatus` first, writes 150ms later. |
+| `srSpeak(el,msg,state)` | the ONE way to write any live region. Clears, writes 150ms later, then SELF-CLEARS after `SR_CLEAR_MS`. Used by `announce`, `SB._announce`, `CB._flash`. |
+| `announce(msg)` | speak without a visible toast (wraps `srSpeak` on `#srStatus`). |
 | `toast(msg)` | visible half sync + `announce()`. |
-| `posLabel` / `groupAttrs` | "Vaishu, student 3 of 12" and "12 students" on every collection. |
+| `posLabel` / `groupAttrs` | position + collection size. NOT on child tiles any more — see RULE 13. |
+| `removeAfterFocus(el,pref,msg)` | remove an element containing the focused control WITHOUT destroying focus. |
 | `avatarFor` / `avatarFallback` | photo with `onerror` → the child's initial. |
 | `langBtnAttrs` | BCP-47 `lang` + Latin `aria-label` on narration language buttons. |
 | `SB.stopPad` / `SB._padLabels` | sound pad is a toggle; its NAME tracks play state. |
@@ -50,6 +161,57 @@ a two-day job and not a rewrite.** Every real defect was invisible to axe.
 6. **Announcements must lead with the thing you cannot get otherwise.** A
    toggle's activation announces STATE only, never the name — so a bare count
    ("3 of 12 selected") told the teacher a number and never which child.
+7. **Never set `.disabled` on a control inside its own handler.** Disabling the
+   focused element BLURS it; focus falls to `<body>`; the screen reader loses
+   its cursor and TalkBack reads the window from the top. Use `lockBtn` /
+   `unlockBtn` / `btnBusy` (aria-disabled + a busy flag). `a11y-flows.js` FLOW 8
+   scans app.js for the banned pattern and fails the build.
+   **Same class: never REMOVE an element containing the focused control.** That
+   is what "Don't show again" did. Use `removeAfterFocus()` — move focus first,
+   announce, then remove. FLOW 10 covers it. jsdom DOES blur on removal (unlike
+   on disable), so that one can be asserted behaviourally — but assert AFTER the
+   removal timer fires, or it passes on broken code.
+8. **Speech rate masks bugs — always test one pass at a SLOW rate.** Rate does
+   not change WHETHER a defect fires, only how long it stays audible: seconds at
+   30, a clipped blip at 100. Fast speech hides lost focus, doubled
+   announcements and interrupted utterances. And it is the LEAST fluent users
+   who run slow rates — they get the worst version of every bug and are the
+   least likely to call it a bug.
+   **CORRECTION (2026-07-30):** an earlier draft of this rule blamed the 30-vs-100
+   rate difference for the sign-in bug appearing on one phone and not the other.
+   That was wrong. The real difference was STATE: the quiet phone had a saved
+   session and never ran the sign-in screen at all. See Round 3 below. Rate
+   affects audibility, not occurrence — do not use it to explain away a defect
+   that reproduces on one device only.
+9. **A live region KEEPS its last text, and that text stays readable.**
+   `.visually-hidden` is CLIPPED, not `display:none`, so a spoken sentence
+   remains real content in the accessibility tree, sitting beside the new
+   screen where touch exploration finds it. Announcements must SELF-CLEAR
+   (`srSpeak` + `SR_CLEAR_MS`) and be dropped on navigation once written.
+   Distinguish from RULE 2: a PENDING announcement describes the action that
+   caused the navigation and must survive; an ALREADY-WRITTEN one belongs to the
+   screen being left and must go.
+10. **An inline style on `<body>` beats an attribute selector on `<html>`.**
+   `themeFor()` wrote `--cat*` inline, silently defeating BOTH
+   `[data-theme="dark"]` and `[data-contrast="high"]`, which define their own
+   mode-correct set. In dark mode that put the light `--cat-soft` (#e2efe5)
+   under light `--ink` (#f2ede3) — **1.02:1, invisible**, on every surface with
+   `background:var(--cat-soft)` and no colour of its own. Fixed by having
+   themeFor stand down when a mode owns the palette, and re-running it from
+   `applyDisplayPrefs()` so a runtime toggle cannot strand old values.
+11. **A contrast test that READS the stylesheet proves what the CSS says, not
+   what the teacher sees.** `a11y-contrast.js` passed 55/55 throughout the
+   above, because the value it checked was never the value that rendered.
+   `a11y-runtime-theme.js` now drives the real app and is a build gate.
+12. **Do not put a position count in a per-item label.** It is useful once and
+   noise on every swipe, and it pushes the item's NAME behind a state word,
+   since screen readers announce state first. Collection size belongs on the
+   container (`groupAttrs`), not on each child.
+13. **jsdom cannot see focus bugs.** It does NOT implement blur-on-disable, so a
+   behavioural assertion passes on broken code. Verified 2026-07-30. Where the
+   harness cannot reproduce a browser behaviour, assert the STRUCTURE (attribute
+   contracts, source scans) and say so in the test — a green check that cannot
+   fail is worse than no check.
 
 ### Android WebView / TalkBack gotchas
 - **`aria-modal` is a hint WebView ignores.** Swiping past the last control
@@ -90,12 +252,13 @@ restoring the visual row.
 
 ### Verification — seven scripts, all wired into `./scripts/build.sh`
 `a11y-contrast` (55/55, all four colour modes) · `a11y-nochange` (22/22, rem
-parity + rule scoping) · `a11y-flows` (43/43, real flows) · `a11y-smoke` (546
+parity + rule scoping) · `a11y-flows` (63/63, real flows) · `a11y-smoke` (546
 controls, nothing throws) · `a11y-audit` (axe 21 screens + 31 assertions) ·
 `a11y-preview` (5 screens x 6 modes for the designer) · `recover-faces.sh`.
 Plus `test-batch1` 40/40.
-**a11y-flows has now caught two regressions I was about to ship.** When someone
-later calls the gates slow, that is the answer.
+**a11y-flows has now caught two regressions I was about to ship, and FLOW 8
+fails on the round-2 bug.** When someone later calls the gates slow, that is
+the answer.
 
 ### Still NOT solved — documented, not hidden
 - **Filming video evidence has no non-visual equivalent.** A blind teacher
@@ -117,6 +280,38 @@ later calls the gates slow, that is the answer.
    picker focuses the newly-added child's tile, and `paint()` has a next-frame
    safety net.
 **Both were found by a human in minutes and had passed every automated check.**
+
+### Round 3 (2026-07-30) — the STALE LIVE REGION. Read this one carefully.
+Symptom, from Mansi's phone: on the Today screen, exploring by touch read out
+**"Saksham School, Noida selected. Enter your login ID and password."**
+Cause: `onSchoolPick` announces that sentence and **`#srStatus` never cleared
+it**. It sat in the accessibility tree immediately after `<main>`, so touch
+exploration found it on every later screen.
+**Why it looked device-specific, and was not.** The quiet phone had a SAVED
+SESSION — `boot()` saw `isLoggedIn()`, went straight to the hub, the sign-in
+screen never ran, so the region was never populated. **Reinstalling wiped that
+session**, forced a real sign-in, and "caused" the bug. Aditya pushed back on my
+speed theory and was right; the reinstall detail was the tell, and speech rate
+was a red herring.
+`#sbLive` and `#cmdLive` had the identical flaw. All three go through `srSpeak()`
+now. `a11y-flows.js` FLOW 9 fails the build on any of it.
+**LESSON: "it works on my device" for a screen reader usually means that device
+has different STATE, not different speed. Ask what storage differs first — and
+ask what the tester did just before it started.**
+
+### Round 2 (2026-07-30) — "it still reads the sign-in page"
+Names and the sound pad were confirmed FIXED by the reviewer. One left:
+after signing in, TalkBack recited the sign-in screen.
+**Cause: `btn.disabled = true` as a double-tap guard in `handleLogin`.** It
+blurred the button the teacher had just pressed, parking focus on `<body>`,
+and the disable straddled TWO awaits (verifyCredentials, then four Store
+writes) before `showHub` painted — a long window with no cursor. Same pattern
+existed at three more sites (saveProfile, saveRecord, batch save); all four now
+use `lockBtn`/`unlockBtn`. CSS matches `[aria-disabled="true"]` alongside
+`:disabled` so nothing changes for sighted users.
+**Round 1's fix was necessary but not sufficient** — `moveScreenFocus` repairs
+focus AFTER a paint, and this bug destroyed focus BEFORE one. Worth remembering:
+"focus is restored on navigation" does not cover the gap before navigation.
 
 ---
 
@@ -710,7 +905,9 @@ Plus: **a few more features to add** — Aditya to name them next chat.
 - `docs/RUNBOOK.md` — build and ship, written for Aditya to paste
 - `docs/A11Y-TALKBACK-TESTS.md` — the 6 manual runs to hand a blind tester
 - `sounds/`, `audio/`, `faces/` — bundled media (gitignored); mirrored to `www/`
-- `~/om-media-backup/` — the ONLY second copy of that media. Not on this Mac's git.
+- `~/om-media-backup/` — second copy, VERIFIED COMPLETE 2026-07-30 (39 audio,
+  22 sounds, 2 faces, 8 videos). Still on the same Mac = still one disk. An APK
+  is a third copy of audio+sounds but NOT of `faces/` in consent-clean builds.
 - `MEMORY.md`, `TRACKER.md`, `DESIGN_NOTES.md`, `REVIEW_PACKET.md`
 ## Useful commands
 **Never put an inline `#` comment on a line meant to be pasted** — interactive
