@@ -166,18 +166,25 @@ const ACTIVITY_DATA = [
     ]
   },
 
-  /* ===== CATEGORY 2 ============================================ */
+  /* ===== CATEGORY 3 ============================================ */
   {
-    category: "Sound",
-    description: "Sound identification and localization (Left-Right, Front-Back, Top, Bottom).",
-    /* DRAFT help — content team to verify wording (added 2026-07-21: this was
-       a pilot category without `help`, so its screen had no ?). */
+    category: "Sound + Direction",
+    description: "Naming a sound and finding where it comes from, then judging how far away it is — by ear, then with the cane.",
+    /* Restructured 2026-07-13 from the four SOP demo videos (#2). Old ids
+       snddir-clap / snddir-cane-count retired — pre-pilot, orphaned test
+       records accepted knowingly (same call as the Direction restructure).
+       REGROUPED 2026-08-24: the two Sound activities (Which Sound? / Source of
+       Sound?) moved IN from their own category, which is now gone; the two
+       Counting Steps drills moved OUT to Straight Line Travel. Activity ids
+       are unchanged, so saved records follow their activity — records key on
+       the activity id, never on the category. */
     help: [
       "Start with Which Sound? — the child names each sound you play from the app's sound library.",
       "Move to Source of Sound? — the child points to where the sound comes from: left-right, front-back, top and bottom.",
+      "Then Near-Far — the child judges sound distance by ear alone, and repeats it with the cane, pointing to the sound and touching it.",
       "Stand about 3 steps from the child when playing sounds. Open an activity for the full steps and the demo."
     ],
-    helpVideo: "demo-sound.mp4",
+    helpVideo: "demo-snddir-nearfar.mp4",
     activities: [
       {
         id: "sound-which",
@@ -216,28 +223,7 @@ const ACTIVITY_DATA = [
           { id: "result", label: "Overall", type: "result" },
           { id: "notes", label: "Notes", type: "notes" }
         ]
-      }
-    ]
-  },
-
-  /* ===== CATEGORY 3 ============================================ */
-  {
-    category: "Sound + Direction",
-    description: "Judging sound distance — near or far — by ear, then with the cane, then counting steps as a group and one child at a time.",
-    /* Restructured 2026-07-13 from the four SOP demo videos (#2). Old ids
-       snddir-clap / snddir-cane-count retired — pre-pilot, orphaned test
-       records accepted knowingly (same call as the Direction restructure).
-       GROUP NOTE: `group: true` below marks a whole-group activity — the app
-       skips the child picker and saves ONE result for the group. Copy that
-       line onto any activity that is scored as a group, delete it for
-       per-child scoring. */
-    help: [
-      "Start with Near-Far — the child judges sound distance by ear alone.",
-      "Repeat with the cane — the child points to the sound and touches it.",
-      "Counting Steps: run the Group drill first (one shared result — no child is selected), then score each child in Individual."
-    ],
-    helpVideo: "demo-snddir-nearfar.mp4",
-    activities: [
+      },
       {
         id: "snddir-nearfar",
         name: "Near-Far",
@@ -294,6 +280,77 @@ const ACTIVITY_DATA = [
         dataFields: [
           { id: "result", label: "Did the child get it?", type: "mastery" },
           { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
+        ]
+      },
+
+    ]
+  },
+
+  /* ===== CATEGORY 4 ============================================
+     Straight Line Travel — three stages, matching how the skill is
+     actually built up. The child travels toward a sound played on the
+     APP (soundboard, same as the Sound activities), holding a straight
+     line the whole way:
+
+       1. Without Cane         — by ear alone (baseline).
+       2. With Cane + Push Toy — a toy is attached to the cane, with a
+                                 little story, so the child WANTS to hold
+                                 it. This is deliberate: it breaks the
+                                 stigma around the cane and builds a
+                                 positive association before it is "a cane".
+       3. With Cane            — the toy comes off; the same travel, now
+                                 independent. The scaffold is faded.
+
+     The data to watch across the three stages: STEPS (efficiency) and
+     TIMES DRIFTED OFF LINE (straightness) should both shrink stage to
+     stage as the association carries over into real cane use. */
+  {
+    category: "Straight Line Travel",
+    description: "Travel in a straight line toward a sound played on the app — first by ear, then estimating and counting the steps, then with the cane and a push toy for a positive start, then with the cane alone.",
+    /* GROUP NOTE: `group: true` on Counting Steps — Group marks a whole-group
+       activity — the app skips the child picker and saves ONE result for the
+       group. Copy that line onto any activity that is scored as a group,
+       delete it for per-child scoring. (Both Counting Steps drills moved here
+       from Sound + Direction on 2026-08-24; their ids are unchanged, so saved
+       records follow them.) */
+    help: [
+      "Start Without Cane — the child walks to the sound by ear. This is the baseline.",
+      "Counting Steps: run the Group drill first (one shared result — no child is selected), then score each child in Individual.",
+      "Add the cane With Push Toy — the toy and its story make the cane fun and familiar; the child pushes it straight to the sound.",
+      "Finish With Cane once the toy comes off — the same straight-line travel, now independent. Steps and drifts should shrink stage to stage."
+    ],
+    helpVideo: "demo-slt-nocane.mp4",
+    activities: [
+      {
+        id: "slt-nocane",
+        name: "Straight Line Travel — Without Cane",
+        withCane: false,
+        soundboard: true,
+        sop: [
+          "Place the device straight ahead and play a sound from the app.",
+          "Stand the child at the start line, facing the sound — no cane.",
+          "The child walks to the sound in a straight line; count the steps.",
+          "The child stops on reaching the sound."
+        ],
+        facilitatorNote: "Straightness is the skill, not just arrival — a child who reaches the sound but wanders there hasn't got it yet. Keep the SAME sound playing so the ears have a steady target, and keep the path clear. Steer drifts with a light touch — don't turn the child — and log every correction. Fewer drifts and fewer steps across sessions is the progress.",
+        // DRAFT translation (machine-drafted 2026-07-14) — content team must
+        // verify wording BEFORE pilot audio is generated. Steps line up 1:1
+        // with `sop` above, as required by generate-audio.js.
+        sopTranslations: {
+          hi: [
+            "डिवाइस को सीधे सामने रखें और ऐप से एक आवाज़ बजाएँ।",
+            "बच्चे को शुरुआती रेखा पर, आवाज़ की ओर मुँह करके खड़ा करें — बिना छड़ी।",
+            "बच्चा सीधी रेखा में आवाज़ तक चले; कदम गिनें।",
+            "आवाज़ तक पहुँचने पर बच्चा रुक जाए।"
+          ]
+        },
+        audioFile: "",
+        videoFile: "demo-slt-nocane.mp4",
+        dataFields: [
+          { id: "steps",  label: "Number of steps",        type: "count" },
+          { id: "veer",   label: "Times drifted off line", type: "count" },
+          { id: "result", label: "Did the child get it?",  type: "mastery" },
+          { id: "notes",  label: "Teacher's notes",        type: "teacherNotes" }
         ]
       },
       {
@@ -353,69 +410,6 @@ const ACTIVITY_DATA = [
           { id: "steps",    label: "Actual steps counted",  type: "count" },
           { id: "result",   label: "Did the child get it?", type: "mastery" },
           { id: "notes",    label: "Teacher's notes",       type: "teacherNotes" }
-        ]
-      }
-    ]
-  },
-
-  /* ===== CATEGORY 4 ============================================
-     Straight Line Travel — three stages, matching how the skill is
-     actually built up. The child travels toward a sound played on the
-     APP (soundboard, same as the Sound activities), holding a straight
-     line the whole way:
-
-       1. Without Cane         — by ear alone (baseline).
-       2. With Cane + Push Toy — a toy is attached to the cane, with a
-                                 little story, so the child WANTS to hold
-                                 it. This is deliberate: it breaks the
-                                 stigma around the cane and builds a
-                                 positive association before it is "a cane".
-       3. With Cane            — the toy comes off; the same travel, now
-                                 independent. The scaffold is faded.
-
-     The data to watch across the three stages: STEPS (efficiency) and
-     TIMES DRIFTED OFF LINE (straightness) should both shrink stage to
-     stage as the association carries over into real cane use. */
-  {
-    category: "Straight Line Travel",
-    description: "Travel in a straight line toward a sound played on the app — first by ear, then with the cane and a push toy for a positive start, then with the cane alone.",
-    help: [
-      "Start Without Cane — the child walks to the sound by ear. This is the baseline.",
-      "Add the cane With Push Toy — the toy and its story make the cane fun and familiar; the child pushes it straight to the sound.",
-      "Finish With Cane once the toy comes off — the same straight-line travel, now independent. Steps and drifts should shrink stage to stage."
-    ],
-    helpVideo: "demo-slt-nocane.mp4",
-    activities: [
-      {
-        id: "slt-nocane",
-        name: "Straight Line Travel — Without Cane",
-        withCane: false,
-        soundboard: true,
-        sop: [
-          "Place the device straight ahead and play a sound from the app.",
-          "Stand the child at the start line, facing the sound — no cane.",
-          "The child walks to the sound in a straight line; count the steps.",
-          "The child stops on reaching the sound."
-        ],
-        facilitatorNote: "Straightness is the skill, not just arrival — a child who reaches the sound but wanders there hasn't got it yet. Keep the SAME sound playing so the ears have a steady target, and keep the path clear. Steer drifts with a light touch — don't turn the child — and log every correction. Fewer drifts and fewer steps across sessions is the progress.",
-        // DRAFT translation (machine-drafted 2026-07-14) — content team must
-        // verify wording BEFORE pilot audio is generated. Steps line up 1:1
-        // with `sop` above, as required by generate-audio.js.
-        sopTranslations: {
-          hi: [
-            "डिवाइस को सीधे सामने रखें और ऐप से एक आवाज़ बजाएँ।",
-            "बच्चे को शुरुआती रेखा पर, आवाज़ की ओर मुँह करके खड़ा करें — बिना छड़ी।",
-            "बच्चा सीधी रेखा में आवाज़ तक चले; कदम गिनें।",
-            "आवाज़ तक पहुँचने पर बच्चा रुक जाए।"
-          ]
-        },
-        audioFile: "",
-        videoFile: "demo-slt-nocane.mp4",
-        dataFields: [
-          { id: "steps",  label: "Number of steps",        type: "count" },
-          { id: "veer",   label: "Times drifted off line", type: "count" },
-          { id: "result", label: "Did the child get it?",  type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",        type: "teacherNotes" }
         ]
       },
       {
