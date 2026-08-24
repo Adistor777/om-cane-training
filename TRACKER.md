@@ -1,9 +1,77 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-07-31 pm (branding, bulk import, sheet sync)_
+_Last updated: 2026-08-21 (requirements sheet folded in; repo state re-verified)_
 
-## STATE (2026-07-31 pm) — branding + student intake. UNCOMMITTED.
-Everything below is in the working tree on `feat/a11y-blind-teacher` and NOT
-committed. Gates all green: **40/40 · 93/93 flows · 22/22 · 7/7 · 32/32 axe ·
+## STATE (2026-08-21) — the requirements sheet is now the outer target
+**Read `OM-Requirements.md` (Adi, 21 Aug) first.** It is the source of truth for
+accounts, access, video custody and rollover: **R1–R36** requirements, **four**
+still-open decisions (D1, D4a, D5, D9) and **C1–C5** fixed constraints. Numbers
+are stable identifiers — never reused, never renumbered — so quote them by number. `SPEC.md`'s eight requirements still hold and
+still carry the file:line evidence trail; the sheet sits **above** SPEC and
+extends it (classes, a head role, an activity log, retention clocks). Where they
+disagree, the sheet wins. Three earlier design docs — `OM-Architecture-Spec.md`,
+`OM-Engineering-Review-Response.md`, `OM-What-We-Actually-Want.md` — are
+**superseded**; read them as history, not instruction.
+
+**Repo, verified on the Mac 2026-08-21:** `main` @ `598ab2d`. The 31 Jul work
+(SPEC, branding, student intake) merged 7 Aug as `d633963`. README rewritten for
+reviewers 19 Aug. Three files uncommitted: MEMORY.md and TRACKER.md (the Play
+Store research block, written 31 Jul, never committed) and `store.js` — whose
+entire diff is a stray trailing space and a lost final newline. **Revert
+store.js, commit the docs.**
+
+**Branches:** `feat/section-color-zones` (1 commit, unmerged) ·
+`shell-login-home` (predates the file split — merging it would REVERT the split;
+delete it) · `origin/feat/a11y-blind-teacher` (merged via `d633963`; remote
+branch still present, safe to delete).
+
+### What the requirements sheet CHANGES about the current build
+- **R13/R14 — the sharing boundary is the CLASS, not the school.** Everything so
+  far assumes school-wide sharing: `seedSchools()`, the RLS policies in
+  `supabase/schema.sql`, SPEC #8's teacher-scoped export. **Classes do not exist
+  in the schema at all.** This lands *inside* the backend P0 work, not after it.
+  Because assignments change mid-term, access has to be looked up from an
+  assignments table per row — a claim baked into the login token goes stale and a
+  revoked assignment keeps working.
+- **R17 — researchers get children's NAMES**, not only research codes. R29 still
+  holds for ordinary exports; R17 is a privileged path, not the default. Must
+  reach the guardian consent form **before** any collection.
+- **R33 vs the sheet-sync feature already shipped.** Student intake reads a
+  **published-to-web CSV**. R33 forbids exactly that for rollover — "sent to us,
+  not published", because the URL *is* the credential. The same objection applies
+  to the intake path already on device. Reconcile the two, or intake keeps the
+  hole R33 was written to close. (The "re-mint the URL" item below is the
+  stopgap, not the fix.)
+- **R31/R32 — group records have no class and are visible school-wide.** Confirms
+  the existing `group:true` seam; `records.research_id NOT NULL` is still what
+  blocks it server-side.
+- **C2 — video must be compressed on-device before upload.** Not done today:
+  capture is `accept="video/*" capture="environment"` and `commitPendingVideo`
+  copies without transcoding, so a clip is 30–60 MB per 30 s and will not move
+  over Kullu's connection. New line item on the uploader — and add a **clip
+  duration cap** while there; it bounds upload, storage and retention exposure at
+  once. (The old ~2 MB figure came from hand-encoded demo assets, not captures.)
+- **C4 — download logging has to be built.** R25 depends on it; bucket access
+  logs nothing by default. Downloads must go through a function that issues a
+  short-lived signed URL and writes the log entry.
+- **R20/R21 — retention clocks** (30 days post-download, 90-day hard ceiling)
+  need a scheduled deletion job **with an alert**. Neither exists.
+- **R34 — the class list is EDITABLE per school.** Nursery/LKG/UKG/1–12 is a
+  starting default, not a fixed ladder: vocational streams, open schooling and
+  ungraded groups all exist. Classes are per-school rows, not an enum.
+- **R35 — the head can WATCH clips from their school.** Watch only: no download,
+  no delete, no share. Needs a view path that issues a stream without handing
+  over the file, and it is a **consent-form change** — see the legal item below.
+- **R36 — teachers use their OWN PERSONAL PHONES.** Removes the shared-device
+  cache churn, and makes D1 more important, not less: a leaver walks away with
+  children's data on a device we cannot wipe. D1 is the only bound on it.
+- **Four decisions remain open — D1, D4a, D5, D9.** D2, D3, D6, D7 and D8 have
+  closed into R36, R35, R31, R17 and R34. Listed under "Decisions needed from
+  humans" below.
+
+## STATE (2026-07-31 pm) — branding + student intake. MERGED 7 Aug (`d633963`).
+_History. The "NOT committed" below was true on 31 Jul; it landed on 7 Aug._
+Everything below was in the working tree on `feat/a11y-blind-teacher` and NOT
+committed at the time of writing. Gates all green: **40/40 · 93/93 flows · 22/22 · 7/7 · 32/32 axe ·
 contrast pass · 546 controls**.
 
 **1. SPEC.md is new and is now the definition of done** for accounts, children
@@ -40,10 +108,13 @@ _Replaces five competing "NEXT" sections dated 14, 21, 21 pm, 22 and 29 July.
 History stays in the STATE / Done sections below. New work is added HERE, not in
 a new section. Target state for accounts and data custody lives in `SPEC.md`._
 
-### FIRST — commit and verify the 31 Jul pm work
-- [ ] **Commit it.** Three focused commits (see MEMORY for what is in each):
-      brand/web gate · student intake (import + sync) · MEMORY/TRACKER.
-      Then `git push origin feat/a11y-blind-teacher`.
+### FIRST — clear the working tree (2026-08-21)
+- [x] ~~Commit the 31 Jul pm work.~~ Done — merged 7 Aug as `d633963`.
+- [ ] **Revert `store.js`.** Its whole uncommitted diff is a stray trailing space
+      and a lost final newline. `git checkout -- store.js`.
+- [ ] **Commit MEMORY.md + TRACKER.md.** The Play Store research block has been
+      sitting uncommitted since 31 Jul, plus this 21 Aug requirements pass.
+- [ ] **Delete the merged remote branch** `origin/feat/a11y-blind-teacher`.
 - [x] **Sheet sync WORKS against a real published sheet** — confirmed on device
       2026-07-31 pm. Route to get there: an `/edit` link 401s because the sheet
       is private; File › Share › Publish to web › the tab › CSV gives the
@@ -80,6 +151,32 @@ a new section. Target state for accounts and data custody lives in `SPEC.md`._
       merging it would REVERT the split. Confirm its BYOD/child-id research is
       captured in MEMORY first.
 
+### FOUNDATION — cheap, independent of the requirements sheet, do first
+_Audit findings, re-verified against the tree 2026-08-21. Most are hours, not
+days, and none of them wait on a decision._
+- [ ] **No CI.** There is no `.github/` at all — the seven suites run only when
+      someone remembers. A workflow running `build.sh`'s gates on push is the
+      single highest-leverage item here.
+- [ ] **`build.sh` cannot fail at the verify step.** `scripts/build.sh:151` is
+      `[ -f "www/$f" ] || continue` — a missing built asset is **skipped, not
+      failed**. The whole point of the gate is defeated. Make it exit non-zero.
+- [ ] **Double-submit on three save paths.** `app.js:2884`, `:4247`, `:4435` all
+      do `lockBtn(btn); setTimeout(()=>unlockBtn(btn), 300|400)` — a timer, not a
+      state flag. A second tap after the timer saves again, and duplicate records
+      corrupt research data. Unlock on completion, not on a clock.
+- [ ] **`jsdom` is in `dependencies`, not `devDependencies`** (`package.json`) —
+      it is a test-only library shipping as a runtime dep. Move it. Three
+      dependency advisories outstanding alongside.
+- [ ] **WebView floor is unstated and fails closed in the worst way.** `inert`
+      needs Chrome 102, `dvh` needs 108, vendored `supabase.js` needs ~85. Below
+      the floor a teacher is locked out behind a **wrong-password** message.
+      Detect and say something true.
+- [ ] **CSV export re-parses the profiles blob per row** (`buildCSV`,
+      `app.js:1093`) — ~5,401 parses for 1,800 rows. Hoist the parse.
+- [ ] **Eleven more audit findings exist and are not on this board.** Six are
+      above. Send the audit document and they get folded in — they are not being
+      reconstructed from memory.
+
 ### Then: backend P0 — this is the SPEC.md work
 - [ ] Deferred 2026-07-22, now the critical path. `SPEC.md` holds the eight
       requirements and the order. Solve 3→2→1: cloud-first enrolment +
@@ -94,6 +191,45 @@ a new section. Target state for accounts and data custody lives in `SPEC.md`._
       Every one created before cloud-first enrolment lands is a migration later.
 
 ### Decisions needed from humans
+
+**Adi alone — four still open. Everything in the class model waits on these.**
+- [ ] **D1 — offline window** before identifying data goes dark. **14 days
+      proposed.** R36 (personal phones) sharpens this rather than settling it: a
+      departing teacher takes the phone with them and we cannot wipe a personal
+      device, so D1 is the *only* thing bounding how long children's names stay
+      readable. Argues for the shorter end. Degrade, don't lock — and degrade to
+      **first name only**, not research codes: `OM-XXXX-XXXX` is opaque by
+      design, so a teacher facing ten children would pick wrong and write a
+      session silently onto the wrong child.
+- [ ] **D4a — do teachers keep access to last year's records after rollover?**
+      Consequence: every teacher loses last year's records on the same day.
+- [ ] **D5 — departing teacher: deleted or switched off?** *Recommendation:
+      switch off.* R12 makes every record name who conducted it and R25 logs who
+      created what — a hard delete leaves both pointing at a name that no longer
+      exists. To the school and the teacher it is indistinguishable: login stops
+      working immediately, they vanish from every list and picker. A **guardian's
+      request to erase a child's data is the opposite case** and must be a real,
+      permanent delete. Awaiting Adi's confirmation.
+- [ ] **D9 — group records school-wide (R32), or only the teacher who ran them?**
+      R32 stays marked **provisional** until this closes.
+
+*Closed 21 Aug: D2 → R36 (personal phones) · D3 → R35 (head can watch) ·
+D6 → R31 (group untied from class) · D7 → R17 (researchers get names) ·
+D8 → R34 (class list editable per school).*
+
+**NOT IN ANY DOCUMENT — ask Mansi this week:**
+- [ ] **Is there an approved ethics protocol (IEC/IRB)?** This study collects
+      assessment data and face video from disabled minors, with IIT Delhi and
+      NCAHT, for longitudinal and cross-child analysis. Institutional review is
+      normally required *before* collection, and it is a different thing from
+      DPDP compliance. Two consequences: data collected before approval is
+      typically unusable retrospectively, so a first school could produce
+      unpublishable data; and **the protocol, not an engineering choice, may
+      dictate video retention** — which is exactly the open research-vs-QA
+      question below. It also has to cover R17 (researchers seeing names). If a
+      protocol exists, several items here are already decided. If not, it sits
+      ahead of legal on the critical path.
+
 - [ ] **Video + a blind teacher** (Aditya + Mansi; legal if (b)). He cannot frame
       a shot, tell whether the child is in it, or check the clip afterwards.
       (a) leave it — video is optional per child and he doesn't use it;
@@ -106,9 +242,20 @@ a new section. Target state for accounts and data custody lives in `SPEC.md`._
 - [ ] **Legal:** group activities save no video by design — per-child consent
       can't cover an unidentified group. If researchers want group footage, legal
       must define a group-consent envelope first.
+- [ ] **Legal — the consent form is narrower than R17 and R35 now require.** It
+      was written for **research use**. Two widenings landed 21 Aug: researchers
+      get children's **names** (R17), and the **head can watch clips** from their
+      school (R35). A parent who agreed to researchers viewing their child did not
+      agree to either. One line on the form is free today and awkward once
+      families need re-consenting. Send both questions together.
 - [ ] **Legal:** fiduciary entity of record, grievance officer, effective date,
       Rule 10 due-diligence sign-off, educational-institution exemption. All
-      flagged in `compliance/DPDP-COMPLIANCE-MAP.md`.
+      flagged in `docs/compliance/DPDP-COMPLIANCE-MAP.md`.
+- [ ] **Mansi — Play Store account type, BEFORE anyone registers.** Personal or
+      organization under IIT Delhi / NCAHT? Organization is exempt from the
+      12-testers-for-14-days gate but needs a D-U-N-S number (~28 days) unless
+      the institution counts as a known government body. Wrong choice costs
+      about a month. Full research in MEMORY.
 - [ ] **Mansi:** real teacher names for the seed.
 - [ ] Print consent forms WITH serial numbers once the legal placeholders fill in.
 
@@ -608,9 +755,16 @@ Debug key = only Aditya's Mac can build over-installing updates.
       for legal: child name/DOB server-side behind RLS (multi-device picker);
       research extracts stay research_id-only.
 - [x] **7. Video memory fix** — DONE 2026-07-03 (3 MB chunked copy).
-- [ ] **8. Play Store release** — Data Safety drafted
-      (`compliance/PLAY-DATA-SAFETY.md`); needs privacy policy at a public URL;
-      target audience 18+ (teachers).
+- [ ] **8. Play Store release** — RESEARCHED 2026-07-31, nothing built yet.
+      The pilot only needs the INTERNAL track (100 testers, no review, live in
+      minutes) — not production. Blocked on: legal (privacy policy needs the
+      fiduciary entity + grievance officer before it can be hosted at a public
+      URL, which gates every track), Mansi's account-type call, and the missing
+      signing setup. Technically missing: no keystore, no `signingConfigs`,
+      `versionCode` still 1, and Play needs an AAB not an APK. Version drift
+      between `build.gradle` (1.0) and `APP_VERSION` (0.9.0). Store listings
+      are public, so `faces/` must be empty and the demo children must never
+      appear in a screenshot. Detail in MEMORY.
 ## Waiting on humans
 - [ ] **Legal:** fiduciary entity of record, grievance officer, effective date,
       Rule 10 due-diligence sign-off, educational-institution exemption answer.

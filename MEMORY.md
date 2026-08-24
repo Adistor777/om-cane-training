@@ -1,5 +1,76 @@
 # MEMORY.md — O&M Cane Training
 
+## OM-Requirements.md sits ABOVE SPEC.md (new 2026-08-21)
+Adi's numbered requirements sheet — **R1–R33** requirements, **D1–D9** open
+decisions, **C1–C5** fixed constraints. Numbers are stable identifiers, never
+reused, never renumbered, so a reference stays valid across versions. Quote them
+by number in every discussion.
+
+`SPEC.md` is still the definition of done for accounts/children/data custody and
+still carries the file:line evidence. The sheet sits above it and extends it —
+**classes, a head role, an activity log, retention clocks**. Where they disagree,
+the sheet wins. Three design documents dated 21 Aug
+(`OM-Architecture-Spec.md`, `OM-Engineering-Review-Response.md`,
+`OM-What-We-Actually-Want.md`) are **superseded by the sheet** — history, not
+instruction.
+
+**The deltas that change existing code** are itemised at the top of TRACKER.md.
+The four that cost the most:
+1. **Sharing boundary moves school → class (R13/R14).** Classes don't exist in
+   the schema. Access must be *looked up from an assignments table per row*, not
+   read from a token claim — assignments change mid-term and a stale claim keeps
+   a revoked assignment working. This lands inside backend P0, not after it.
+2. **Records sync BOTH ways.** R11 + R13 mean two teachers sharing a class must
+   see each other's sessions. Upload-only was never going to satisfy it.
+3. **R17 reverses the pseudonymisation posture for researchers** — they get
+   names. R29 still governs ordinary exports. Consent form must say so first.
+4. **R33 contradicts the intake feature already shipped.** Rollover sheets are
+   "sent to us, not published"; student intake currently reads a published-to-web
+   CSV, where the URL *is* the credential. Same hole, still open on device.
+5. **R34 — classes are per-school EDITABLE rows, not an enum.** Nursery/LKG/UKG/
+   1–12 is a starting default. Vocational streams, open schooling and ungraded
+   groups all exist in schools for the blind.
+6. **R35 — the head can WATCH clips** from their school. Watch only: no download,
+   delete or share. Needs a stream path that never hands over the file — and it
+   widens consent (below).
+7. **R36 — teachers use their OWN PERSONAL PHONES.** Kills the shared-device
+   cache churn, and makes D1 the *only* bound on children's data leaving with a
+   departing teacher, because we cannot wipe a device we don't own.
+
+**Four decisions still open: D1, D4a, D5, D9.** Closed 21 Aug: D2→R36, D3→R35,
+D6→R31, D7→R17, D8→R34. On **D5** the recommendation is *switch off, don't
+delete* — R12 and R25 both point at the departing teacher's name, and a hard
+delete orphans them while looking identical to the school. A guardian's erasure
+request is the opposite case: a real, permanent delete.
+
+**The consent form is now narrower than the requirements.** It was written for
+research use. R17 (researchers see names) and R35 (head watches clips) are both
+wider than what a guardian agreed to. One line each, free today, awkward once
+families need re-consenting. Goes to legal as one question.
+
+**Two things nobody had written down.** There was no mention anywhere of an
+**institutional ethics approval (IEC/IRB)** for a study collecting face video and
+assessment data from disabled minors — separate from DPDP, normally required
+before collection, and the protocol may be what dictates video retention. Going
+to Mansi this week. And a **clip duration cap** — now **adopted at 60 seconds**:
+the cheapest single lever there is, bounding upload time, storage and retention
+exposure at once, and limiting how much of a child's face and voice is captured
+at all, which reads as a consent-form positive rather than only an engineering
+one.
+
+## Users are SIGHTED TEACHERS — and the project prompt says otherwise
+Settled in the 2026-07-30 scope revision and restated as **R30**: accessible and
+TalkBack-native, *not* blind-first. The children assessed are blind; the people
+operating the app are not. The blind reviewer is a reviewer, not the target user.
+
+**The project's own standing instructions still say _"Treat audio-first/voice-first
+interaction as likely core, since end users are visually impaired."_** That
+sentence is wrong for this product and every fresh session re-derives the error
+from it. Amend it to: *end users are sighted teachers; the children assessed are
+blind or low-vision; accessibility is compliance, not the primary persona.*
+Still genuinely open: whether a blind teacher is in scope at all — see the
+video-framing decision in TRACKER.
+
 ## SPEC.md is the definition of done (new 2026-07-31)
 Aditya's own eight-line description of the app — schools added by us, teacher
 logins issued by us, changeable passwords, teacher-added children that are
@@ -80,6 +151,44 @@ the import does not do.
 - **A published link is unauthenticated — the URL IS the credential.** Set once
   by a coordinator in Settings, kept off group chats, re-minted before real
   children go in.
+
+## Play Store — researched 2026-07-31, nothing done yet
+**The pilot does not need a production release.** The INTERNAL TESTING track
+takes up to 100 testers, releases go live in MINUTES with no review, and it is
+exempt from the testing gates that hold up production. That is what replaces
+the WhatsApp APK loop for 6 teachers.
+- **12 testers × 14 continuous days** applies ONLY to *personal* accounts
+  created after 13 Nov 2023, and only to reach PRODUCTION. **Organization
+  accounts are exempt.**
+- An organization account (IIT Delhi / NCAHT) needs a **D-U-N-S number, ~28
+  days to issue**, unless the body counts as a known government organisation —
+  IIT Delhi plausibly does. **ASK MANSI BEFORE ANYONE REGISTERS**: picking the
+  wrong account type costs about a month either way.
+- Google's new developer verification rules land **September 2026** — identity
+  details + D-U-N-S for organisations regardless of distribution channel.
+- First-submission production review runs 7–14 days. No paid fast track exists.
+- Already settled and still correct: target audience **18+** (teachers operate
+  the app, children never do), so Families policy review should not trigger.
+  Data Safety drafted in `compliance/PLAY-DATA-SAFETY.md`.
+
+**What is technically missing (checked 2026-07-31):** there is NO signing
+config and NO keystore — `android/app/build.gradle` is debug-signed only, and
+`versionCode` is still **1** (must increase on every upload). Play takes an
+**AAB** (`./gradlew bundleRelease`), not the APK we have been sending.
+- Upload keystore belongs OUTSIDE the repo; credentials in
+  `~/.gradle/gradle.properties`, never in the tree.
+- The `signingConfigs` block joins `allowBackup=false`,
+  `forceDarkAllowed=false` and `values-v31/styles.xml` on the **local-only,
+  re-apply-if-android-is-regenerated** list.
+- **VERSION DRIFT:** `build.gradle` says `versionName "1.0"`, `app.js` says
+  `APP_VERSION '0.9.0'`. The drawer and the Play listing would disagree. Align.
+- **Store listings are PUBLIC.** Demo children Aditya and Vaishu are real
+  children with real photos — empty `faces/` before building any release AAB,
+  and never let them appear in a screenshot.
+
+**Real blocker is legal, not code:** the privacy policy needs the fiduciary
+entity of record and a named grievance officer before it can be published at a
+public URL, and that URL gates EVERY track including internal.
 
 ## Fetching from Google (2026-07-31)
 - `CapacitorHttp` is enabled in `capacitor.config.json`. Without it the fetch
@@ -896,8 +1005,15 @@ Plus: **a few more features to add** — Aditya to name them next chat.
 - `index.html` — markup shell (also `#srStatus`, the polite live region);
   `styles.css` — look (a11y block is appended at EOF; revert = delete to EOF);
   `store.js` — storage seam; `app.js` — behaviour (incl. `buildSoundboard` + `SB`,
-  `seedSchools` ~L213, `verifyCredentials` ~L280, `upsertProfile` ~L351,
-  `SCHEMA_VERSION` ~L128, and the a11y seams table in the ACCESSIBILITY section above)
+  `seedSchools`, `verifyCredentials`, `upsertProfile`, `newResearchId`,
+  `buildCSV`, `SCHEMA_VERSION`, and the a11y seams table in the ACCESSIBILITY
+  section above).
+  **Grep for the name, don't trust a line number.** The old `~L213 / ~L280 /
+  ~L351 / ~L128` references here were wrong by ~380 lines — `seedSchools` is near
+  600, `upsertProfile` 758, `SCHEMA_VERSION` 515, `buildCSV` 1093 as of
+  2026-08-21, and they move every session. A wrong reference is worse than none.
+  `SPEC.md` is the one place that carries file:line evidence, and it is verified
+  against a stated commit.
 - `activities.js` — content-team owned; holds `ACTIVITY_DATA`, the `soundboard:true`
   flags, and `SOUND_LIBRARY` (soundboard sound list). Do not modify without content team.
 - `scripts/build.sh` — the one build command (guards + parse + 6 a11y gates + mirror + sync + verify)
@@ -908,7 +1024,14 @@ Plus: **a few more features to add** — Aditya to name them next chat.
 - `~/om-media-backup/` — second copy, VERIFIED COMPLETE 2026-07-30 (39 audio,
   22 sounds, 2 faces, 8 videos). Still on the same Mac = still one disk. An APK
   is a third copy of audio+sounds but NOT of `faces/` in consent-clean builds.
-- `MEMORY.md`, `TRACKER.md`, `DESIGN_NOTES.md`, `REVIEW_PACKET.md`
+- `MEMORY.md`, `TRACKER.md`, `SPEC.md` (root) · `docs/DESIGN_NOTES.md` ·
+  `docs/ROADMAP-AUG-2026.md` · `docs/ARCHITECTURE.md` · `docs/RUNBOOK.md`
+- `docs/compliance/` — `DPDP-COMPLIANCE-MAP.md`, `PLAY-DATA-SAFETY.md`,
+  `PRIVACY-POLICY.md`, `GUARDIAN-CONSENT-FORM.pdf`,
+  `GUARDIAN-CONSENT-FORM-HINDI.md`, `Compliance_updates.pdf`.
+  **Path checked 2026-08-21** — it is `docs/compliance/`, never bare
+  `compliance/`. `REVIEW_PACKET.md` does not exist anywhere in the tree; earlier
+  references to it were wrong.
 ## Useful commands
 **Never put an inline `#` comment on a line meant to be pasted** — interactive
 zsh passes it to the command as arguments. Expected values go BELOW the block.
