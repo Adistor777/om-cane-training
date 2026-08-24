@@ -1,5 +1,107 @@
 # MEMORY.md — O&M Cane Training
 
+## AUDIO: Sarvam sends WAV when you ask for MP3 (found 2026-08-24)
+**Every cue and every SOP narration in the app had been silent since 13 July**
+and nobody knew. All 43 Sarvam-generated files were RIFF/WAVE bytes written into
+a `.mp3` filename: both generators request `audio_format:'mp3'`, Sarvam returns
+WAV regardless, and the scripts wrote whatever came back without looking.
+
+Why that is fatal on Android specifically: **Capacitor serves local assets with
+a MIME type derived from the file EXTENSION**
+(`WebViewLocalServer.getMimeType()`). So the WebView was handed
+`Content-Type: audio/mpeg` wrapping WAV, refused to decode, and fired `onerror`.
+The `sounds/` library was never affected — those 22 files come from elsewhere
+and are genuine MP3s.
+
+- **Fixed:** all 43 re-encoded in place (LAME 96 kbps 44.1 kHz mono). `audio/`
+  dropped to 6.3 MB — WAV was several times the size, so the APK shrank too.
+  WAV originals kept in `~/om-media-backup/audio-wav-originals/`.
+- **Cannot recur:** both generators now sniff the returned bytes (`RIFF`/`WAVE`
+  magic), re-encode through ffmpeg, and **fail loudly** if ffmpeg is absent
+  rather than writing a file that lies about its own format.
+- **`speak:` overrides matter** — Sarvam clips the hyphen in "North-East", so
+  the four intercardinals carry `speak: "North East"`.
+
+### Three lessons from that hunt, all of them expensive
+1. **No verification gate can catch an audio defect.** jsdom has no media
+   decoder, so this passed 40 unit tests, 93 flows, 32 axe assertions, 553
+   activated controls and the contrast gate — for six weeks. Audio is
+   device-only, forever.
+2. **The emulator cannot verify audio.** Confirmed working on a real phone while
+   still silent on `Pixel_10_Pro_XL(AVD)`. The emulator is fine for UI and
+   useless for sound. It now sits beside the parked video-picker test on the
+   real-device list.
+3. **`p.catch(()=>{})` hid the answer.** `HTMLMediaElement.play()` rejects for
+   POLICY reasons (autoplay, codec, interrupted) and fires **no** `error` event,
+   so both `CB.play` and `SB.play` swallowed the whole class silently — a
+   refused cue and a muted device looked identical. Both now toast the real
+   `err.name`, and `onerror` names the media error code. Never swallow a play
+   rejection: a teacher mid-assessment has to be told why a cue was silent.
+
+## The `www/` trap bit twice in one session (2026-08-24)
+Both failures presented as "I see no changes", and neither was a code problem.
+- **`gradlew` without `./scripts/build.sh` first.** Gradle packages whatever is
+  already in `www/`; it does not copy source and does not run `cap sync`. The
+  APK looked freshly built and contained eight-minute-old code.
+- **`assembleDebug` without `installDebug`.** Building writes a file; it does
+  not put it on the device.
+**Diagnostic that settles it in one command** — compare source, `www/`, assets
+and the APK before debugging anything else:
+```
+for f in app.js styles.css activities.js; do printf "%-14s src=%s www=%s assets=%s\n" "$f" \
+  "$(date -r $f '+%H:%M')" "$(date -r www/$f '+%H:%M')" \
+  "$(date -r android/app/src/main/assets/public/$f '+%H:%M')"; done
+```
+
+## Direction → Advanced is a compass FACE (2026-08-24)
+Eight points on a true ring — positions are 50% ± 38%, and ± 26.87% on the
+diagonals (38 × cos 45°), so North-East geometrically sits halfway between North
+and East. A dashed dial in the band between the rose and the pads is what makes
+eight buttons read as one instrument. Cardinals 66px, intercardinals 56px — the
+O&M progression (cardinals first) made visible rather than only written in a
+facilitator note. The needle turns to the last point spoken and **accumulates**,
+so North after North-West sweeps 45° forward instead of unwinding 315° back.
+
+- **Content-team owned, like everything else in activities.js:** `compass: true`
+  on the activity plus `at: "n"|"ne"|…` on each command. Delete `compass:true`
+  and it falls back to the old grid; a command with no `at` (say "Stop") still
+  renders, in a normal row beneath the face. Sixteen points would be one line in
+  `CB.BEARING` plus one grid rule.
+- **The face shows N / NE / …** because a circle cannot hold "North-East"
+  legibly. Nothing is lost: the full name is the `aria-label`, it is what the
+  app speaks, and it prints under the face on tap (`#cmdSaid`, `aria-hidden`
+  because `#cmdLive` already announces it). `short:` overrides the default.
+- **DOM order stays clockwise from North** regardless of where CSS paints each
+  pad, so TalkBack and Tab walk the rose the way a person would describe it.
+
+## Activities regrouped (2026-08-24) — and why records survived it
+Six categories became five. `Sound` was emptied and deleted; its two activities
+lead `Sound + Direction`. Both Counting Steps drills moved to `Straight Line
+Travel` as items 2 and 3.
+
+**The durable fact:** records key on `rec_<activityId>` (`REC_PREFIX`, app.js)
+and **no category index is ever persisted** — `state.category` is runtime only.
+So activities can be moved between categories freely and saved results follow
+them. Category membership is presentation, not identity.
+
+Method used, and the one to reuse: cut and reinsert whole activity blocks by
+brace-matching, then assert each moved block is **byte-identical** to its
+original and that the full id set is unchanged. Nothing was retyped, so SOPs,
+Hindi translations, facilitator notes, `videoFile`, `group:true` and
+`soundboard:true` all carried across untouched. `demo-sound.mp4` was NOT
+orphaned by deleting the Sound category — it was already `sound-which`'s own
+`videoFile`.
+
+## Working through the cloud bridge — two traps (2026-08-24)
+- **Every `git status` run over the mount leaves a `.git/index.lock` it cannot
+  delete** (the mount forbids unlinking), which then breaks the next real `git
+  add` with "File exists". Use **`git --no-optional-locks status`** for
+  read-only inspection.
+- **The mount cannot overwrite a file in place via `mv`** ("unable to remove
+  target"). `cat tmp > file` truncates in place and works.
+- No inline `#` comments in pasteable snippets — interactive zsh does not honour
+  them (already commit `a1cf0aa`; repeated anyway).
+
 ## OM-Requirements.md sits ABOVE SPEC.md (new 2026-08-21)
 Adi's numbered requirements sheet — **R1–R33** requirements, **D1–D9** open
 decisions, **C1–C5** fixed constraints. Numbers are stable identifiers, never

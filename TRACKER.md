@@ -1,5 +1,5 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-08-21 (requirements sheet folded in; repo state re-verified)_
+_Last updated: 2026-08-24 (compass face, activity regrouping, silent-audio fix)_
 
 ## STATE (2026-08-21) — the requirements sheet is now the outer target
 **Read `OM-Requirements.md` (Adi, 21 Aug) first.** It is the source of truth for
@@ -103,18 +103,62 @@ coordinator sets a published-CSV link once in Settings, teachers tap **Sync
 from the sheet** on Students. Paste survives as the offline fallback, one line
 below Sync — DELETE IT if he confirms he does not want it.
 
+## Done 2026-08-24 (compass face · activity regrouping · the silent-audio bug)
+All on `feat/compass-and-layout`, four commits, merged to `main`.
+Gates green throughout: 40/40 unit · 93/93 flows · 55 contrast · 22 no-change ·
+32 axe · 551 controls activated with nothing throwing (was 553 — the two tiles
+of the deleted Sound category).
+
+- [x] **AUDIO WAS BROKEN SINCE 13 JULY AND NOTHING CAUGHT IT** (`cc6d260`). All
+      43 Sarvam files were WAV bytes in a `.mp3` filename; Capacitor serves MIME
+      from the extension, so Android refused every cue and every narration. All
+      re-encoded to real MP3; both generators now sniff the returned bytes and
+      fail loudly without ffmpeg. WAV originals in
+      `~/om-media-backup/audio-wav-originals/`. Full story in MEMORY.
+- [x] **`play()` rejections no longer swallowed** (`8e89746`). `p.catch(()=>{})`
+      in `CB.play` and `SB.play` hid every policy refusal — a blocked cue and a
+      muted device were indistinguishable. Both now toast `err.name`; `onerror`
+      names the media error code.
+- [x] **Direction → Advanced is an 8-point compass face** (`5514d4d`, `8e89746`)
+      — round pads on a true ring, dashed dial, needle that turns to the last
+      point spoken. `compass:true` + `at:` in activities.js; content-team
+      editable; falls back to the old grid if the flag is removed.
+- [x] **Activities regrouped** (`8c7be0f`). `Sound` deleted, its two activities
+      now lead `Sound + Direction`; both Counting Steps drills moved to
+      `Straight Line Travel` at positions 2 and 3. Category copy and the GROUP
+      NOTE comment moved with them. Records were never at risk — they key on
+      `rec_<activityId>` and no category index is persisted.
+
+## PARKED FOR A REAL DEVICE — do these in one sitting
+_The emulator cannot answer any of them. Confirmed 2026-08-24: audio plays on a
+real phone and is silent on `Pixel_10_Pro_XL(AVD)`._
+- [ ] **Audio pass.** Every command cue, the soundboard, and SOP narration in
+      each language that has files. **No gate can catch an audio defect** —
+      jsdom has no decoder, which is exactly how six weeks of silence passed
+      every test. This is now a permanent manual step before any build ships.
+- [ ] **Video picker** (`content://` URI through `commitPendingVideo`) — parked
+      since July for the same reason.
+- [ ] **Cloud device matrix** with `CLOUD_SYNC=true` — see the backend P0 block.
+- [ ] Touch-target sizes on the compass face: three columns of round pads at
+      360px. The axe gate states outright that it cannot measure size or
+      contrast without a layout engine.
+
 ## NEXT — the one list (2026-07-31)
 _Replaces five competing "NEXT" sections dated 14, 21, 21 pm, 22 and 29 July.
 History stays in the STATE / Done sections below. New work is added HERE, not in
 a new section. Target state for accounts and data custody lives in `SPEC.md`._
 
-### FIRST — clear the working tree (2026-08-21)
+### FIRST — clear the working tree (2026-08-21, done 08-24)
 - [x] ~~Commit the 31 Jul pm work.~~ Done — merged 7 Aug as `d633963`.
-- [ ] **Revert `store.js`.** Its whole uncommitted diff is a stray trailing space
-      and a lost final newline. `git checkout -- store.js`.
-- [ ] **Commit MEMORY.md + TRACKER.md.** The Play Store research block has been
-      sitting uncommitted since 31 Jul, plus this 21 Aug requirements pass.
+- [x] ~~Revert `store.js`~~ — the stray trailing space is gone.
+- [x] ~~Commit MEMORY.md + TRACKER.md~~ — `760228c`, pushed 24 Aug.
 - [ ] **Delete the merged remote branch** `origin/feat/a11y-blind-teacher`.
+- [ ] **Delete `shell-login-home`** (local + origin) — it predates the file
+      split and merging it would REVERT the split. Confirm its BYOD/child-id
+      research is captured in MEMORY first.
+- [ ] **`feat/section-color-zones`** (`b705487`, 1 commit, 23 Jul) still pending
+      emulator verify — checkout, `build.sh`, `installDebug`, open a soundboard
+      activity to see all four bands, then merge or drop.
 - [x] **Sheet sync WORKS against a real published sheet** — confirmed on device
       2026-07-31 pm. Route to get there: an `/edit` link 401s because the sheet
       is private; File › Share › Publish to web › the tab › CSV gives the
