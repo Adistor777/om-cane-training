@@ -3748,7 +3748,13 @@ const SB = {
   _first(){ return (SB.shuffle && SOUND_LIBRARY.length > 1) ? Math.floor(Math.random()*SOUND_LIBRARY.length) : 0; },
   play(){
     if(SB.idx < 0){ SB.load(SB._first(), true); return; }
-    const a = SB._ensure(); const p = a.play(); if(p && p.catch) p.catch(()=>{});
+    const a = SB._ensure(); const p = a.play();
+    // Same reasoning as CB.play — a swallowed rejection is a silent sound with
+    // no explanation, which is the worst possible outcome mid-assessment.
+    if(p && p.catch) p.catch(err=>{
+      SB._setPlaying(false);
+      toast(`Could not play this sound — ${err.name}. If the device isn’t muted, check the media volume.`);
+    });
     if(navigator.vibrate) navigator.vibrate(25);
     SB._setPlaying(true);
   },
@@ -3915,10 +3921,19 @@ function buildCommandBoard(act){
   // the command carries a recognised `at`. Anything else is an ordinary pad, so
   // a content-team "Stop" dropped into the list still renders, just underneath.
   const isPoint = c => !!(act.compass && c && c.at && CB.BEARING[c.at] != null);
-  const pad = (c,i) => `<button type="button" class="cmd-pad${isPoint(c) ? ' cmd-pt cmd-pt-'+c.at : ''}" data-idx="${i}" aria-pressed="false"
+  // On the face a point shows its short form (N, NE …) because a circle can't
+  // hold "North-East" at a legible size. The full name is never lost: it is the
+  // aria-label, it is what the app speaks, and it prints under the face the
+  // moment the point is tapped. `short:` in activities.js overrides the default.
+  const CARD = { n:'N', ne:'NE', e:'E', se:'SE', s:'S', sw:'SW', w:'W', nw:'NW' };
+  const pad = (c,i) => {
+    const point = isPoint(c);
+    const face  = point ? (c.short || CARD[c.at] || c.label) : c.label;
+    return `<button type="button" class="cmd-pad${point ? ' cmd-pt cmd-pt-'+c.at : ''}" data-idx="${i}" aria-pressed="false"
       aria-label="Speak command: ${esc(c.label)}" onclick="CB.play(${i})">
-      <span class="cmd-label">${esc(c.label)}</span>
+      <span class="${point ? 'cmd-abbr' : 'cmd-label'}">${esc(face)}</span>
     </button>`;
+  };
 
   const all   = act.commands.map((c,i)=>({c,i}));
   const ring  = all.filter(({c})=>isPoint(c));
@@ -3930,7 +3945,8 @@ function buildCommandBoard(act){
   let body;
   if(ring.length){
     body = `
-      <div class="cmd-compass">
+      <div class="cmd-face">
+        <span class="cmd-dial" aria-hidden="true"></span>
         ${ring.map(({c,i})=>pad(c,i)).join('')}
         <span class="cmd-rose" aria-hidden="true">
           <svg class="cmd-rose-svg" viewBox="0 0 48 48" focusable="false">
@@ -3943,6 +3959,9 @@ function buildCommandBoard(act){
           </svg>
         </span>
       </div>
+      <!-- The full name of the last point, spelled out. aria-hidden because
+           #cmdLive already announces it — this is for the teacher's eye. -->
+      <p class="cmd-said" id="cmdSaid" aria-hidden="true"></p>
       ${rest.length ? `<div class="cmd-grid cmd-grid-rest">${rest.map(({c,i})=>pad(c,i)).join('')}</div>` : ''}`;
   } else {
     body = `<div class="cmd-grid">${all.map(({c,i})=>pad(c,i)).join('')}</div>`;
@@ -3981,9 +4000,20 @@ const CB = {
     try{ a.pause(); }catch(e){}
     a.src = `audio/commands/${c.id}_en.mp3`;
     a.onerror = ()=>{
-      toast(`Audio for “${c.label}” isn’t generated yet — run generate-command-audio.js, then rebuild.`);
+      const code = a.error ? a.error.code : 0;
+      toast(code === 4
+        ? `Cue “${c.label}”: file missing, or not a real MP3 — run generate-command-audio.js then ./scripts/build.sh.`
+        : `Cue “${c.label}” could not load (media error ${code}).`);
     };
-    const p = a.play(); if(p && p.catch) p.catch(()=>{});
+    const p = a.play();
+    // NEVER swallow this. A play() rejection is a POLICY refusal (autoplay,
+    // codec, interrupted) and it fires no 'error' event, so `.catch(()=>{})`
+    // made a refused cue look exactly like a device with the volume down.
+    // That ambiguity cost a whole debugging session on 2026-08-24 — the app
+    // must always be able to tell a teacher why a cue was silent.
+    if(p && p.catch) p.catch(err=>{
+      toast(`Could not play “${c.label}” — ${err.name}. If the device isn’t muted, check the media volume.`);
+    });
     if(navigator.vibrate) navigator.vibrate(20);
     CB.last = i;
     CB._flash(i, c.label);
@@ -3993,6 +4023,8 @@ const CB = {
   // absolute angle, so North after North-West sweeps 45° forward instead of
   // unwinding 315° backwards. Decorative only — nothing depends on it.
   _needle(c){
+    const said = document.getElementById('cmdSaid');
+    if(said && c) said.textContent = c.label || '';
     const g = document.getElementById('cmdNeedle');
     if(!g || !c || c.at == null) return;
     const b = CB.BEARING[c.at];

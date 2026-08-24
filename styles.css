@@ -443,19 +443,39 @@
      North-East sits between North and East is helped by a teacher looking at a
      board that agrees. DOM order stays clockwise from North; only the painting
      moves, so the reading order and Tab order are unaffected. */
-  .cmd-compass{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .cmd-pt-nw{ grid-area:1/1; } .cmd-pt-n{ grid-area:1/2; } .cmd-pt-ne{ grid-area:1/3; }
-  .cmd-pt-w { grid-area:2/1; } .cmd-rose { grid-area:2/2; } .cmd-pt-e { grid-area:2/3; }
-  .cmd-pt-sw{ grid-area:3/1; } .cmd-pt-s{ grid-area:3/2; } .cmd-pt-se{ grid-area:3/3; }
-  /* Tighter horizontal padding than a full-width pad: three columns on a small
-     phone, and "North-East" has to fit without hyphenating mid-word. */
-  .cmd-compass .cmd-pad{ padding:12px 6px; }
-  /* The four in-between points step down one size — they are the harder half of
-     the drill and the labels are twice as long. Still a checked type token. */
-  .cmd-pt-ne .cmd-label, .cmd-pt-se .cmd-label,
-  .cmd-pt-sw .cmd-label, .cmd-pt-nw .cmd-label{ font-size:var(--t-bodysm); }
-  .cmd-rose{ display:flex; align-items:center; justify-content:center; min-height:68px; }
-  .cmd-rose-svg{ width:100%; max-width:78px; height:auto; aspect-ratio:1; }
+  /* A real face, not a grid of boxes: eight round pads on a ring around the
+     rose, at their true bearings. Positions are 50% ± 37% (and ± 26.16% on the
+     diagonals, which is 37 × cos45) so the ring is geometrically honest —
+     North-East really does sit halfway between North and East. */
+  .cmd-face{ position:relative; width:100%; max-width:302px; margin:0 auto; aspect-ratio:1; }
+  /* The faint dial, drawn in the gap BETWEEN the rose and the ring of pads —
+     that band is the only place it is actually visible, and it is what makes
+     eight buttons read as one compass face. Decorative, sits behind. */
+  .cmd-dial{ position:absolute; inset:24%; border:1px dashed var(--line); border-radius:50%; }
+  .cmd-face .cmd-pad{ position:absolute; transform:translate(-50%,-50%);
+    width:66px; height:66px; min-height:0; padding:0; border-radius:50%;
+    align-items:center; justify-content:center; gap:0; }
+  /* The four in-between points sit one step smaller. That is the O&M
+     progression made visible: cardinals first, these when the child is ready. */
+  .cmd-face .cmd-pt-ne, .cmd-face .cmd-pt-se,
+  .cmd-face .cmd-pt-sw, .cmd-face .cmd-pt-nw{ width:56px; height:56px; }
+  .cmd-abbr{ font-weight:700; font-size:var(--t-body); letter-spacing:.01em; line-height:1; }
+  .cmd-face .cmd-pt-ne .cmd-abbr, .cmd-face .cmd-pt-se .cmd-abbr,
+  .cmd-face .cmd-pt-sw .cmd-abbr, .cmd-face .cmd-pt-nw .cmd-abbr{ font-size:var(--t-bodysm); }
+  .cmd-pt-n { left:50%;     top:12%; }
+  .cmd-pt-ne{ left:76.87%;  top:23.13%; }
+  .cmd-pt-e { left:88%;     top:50%; }
+  .cmd-pt-se{ left:76.87%;  top:76.87%; }
+  .cmd-pt-s { left:50%;     top:88%; }
+  .cmd-pt-sw{ left:23.13%;  top:76.87%; }
+  .cmd-pt-w { left:12%;     top:50%; }
+  .cmd-pt-nw{ left:23.13%;  top:23.13%; }
+  .cmd-rose{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    display:flex; align-items:center; justify-content:center; width:34%; }
+  .cmd-rose-svg{ width:100%; height:auto; aspect-ratio:1; }
+  /* The spoken point, spelled out — the circle can only hold "NE". */
+  .cmd-said{ margin:2px 0 0; min-height:1.4em; text-align:center; font-weight:600;
+    font-size:var(--t-bodysm); color:var(--cat-deep); }
   .cmd-rose-ring{ fill:none; stroke:var(--line); stroke-width:1.5; }
   .cmd-needle{ transform-box:view-box; transform-origin:24px 24px; transition:transform .45s cubic-bezier(.2,.8,.25,1); }
   .cmd-needle-n{ fill:var(--cat); }
