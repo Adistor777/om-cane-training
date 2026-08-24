@@ -3909,18 +3909,54 @@ const SB = {
    --------------------------------------------------------------------------- */
 function buildCommandBoard(act){
   if(!act || !act.commandBoard || !Array.isArray(act.commands) || !act.commands.length) return '';
-  CB.cmds = act.commands; CB.last = -1;
-  const pads = act.commands.map((c,i)=>{
-    return `<button type="button" class="cmd-pad" data-idx="${i}" aria-pressed="false"
+  CB.cmds = act.commands; CB.last = -1; CB._deg = 0;
+
+  // A command is a compass POINT when the activity opted into compass:true and
+  // the command carries a recognised `at`. Anything else is an ordinary pad, so
+  // a content-team "Stop" dropped into the list still renders, just underneath.
+  const isPoint = c => !!(act.compass && c && c.at && CB.BEARING[c.at] != null);
+  const pad = (c,i) => `<button type="button" class="cmd-pad${isPoint(c) ? ' cmd-pt cmd-pt-'+c.at : ''}" data-idx="${i}" aria-pressed="false"
       aria-label="Speak command: ${esc(c.label)}" onclick="CB.play(${i})">
       <span class="cmd-label">${esc(c.label)}</span>
     </button>`;
-  }).join('');
+
+  const all   = act.commands.map((c,i)=>({c,i}));
+  const ring  = all.filter(({c})=>isPoint(c));
+  const rest  = all.filter(({c})=>!isPoint(c));
+
+  // DOM order stays clockwise from North regardless of where CSS grid paints
+  // each pad, so a screen reader and the Tab key walk the rose the way a person
+  // would describe it. The rose itself is decorative — the pads carry meaning.
+  let body;
+  if(ring.length){
+    body = `
+      <div class="cmd-compass">
+        ${ring.map(({c,i})=>pad(c,i)).join('')}
+        <span class="cmd-rose" aria-hidden="true">
+          <svg class="cmd-rose-svg" viewBox="0 0 48 48" focusable="false">
+            <circle class="cmd-rose-ring" cx="24" cy="24" r="20.5"/>
+            <g class="cmd-needle" id="cmdNeedle">
+              <path class="cmd-needle-n" d="M24 5.5 L28.6 24 L24 20.6 L19.4 24 Z"/>
+              <path class="cmd-needle-s" d="M24 42.5 L19.4 24 L24 27.4 L28.6 24 Z"/>
+            </g>
+            <circle class="cmd-rose-hub" cx="24" cy="24" r="2.5"/>
+          </svg>
+        </span>
+      </div>
+      ${rest.length ? `<div class="cmd-grid cmd-grid-rest">${rest.map(({c,i})=>pad(c,i)).join('')}</div>` : ''}`;
+  } else {
+    body = `<div class="cmd-grid">${all.map(({c,i})=>pad(c,i)).join('')}</div>`;
+  }
+
+  const hint = ring.length
+    ? 'Tap a point — the app speaks it and the needle turns to match. Agree where North is first. Use Surprise me once the child expects a pattern.'
+    : 'Tap a command — the app speaks it. One command at a time; wait for the movement to finish. Use Surprise me once the child expects a pattern.';
+
   return `
     <div class="panel" id="commandBoardPanel">
       <h2 class="panel-title">${ICON.audio} Command board</h2>
-      <p class="cmd-hint">Tap a command — the app speaks it. One command at a time; wait for the movement to finish. Use Surprise me once the child expects a pattern.</p>
-      <div class="cmd-grid">${pads}</div>
+      <p class="cmd-hint">${hint}</p>
+      ${body}
       <button type="button" class="cmd-surprise" onclick="CB.surprise()">${ICON.sbShuffle} Surprise me</button>
       <!-- Polite for the same reason as #sbLive: the command audio IS the cue
            the child is listening for; the screen reader must not talk over it. -->
@@ -3932,6 +3968,11 @@ function buildCommandBoard(act){
    flashes so the drill can continue by voice. */
 const CB = {
   audio:null, cmds:[], last:-1, _timer:null, _srState:{ write:null, clear:null },
+  // Compass bearings in degrees clockwise from North. The `at` values in
+  // activities.js are keys of this map — add a point here and in the CSS grid
+  // if the content team ever wants sixteen instead of eight.
+  BEARING:{ n:0, ne:45, e:90, se:135, s:180, sw:225, w:270, nw:315 },
+  _deg:0,
   play(i){
     const c = CB.cmds[i]; if(!c) return;
     if(!CB.audio) CB.audio = new Audio();
@@ -3946,6 +3987,19 @@ const CB = {
     if(navigator.vibrate) navigator.vibrate(20);
     CB.last = i;
     CB._flash(i, c.label);
+    CB._needle(c);
+  },
+  // Turn the rose to the spoken bearing. Accumulates rather than snapping to an
+  // absolute angle, so North after North-West sweeps 45° forward instead of
+  // unwinding 315° backwards. Decorative only — nothing depends on it.
+  _needle(c){
+    const g = document.getElementById('cmdNeedle');
+    if(!g || !c || c.at == null) return;
+    const b = CB.BEARING[c.at];
+    if(b == null) return;
+    const delta = ((b - (CB._deg % 360)) + 540) % 360 - 180;
+    CB._deg += delta;
+    g.style.transform = `rotate(${CB._deg}deg)`;
   },
   surprise(){
     if(!CB.cmds.length) return;
@@ -3973,7 +4027,7 @@ const CB = {
   reset(){
     clearTimeout(CB._timer); CB._timer = null;
     if(CB.audio){ try{ CB.audio.pause(); }catch(e){} CB.audio.onerror = null; }
-    CB.audio = null; CB.cmds = []; CB.last = -1;
+    CB.audio = null; CB.cmds = []; CB.last = -1; CB._deg = 0;
   }
 };
 function showActivity(catIndex, actIndex, opts){

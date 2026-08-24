@@ -119,13 +119,23 @@ const ACTIVITY_DATA = [
         name: "Advanced",
         withCane: false,
         commandBoard: true,
+        // compass: true lays the commands out as a COMPASS ROSE instead of a
+        // plain grid. Each command needs an `at` telling the board where it
+        // sits: n, ne, e, se, s, sw, w, nw. A command with no `at` (say
+        // "Stop") still works — it appears in a normal row under the rose.
+        // Remove this line and it falls back to the old grid, nothing breaks.
+        compass: true,
+        // `speak` is an optional pronunciation override for the audio
+        // generator — the hyphen in "North-East" makes Sarvam clip the word.
         commands: [
-          { id: "north", label: "North" },
-          { id: "south", label: "South" },
-          { id: "east",  label: "East" },
-          { id: "west",  label: "West" }
-          // Intercardinals when the child is ready — copy a line, e.g.:
-          // { id: "northeast", label: "North-East" },
+          { id: "north",     label: "North",       at: "n"  },
+          { id: "northeast", label: "North-East",  at: "ne", speak: "North East" },
+          { id: "east",      label: "East",        at: "e"  },
+          { id: "southeast", label: "South-East",  at: "se", speak: "South East" },
+          { id: "south",     label: "South",       at: "s"  },
+          { id: "southwest", label: "South-West",  at: "sw", speak: "South West" },
+          { id: "west",      label: "West",        at: "w"  },
+          { id: "northwest", label: "North-West",  at: "nw", speak: "North West" }
         ],
         sop: [
           "Agree with the child where North is — pick a landmark they can touch or hear.",
@@ -133,7 +143,7 @@ const ACTIVITY_DATA = [
           "Tap a compass command — the child turns to face it.",
           "Turn the child to a new position and repeat."
         ],
-        facilitatorNote: "The concept under test: compass directions stay with the ROOM, not the body. A child answering by rote from the start position hasn't got it yet. Re-anchor with the landmark (the door, the window with traffic sounds, the warmth of the sun) whenever they're lost — and note whether they re-anchor by themselves after being turned.",
+        facilitatorNote: "The concept under test: compass directions stay with the ROOM, not the body. A child answering by rote from the start position hasn't got it yet. Re-anchor with the landmark (the door, the window with traffic sounds, the warmth of the sun) whenever they're lost — and note whether they re-anchor by themselves after being turned. Work the four cardinals until they are solid before using the in-between points (North-East and the rest) — those ask the child to hold two directions at once.",
         // DRAFT translation (machine-drafted 2026-07-13) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
         sopTranslations: {
