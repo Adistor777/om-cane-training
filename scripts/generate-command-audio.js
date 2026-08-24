@@ -39,6 +39,48 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const { spawnSync } = require('child_process');
+
+/* ---- FORMAT GUARD (added 2026-08-24 after every cue in the app was silent) --
+   Sarvam returned RIFF/WAVE bytes even though the request asked for
+   audio_format:'mp3'. Both generators wrote those bytes straight into a
+   `.mp3` filename, so 43 files shipped whose contents disagreed with their
+   name. Capacitor serves local assets with a MIME type derived from the
+   EXTENSION, so Android's WebView was handed `audio/mpeg` with WAV inside,
+   refused to decode, and fired onerror — the app's "audio isn't generated
+   yet" toast. Nothing ever played.
+
+   So: never trust the request, check the bytes we actually got. If it's WAV,
+   re-encode to real MP3 before writing. If ffmpeg isn't available we FAIL
+   rather than write a file that lies about its own format.
+   ------------------------------------------------------------------------- */
+function isWav(buf){
+  return buf.length > 12
+    && buf.toString('ascii', 0, 4) === 'RIFF'
+    && buf.toString('ascii', 8, 12) === 'WAVE';
+}
+function ensureMp3(buf, label){
+  if (!isWav(buf)) return buf;
+  const tag = `om-tts-${process.pid}-${Date.now()}`;
+  const inPath  = path.join(os.tmpdir(), `${tag}.wav`);
+  const outPath = path.join(os.tmpdir(), `${tag}.mp3`);
+  const clean = () => { for (const p of [inPath, outPath]) { try { fs.unlinkSync(p); } catch(e){} } };
+  fs.writeFileSync(inPath, buf);
+  const r = spawnSync('ffmpeg', ['-y','-loglevel','error','-i',inPath,
+                                 '-codec:a','libmp3lame','-b:a','96k','-ar','44100',outPath]);
+  if (r.error || r.status !== 0 || !fs.existsSync(outPath)){
+    clean();
+    fail(`Sarvam returned WAV for "${label}" and ffmpeg could not convert it.\n` +
+         `  Install ffmpeg (brew install ffmpeg), then run this again.\n` +
+         `  Writing WAV bytes into a .mp3 file is what silenced every cue in\n` +
+         `  the app once already — refusing to do it again.`);
+  }
+  const out = fs.readFileSync(outPath);
+  clean();
+  console.log(`    (Sarvam sent WAV — re-encoded to real MP3)`);
+  return out;
+}
 
 /* ---- CONFIG — matches generate-audio.js where it matters ------------------ */
 const LANG_CODE   = 'en';      // filename suffix ({id}_en.mp3) — the app expects exactly this
@@ -177,7 +219,7 @@ async function main(){
     if (DRY_RUN){ console.log(`  → would  ${rel}  "${text}"`); made++; continue; }
 
     try {
-      const buf = await synthesize(text, SARVAM_LANG);
+      const buf = ensureMp3(await synthesize(text, SARVAM_LANG), cmd.id);
       fs.writeFileSync(outPath, buf);
       console.log(`  ✓ wrote  ${rel}  "${text}"  (${(buf.length/1024).toFixed(0)} KB)`);
       made++;

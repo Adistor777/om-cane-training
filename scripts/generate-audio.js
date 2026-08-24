@@ -60,6 +60,43 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const { spawnSync } = require('child_process');
+
+/* ---- FORMAT GUARD (added 2026-08-24 after every narration in the app was
+   silent) — see the same block in generate-command-audio.js for the full
+   story. Short version: Sarvam returns RIFF/WAVE even when the request asks
+   for audio_format:'mp3'. Capacitor serves local assets with a MIME type
+   taken from the file EXTENSION, so a .mp3 holding WAV bytes is handed to
+   Android's WebView as audio/mpeg, fails to decode, and plays nothing.
+   Check the bytes, not the request. Fail rather than write a lying file.
+   ------------------------------------------------------------------------- */
+function isWav(buf){
+  return buf.length > 12
+    && buf.toString('ascii', 0, 4) === 'RIFF'
+    && buf.toString('ascii', 8, 12) === 'WAVE';
+}
+function ensureMp3(buf, label){
+  if (!isWav(buf)) return buf;
+  const tag = `om-tts-${process.pid}-${Date.now()}`;
+  const inPath  = path.join(os.tmpdir(), `${tag}.wav`);
+  const outPath = path.join(os.tmpdir(), `${tag}.mp3`);
+  const clean = () => { for (const p of [inPath, outPath]) { try { fs.unlinkSync(p); } catch(e){} } };
+  fs.writeFileSync(inPath, buf);
+  const r = spawnSync('ffmpeg', ['-y','-loglevel','error','-i',inPath,
+                                 '-codec:a','libmp3lame','-b:a','96k','-ar','44100',outPath]);
+  if (r.error || r.status !== 0 || !fs.existsSync(outPath)){
+    clean();
+    fail(`Sarvam returned WAV for "${label}" and ffmpeg could not convert it.\n` +
+         `  Install ffmpeg (brew install ffmpeg), then run this again.\n` +
+         `  Writing WAV bytes into a .mp3 file is what silenced every narration\n` +
+         `  in the app once already — refusing to do it again.`);
+  }
+  const out = fs.readFileSync(outPath);
+  clean();
+  console.log(`\n    (Sarvam sent WAV — re-encoded to real MP3)`);
+  return out;
+}
 
 /* ---------------------------------------------------------------------------
    CONFIG — the few things you might tune.
@@ -285,7 +322,7 @@ async function main() {
 
       try {
         process.stdout.write(`  … gen    ${rel}  `);
-        const buf = await synthesize(narration, sarvamCode);
+        const buf = ensureMp3(await synthesize(narration, sarvamCode), rel);
         fs.writeFileSync(outPath, buf);
         console.log(`done (${(buf.length / 1024).toFixed(0)} KB)`);
         made++;
