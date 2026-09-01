@@ -1,3 +1,11 @@
+> **SUPERSEDED 2026-08-25 by `docs/ROADMAP-SEP-2026.md`.**
+> Kept as history. It planned M2 for 19 July and M3 for 2 August; on 25 August
+> M3 had not started. The slip was not execution — weeks 3–8 went to
+> accessibility (three blind-reviewer rounds, seven build gates), the R1–R36
+> requirements sheet, the real SOPs, branding and design. **This plan modelled
+> backend as the only workstream**, which is the mistake worth carrying
+> forward, not the dates.
+
 # Roadmap — 6 July → 31 August 2026
 
 Practical plan to a **cloud-connected, multi-device, Play-Store-distributed,
