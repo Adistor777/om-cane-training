@@ -1,0 +1,39 @@
+# Runs exactly what ./scripts/build.sh runs, minus the Capacitor and Android
+# steps that need an SDK. Before this existed the seven suites ran only when
+# somebody remembered — and audio was silent on every device for six weeks
+# while every one of them passed, so this is a floor, not a ceiling.
+#
+# WHAT THIS CANNOT CATCH, stated so nobody trusts a green tick too far:
+#   - anything to do with sound. jsdom has no media decoder.
+#   - contrast and touch-target SIZE as rendered. No layout engine.
+#   - real TalkBack behaviour. See docs/A11Y-TALKBACK-TESTS.md.
+#   - whether www/ and the built APK actually got the code. That is build.sh
+#     step 5, and it needs Capacitor.
+name: gates
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # devDependencies carry jsdom and axe-core; both gates need them.
+      - run: npm ci
+
+      # School-ID guard, JS parse check, six accessibility gates, unit suite.
+      - run: bash scripts/gates.sh
