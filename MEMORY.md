@@ -854,6 +854,31 @@ gitignored so no second copy existed. Gone from the repo, from `www/` (the new
 - `build.sh` step 3b now MIRRORS with `rsync --delete` (was `cp -R`, which only
   ADDS — a consent-clean build would have shipped the photos anyway).
 
+## SHELL QUOTING HAS NOW COST THIS PROJECT THREE TIMES
+Three separate incidents, same family — text that looks inert to a human and is
+executable to a shell:
+
+1. **`#` comments in a pasted snippet.** Interactive zsh does not honour them,
+   so `... | grep -c faces/   # expect 0` passes `#`, `expect`, `0` to grep as
+   filenames. (It IS honoured in scripts, which is why build.sh was unaffected.)
+2. **`<placeholder>` in a handed-over command.** It gets pasted literally;
+   `emulator -avd <the name it prints> &` answers `parse error near '&'`. The
+   rule written down after that one — *if a command needs a value it cannot
+   know, make it a SCRIPT* — is why `scripts/emulator.sh` exists.
+3. **BACKTICKS INSIDE A DOUBLE-QUOTED COMMIT MESSAGE (2026-08-25).**
+   `git commit -m "... \`choice\` takes its options ..."` runs `choice` as a
+   command. The words vanish from the message and the commit still succeeds, so
+   nothing fails loudly. **Commit `4099659` is missing two words for this
+   reason: they were `choice` and `rating`, both in the FIELD TYPES paragraph.**
+   History was left alone — it was three commits deep and already pushed, and a
+   force-push over two blanks is a worse trade than this note.
+
+**RULE: in any generated shell — a pasted line, a heredoc'd script, a commit
+message — assume `#`, `<`, `>`, `&`, `` ` ``, `$` and `!` are live.** Prefer
+single quotes for commit messages, or drop the backticks. A quoted heredoc
+(`<<'EOF'`) protects the script's own text at WRITE time; it does nothing for
+what the script does at RUN time, which is exactly where this one got through.
+
 ## WRITING INSTRUCTIONS FOR ADITYA — two failures in one day
 - **zsh does NOT honour `#` comments interactively.** A pasted
   `... | grep -c faces/   # expect 0` passes `#`, `expect`, `0` to grep as
