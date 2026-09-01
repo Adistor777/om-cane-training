@@ -150,9 +150,50 @@ of the deleted Sound category).
       verify the regroup passed on a broken file. The 40-test suite caught it.
       Verify arrays with `length` + an index scan.
 
+## Done 2026-09-01 (foundation pass: CI, the verify gate, double-submit, rain)
+Working tree was clean at `69d407a` when this started. All seven gates green
+before and after: contrast · no-change · flows · smoke · runtime-theme · axe ·
+40/40 unit. **Not committed and not synced** — `cap sync` cannot run through the
+cloud bridge (it needs to unlink files and the mount forbids that), so
+`./scripts/build.sh` has to run in your own terminal before any of this reaches
+a phone.
+
+- [x] **`scripts/gates.sh` is new** — the node-only half of build.sh, extracted
+      verbatim so CI and the build cannot drift apart. build.sh calls it. It also
+      now runs `test-batch1.js`, which was never wired into the build and so ran
+      only when somebody remembered.
+- [x] **`.github/workflows/gates.yml`** — node 22, `npm ci`, `bash
+      scripts/gates.sh`, on push to every branch and on PRs. First CI this repo
+      has ever had.
+- [x] **build.sh's verify step fails properly.** All three branches tested.
+- [x] **Double-submit guards are completion-driven, not timer-driven.**
+- [x] **`jsdom` → devDependencies**, lockfile regenerated.
+- [x] **`sounds/rain.mp3` 27.6 MB → 120 KB.** 10 s from 30 s in, 96 kbps mono
+      44.1 kHz, 0.25 s fades. Original verified byte-identical in
+      `~/om-media-backup/sounds/` BEFORE the replacement, and the new file was
+      checked to be a real MP3 (the 24 Aug WAV-as-mp3 lesson). `sounds/` is now
+      **8.9 MB, down from 36 MB** — the APK should drop by about 27 MB.
+
+**Found on the way, not fixed:**
+- **`audio/dir-basic-commands_en.mp3` is stale** — see the BLOCKING section.
+- **Next-biggest sounds:** `tabla` 1.9 MB · `flush` 1.7 MB ·
+      `bike-driving` 1.4 MB · `clock` 644 KB · `cuckoo` 600 KB ·
+      `police-siren` 580 KB. Same ≤10 s / 96 kbps / mono policy would take the
+      library to about 2 MB. Not done: trimming a cue changes what a child hears,
+      and that is a content call, not a build one.
+- **`faces/` holds only `.DS_Store`** — the demo children have no photos, so
+      Aditya and Vaishu render as initials. Correct for a build leaving the team;
+      restore from `~/om-media-backup/` if you want them back internally.
+- **`scripts/.gates-tail-tmp.sh`** — my scratch file. The mount cannot delete
+      files, so it is still there: `rm ~/Desktop/om-app/scripts/.gates-tail-tmp.sh`
+- **build.sh's own comment (step 2b) still says the app is used "BY teachers who
+      are themselves blind or low vision".** MEMORY settled the opposite (R30:
+      accessible, not blind-first). Left alone — it is your call whether to
+      correct the comment or the scope.
+
 ## OPEN — carried into the next session
-- [ ] **NOTHING FROM 25 AUG IS COMMITTED.** Run `bash commit-today.sh` in the
-      repo root; it makes six focused commits and deletes itself.
+- [x] ~~NOTHING FROM 25 AUG IS COMMITTED.~~ `commit-today.sh` ran; seven commits
+      through `69d407a`, pushed. Verified on the Mac 2026-09-01.
 - [ ] **Hindi must be verified by a native speaker before any school sees it.**
       Check छड़ी (cane) and व्यक्ति A / व्यक्ति B (the two adults) first.
 - [ ] **Sixteen new audio files nobody has heard** — 8 English, 8 Hindi. No gate
@@ -211,12 +252,21 @@ Gates green throughout: 40/40 unit · 93/93 flows · 22/22 no-change · 55 contr
       install-then-prove-what-landed.
 
 ## BLOCKING — must run in Aditya's own terminal, before any phone session
-- [ ] **SOP narration is stale and DISAGREES WITH THE SCREEN.** The four English
-      files were generated against the old four-step text. `--force` is not
-      optional; without it the generator silently skips every existing file.
-      The bridge shell cannot reach api.sarvam.ai, so this cannot be done for
-      you. Then rebuild, or `build.sh` re-mirrors the stale audio.
+- [ ] **SOP narration: SEVEN of the eight files regenerated, ONE did not.**
+      The 27 Aug run landed `dir-advanced-commands` (en+hi), `sound-which`
+      (en+hi), `sound-source` (en+hi) and `dir-basic-commands_hi` — all stamped
+      27 Aug 08:35. **`audio/dir-basic-commands_en.mp3` is still dated 24 Aug
+      11:13**, which is BEFORE the four real SOPs landed on 25 Aug. So the English
+      narration for Direction → Basic still speaks the old four-step text and
+      disagrees with the screen. Found 2026-09-01 by file mtime, not by any gate —
+      no gate can hear audio. The bridge shell cannot reach api.sarvam.ai, so this
+      has to be your terminal:
       ```
+      node scripts/generate-audio.js --only dir-basic-commands --force
+      ./scripts/build.sh
+      bash scripts/install.sh
+      ```
+      Then LISTEN to it. Check the other seven on the same pass.
       node scripts/generate-audio.js --only dir-basic-commands dir-advanced-commands sound-which sound-source --force
       ./scripts/build.sh
       bash scripts/install.sh
@@ -226,7 +276,7 @@ Gates green throughout: 40/40 unit · 93/93 flows · 22/22 no-change · 55 contr
       `--press-slab` / `--press-ctrl` / `--press-micro` and the two durations —
       one line. Comparison bench, with a slow-motion toggle:
       https://claude.ai/code/artifact/3b6b298b-4be2-4e13-8535-b946ff5800b2
-- [ ] **`sounds/rain.mp3` is 27.6 MB** — 14 min 22 s at 256 kbps stereo, for a
+- [x] **`sounds/rain.mp3` — DONE 2026-09-01.** Was 27.6 MB — 14 min 22 s at 256 kbps stereo, for a
       drill cue. 76% of the sound library and a quarter of the APK. Ten seconds
       at 96 kbps mono is ~120 KB. Bigger win than trimming
       `demo-snddir-steps-solo.mp4` (23 MB), which is already on the board below.
@@ -313,19 +363,27 @@ a new section. Target state for accounts and data custody lives in `SPEC.md`._
 ### FOUNDATION — cheap, independent of the requirements sheet, do first
 _Audit findings, re-verified against the tree 2026-08-21. Most are hours, not
 days, and none of them wait on a decision._
-- [ ] **No CI.** There is no `.github/` at all — the seven suites run only when
-      someone remembers. A workflow running `build.sh`'s gates on push is the
-      single highest-leverage item here.
-- [ ] **`build.sh` cannot fail at the verify step.** `scripts/build.sh:151` is
-      `[ -f "www/$f" ] || continue` — a missing built asset is **skipped, not
-      failed**. The whole point of the gate is defeated. Make it exit non-zero.
-- [ ] **Double-submit on three save paths.** `app.js:2884`, `:4247`, `:4435` all
-      do `lockBtn(btn); setTimeout(()=>unlockBtn(btn), 300|400)` — a timer, not a
-      state flag. A second tap after the timer saves again, and duplicate records
-      corrupt research data. Unlock on completion, not on a clock.
-- [ ] **`jsdom` is in `dependencies`, not `devDependencies`** (`package.json`) —
-      it is a test-only library shipping as a runtime dep. Move it. Three
-      dependency advisories outstanding alongside.
+- [x] **CI — done 2026-09-01.** `.github/workflows/gates.yml` runs
+      `scripts/gates.sh` on every push and PR. The node-only half of build.sh
+      (school-ID guard, JS parse, six a11y gates, unit suite) was SPLIT OUT into
+      `scripts/gates.sh` so CI and the build run the same file — there is no
+      second copy to drift. The workflow header states what a green tick cannot
+      mean: no audio, no rendered contrast or touch-target size, no TalkBack, and
+      no proof that www/ or the APK got the code.
+- [x] **`build.sh` verify step now bites — done 2026-09-01.** Was
+      `[ -f "www/$f" ] || continue`. Now: a file present at ROOT must exist in
+      `www/` AND in the built assets AND match. Three branches, all three
+      exercised against a scratch tree before shipping. It fires correctly today —
+      run it after a real `cap sync` and it goes green.
+- [x] **Double-submit fixed — done 2026-09-01.** `handleProfileSave`,
+      `handleSave` and `handleBatchSave` each wrap their body in
+      `try{ … }finally{ unlockBtn(btn); }`. The timers are gone. **Two of the
+      three had early `return`s with no unlock at all** — the timer was the only
+      reason those buttons ever came back, so removing it without `finally` would
+      have locked the Save button permanently on a validation failure.
+- [x] **`jsdom` moved to `devDependencies` — done 2026-09-01.** Lockfile
+      regenerated (`npm install --package-lock-only`) so `npm ci` in CI stays
+      in sync. Three dependency advisories still outstanding — `npm audit`.
 - [ ] **WebView floor is unstated and fails closed in the worst way.** `inert`
       needs Chrome 102, `dvh` needs 108, vendored `supabase.js` needs ~85. Below
       the floor a teacher is locked out behind a **wrong-password** message.
