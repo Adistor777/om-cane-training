@@ -119,11 +119,14 @@ done
 #          tester works by emptying faces/, and with a merge-only copy the
 #          child photos would still have gone out. rsync --delete makes www/
 #          a true mirror; the fallback keeps this working without rsync.
-#          img/ is the ODD ONE OUT: it holds artwork (the BIF mark, the home
+#          img/ and fonts/ are the ODD ONES OUT: they hold artwork (the BIF
+#          mark, the bundled OFL typefaces) rather than personal data, so they
+#          are COMMITTED. They still mirror here because www/ is what ships.
+#          img/ note kept verbatim below: it holds artwork (the BIF mark, the home
 #          illustration), not personal data, so unlike the other three it IS
 #          committed to git. It rides this loop because the copy problem is
 #          identical — a file removed from img/ must stop shipping too.
-for d in audio sounds faces img; do
+for d in audio sounds faces img fonts; do
   if [ -d "$d" ]; then
     mkdir -p "www/$d"
     if command -v rsync >/dev/null 2>&1; then

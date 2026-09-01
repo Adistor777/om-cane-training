@@ -21,9 +21,12 @@
      storage, and all accessibility fixes (post-save focus, SOP animation,
      reduced-motion, fieldset/legend) are settled — don't regress them.
      ========================================================================= -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Arimo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- No webfont <link> here on purpose. Both faces are bundled in fonts/ and
+     declared with @font-face at the top of styles.css. This app runs offline;
+     a network font request means no typeface at all in the field, and it also
+     hands the device IP to a third party from an app holding children's data.
+     If you are tempted to add a Google Fonts link back, read the FONTS ARE
+     BUNDLED note in styles.css first. -->
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
