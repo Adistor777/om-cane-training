@@ -1,5 +1,5 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-08-24 (compass face, activity regrouping, silent-audio fix)_
+_Last updated: 2026-08-25 pm (two SOP docs, fonts, press + selection, regroup, Hindi)_
 
 ## STATE (2026-08-21) — the requirements sheet is now the outer target
 **Read `OM-Requirements.md` (Adi, 21 Aug) first.** It is the source of truth for
@@ -129,6 +129,121 @@ of the deleted Sound category).
       NOTE comment moved with them. Records were never at risk — they key on
       `rec_<activityId>` and no category index is persisted.
 
+## Done 2026-08-25 pm (second SOP doc · regroup · Hindi)
+- [x] **`SOP.docx` filled in** — Near-Far w/o Cane, Near-Far with Cane, Count
+      Steps, Count Steps (Group). Names, resources, age and time from the doc.
+- [x] **New `rating` field type (1–5)** — the doc asks for it four times and
+      nothing did it. Five buttons that stay a row on a phone.
+- [x] **A rating never becomes a verdict** — no `Achieved` column is derived
+      from a 1–5 scale, or from a `choice` with no `achievedWhen`.
+- [x] **Sound split back out of Sound + Direction**; both Counting Steps moved
+      back in. Six categories. Ids unchanged, records followed.
+- [x] **Palette fixed for six categories** — slot 5 was a near-duplicate of
+      Direction and would have landed on Other Activities. Swapped with plum.
+- [x] **? removed from the category screen** (showCategory only; picker and
+      record screens keep theirs). Category help data kept, not deleted.
+- [x] **Hindi on all eight** activities whose English came from the two docs,
+      1:1 with `sop`, verified. MACHINE DRAFT — see MEMORY.
+- [x] **Sound player on both Count Steps** (`soundboard: true`, shared library).
+- [x] **`docs/ROADMAP-SEP-2026.md`** written; the August roadmap superseded.
+- [!] **LESSON: `forEach` skips sparse-array holes**, so the check written to
+      verify the regroup passed on a broken file. The 40-test suite caught it.
+      Verify arrays with `length` + an index scan.
+
+## OPEN — carried into the next session
+- [ ] **NOTHING FROM 25 AUG IS COMMITTED.** Run `bash commit-today.sh` in the
+      repo root; it makes six focused commits and deletes itself.
+- [ ] **Hindi must be verified by a native speaker before any school sees it.**
+      Check छड़ी (cane) and व्यक्ति A / व्यक्ति B (the two adults) first.
+- [ ] **Sixteen new audio files nobody has heard** — 8 English, 8 Hindi. No gate
+      can evaluate audio. Real phone, both languages, every one of the eight.
+- [ ] **Student intake: import the FILE, don't publish a link.** Closes R33 for
+      intake and reuses `classifyRows`. Recommended, not built. Keep the paste
+      path — it is the R33-compliant one and was about to be deleted.
+- [ ] **Sound library: compression policy first** (≤10 s, 96 kbps mono,
+      ~150 KB), then curate from CC0 sources. Streaming is ruled out — see
+      MEMORY. Teacher-records-a-sound is the better answer for field cases;
+      environmental only, never a person.
+- [ ] **Press feel is a judgement call and it is yours** — three tokens and two
+      durations. Bench with a slow-motion A/B:
+      https://claude.ai/code/artifact/3b6b298b-4be2-4e13-8535-b946ff5800b2
+- [ ] **Video retention contradicts R20/R21.** "Researchers access whenever they
+      want" and a 90-day hard ceiling cannot both hold. Building with no
+      auto-delete until confirmed; a clock is config, un-deleting is not.
+- [ ] `OM-Requirements.md` is STILL not in the repo.
+
+## Done 2026-08-25 (real SOPs · bundled fonts · press + selection)
+Gates green throughout: 40/40 unit · 93/93 flows · 22/22 no-change · 55 contrast
+· 7/7 runtime theme. Detail and rationale in MEMORY.
+
+- [x] **THE FONTS WERE NEVER LOADING IN THE FIELD.** `index.html` fetched both
+      faces from fonts.googleapis.com — offline, every heading fell back to
+      Georgia and every label to Arial. Both now bundled in `fonts/`
+      (committed, like `img/`), mirrored by build.sh step 3b. The app makes no
+      third-party request at boot any more, which is also a DPDP point.
+- [x] **Instrument Serif → Fraunces.** Variable 100–900, so high-contrast mode
+      can finally make the largest text on the screen heavier — Instrument Serif
+      had one weight and could not.
+- [x] **The four real SOPs are in** (`SOP_CC_App.docx`): Direction Basic,
+      Direction Advanced, `sound-which`, `sound-source`. New `meta` block
+      ("Before you start") and a new content-team-editable `choice` field type.
+- [x] **Fixed a real data bug found on the way:** the batch flow stamped
+      `Achieved: No` on records from activities that ask for no judgment.
+      Direction Advanced would have shipped observed-looking failures into the
+      research CSV. Now written only when a score exists.
+- [x] **Counting Steps — Individual moved above — Group** in Straight Line
+      Travel (Adi, 25 Aug). Byte-identical block move.
+- [x] **Press system**: one physics (ink into paper), weight MEASURED from the
+      element rather than a class list, asymmetric 80ms/340ms, 90ms floor,
+      pointerdown-driven, haptics via `navigator.vibrate` with a Settings
+      toggle. Nine ad-hoc scale values retired; two of them were hover rules
+      that made cards RISE on touch.
+- [x] **Selection system**: chosen = filled and pressed in; live (a sound
+      playing, a command speaking) = outlined and breathing, never filled. Ends
+      the collision where one green fill meant both "chosen" and "playing".
+- [x] **Category hue now tints the existing shadow** (`--cat-shadow`), same
+      tier — not a second one.
+- [x] **`scripts/measure-press.mjs`** — runs the app in Chromium and prints
+      every control's press weight. Found four defects in an hour-old
+      implementation. NOT a build gate (needs a browser); run it after adding a
+      component or changing a size.
+- [x] **`scripts/emulator.sh` + `scripts/install.sh`** — boot-and-wait, and
+      install-then-prove-what-landed.
+
+## BLOCKING — must run in Aditya's own terminal, before any phone session
+- [ ] **SOP narration is stale and DISAGREES WITH THE SCREEN.** The four English
+      files were generated against the old four-step text. `--force` is not
+      optional; without it the generator silently skips every existing file.
+      The bridge shell cannot reach api.sarvam.ai, so this cannot be done for
+      you. Then rebuild, or `build.sh` re-mirrors the stale audio.
+      ```
+      node scripts/generate-audio.js --only dir-basic-commands dir-advanced-commands sound-which sound-source --force
+      ./scripts/build.sh
+      bash scripts/install.sh
+      ```
+- [ ] **Press feel is a judgement call and it is yours.** Tuned toward restraint
+      (guardrail #1). If it reads too subtle on the real phone, the knobs are
+      `--press-slab` / `--press-ctrl` / `--press-micro` and the two durations —
+      one line. Comparison bench, with a slow-motion toggle:
+      https://claude.ai/code/artifact/3b6b298b-4be2-4e13-8535-b946ff5800b2
+- [ ] **`sounds/rain.mp3` is 27.6 MB** — 14 min 22 s at 256 kbps stereo, for a
+      drill cue. 76% of the sound library and a quarter of the APK. Ten seconds
+      at 96 kbps mono is ~120 KB. Bigger win than trimming
+      `demo-snddir-steps-solo.mp4` (23 MB), which is already on the board below.
+- [ ] **Hindi for the two Direction activities** — content team. Their drafts
+      were dropped because they no longer matched the English; the language
+      button renders disabled until real translated text arrives.
+- [ ] **`#3a7d5d` (palette entry 5) is a near-duplicate of Direction's
+      `#2f6f4e`**, and entries 5–6 are unused since the regroup left five
+      categories. Change that hue before a sixth category is ever added.
+- [ ] **The `terrain` category has no written history** — `terrain-intro` /
+      `terrain-walk` / `terrain-obstacle` and 21 MB of demo video appear nowhere
+      in TRACKER or MEMORY. One of five categories is undocumented.
+- [ ] **`OM-Requirements.md` IS NOT IN THE REPO.** TRACKER opens by calling it
+      the source of truth for R1–R36 and it exists nowhere in the tree or in git
+      history, nor do the three superseded design docs. Every reference to those
+      numbers is currently second-hand. Get the file into `docs/` and commit it.
+
 ## PARKED FOR A REAL DEVICE — do these in one sitting
 _The emulator cannot answer any of them. Confirmed 2026-08-24: audio plays on a
 real phone and is silent on `Pixel_10_Pro_XL(AVD)`._
@@ -152,7 +267,7 @@ a new section. Target state for accounts and data custody lives in `SPEC.md`._
 - [x] ~~Commit the 31 Jul pm work.~~ Done — merged 7 Aug as `d633963`.
 - [x] ~~Revert `store.js`~~ — the stray trailing space is gone.
 - [x] ~~Commit MEMORY.md + TRACKER.md~~ — `760228c`, pushed 24 Aug.
-- [ ] **Delete the merged remote branch** `origin/feat/a11y-blind-teacher`.
+- [x] ~~Delete the merged remote branch `origin/feat/a11y-blind-teacher`~~ — gone, verified 25 Aug.
 - [ ] **Delete `shell-login-home`** (local + origin) — it predates the file
       split and merging it would REVERT the split. Confirm its BYOD/child-id
       research is captured in MEMORY first.

@@ -1,5 +1,319 @@
 # MEMORY.md — O&M Cane Training
 
+## A SECOND SOP DOCUMENT, AND THE `rating` TYPE (2026-08-25 pm)
+`SOP.docx` covered the four Sound + Direction activities — Near-Far w/o Cane,
+Near-Far with Cane, Count Steps, Count Steps (Group). Steps and Facilitator
+Notes transcribed from their sections; names, resources, age and time taken
+from their headers. **Their section boundaries were respected rather than
+tidied** — a step that reads like a facilitator note stays a step if that is
+where the content team filed it.
+
+- **New field type `rating` (1–5).** The document asks for "Rate 1–5" four
+  times and nothing in the app could do that. Rendered as five buttons in a
+  CSS grid rather than the generic `.seg`, because `.seg` goes vertical under
+  640px — right for word labels, and fatal for a numeric scale, where five
+  stacked full-width buttons stop reading as a scale at all. Each button
+  carries its own `aria-label` ("Understanding of near and far: 3 out of 5"):
+  "3" alone tells a screen-reader user nothing, and a toggle announces STATE,
+  never the button's name.
+- **A RATING NEVER BECOMES A VERDICT.** The batch flow derives an `Achieved`
+  column from the scored field. There is no non-arbitrary line between 3 and 4,
+  so a `rating` — and a `choice` that declines to name an `achievedWhen` —
+  writes **no Achieved column at all**. Same family as the bug fixed that
+  morning, where activities asking for no judgement were stamped
+  `Achieved: No`: both put a judgement nobody made into research data.
+
+## THE CATEGORY REGROUP, REVERSED (2026-08-25 pm)
+Adi split **Sound back out** of Sound + Direction and moved both Counting Steps
+drills back IN — reversing the 24 Aug merge in both directions. Six categories
+now. Activity ids unchanged, so every saved record followed its activity;
+category membership is presentation, not identity.
+
+**The consequence nobody would have predicted: a sixth category re-colours the
+sixth.** A category takes `CATEGORY_PALETTE[its own index]`, so adding one
+silently shifts everything below it. Slot 5 was `#3a7d5d` — a near-duplicate of
+Direction's `#2f6f4e` — so "Other Activities" would have looked like Direction.
+Plum and that green were swapped; the duplicate now sits at the LAST index where
+nothing reaches it. **Adding a category is never just an insert.**
+
+## THE ? IS GONE FROM THE CATEGORY SCREEN (2026-08-25)
+Only from `showCategory` — the list you land on when you tap a category. The
+picker and the record screen keep theirs, because that is the one carrying the
+activity's actual SOP. Two ? buttons a tap apart showing different things taught
+teachers that ? means "some help, unclear which". The category `help` /
+`helpVideo` / `helpImage` data is deliberately NOT deleted from activities.js —
+it is content-team work and costs nothing at rest; restoring the button is one
+block in showCategory.
+
+## forEach SKIPS HOLES — MY OWN VERIFICATION LIED (2026-08-25)
+A stray comma during the regroup left a **sparse array** in one category. The
+check that was supposed to catch it walked the activities with `forEach`, which
+**silently skips holes**, so it printed a perfect list of 17 activities while
+`activityNameById` — which uses `for...of`, and does not skip — crashed on
+`undefined`. The 40-test suite caught what the purpose-built check could not.
+
+**Rule: verify array integrity with `length` plus an explicit index scan, never
+with forEach/map/flatMap.** All four skip holes. The fix is three lines:
+```
+for(let j=0;j<c.activities.length;j++) if(c.activities[j]===undefined) holes++;
+```
+
+## HINDI: THE NO-MACHINE-TRANSLATION RULE, SUSPENDED FOR THE DRAFT (2026-08-25)
+Adi asked for Hindi on all eight activities whose English came from the two
+documents, explicitly overriding the standing rule that teacher-facing text is
+never machine-translated. **The rule is suspended for the DRAFT, not for what
+ships**, and every one of the eight sites says so in a comment.
+
+- Lines are **1:1 with `sop`** and that is checked, not assumed:
+  generate-audio.js speaks the array in order, so one extra line narrates step 4
+  against step 3 on screen — a defect no gate can see, because no gate can hear.
+- App button names (**Surprise me**) stay in English on purpose: that is what
+  the teacher is looking at while the app speaks.
+- Terms chosen and worth a native speaker's eye first: **छड़ी** for the cane,
+  **व्यक्ति A / व्यक्ति B** for the two adults.
+- This produced the first Hindi audio the project has ever had — sixteen new
+  files, eight English and eight Hindi, none of which any automated check can
+  evaluate.
+
+## STUDENT INTAKE: THE SHEET IS ALREADY BUILT, AND R33 STILL OPEN (2026-08-25)
+Asked whether teachers could keep a spreadsheet the app reads. **That shipped
+31 July**: coordinator sets a published-CSV link in Settings, teachers tap Sync
+on Students; `classifyRows` marks every row new / warn / dup / bad and refuses
+an ambiguous date rather than guessing.
+
+The unresolved part is unchanged and now sharper: **a published link is
+unauthenticated — the URL IS the credential**, and R33 says rollover sheets are
+"sent to us, not published" for exactly that reason. A per-TEACHER sheet, which
+is what was proposed, multiplies those URLs by the number of teachers, each
+holding children's names and dates of birth, on personal phones (R36).
+
+**Recommendation on the table, not yet built: import the FILE, don't publish a
+link.** A teacher exports CSV from whatever they keep, sends it, taps Import.
+No world-readable URL, works offline, reuses the classifier that already exists.
+The paste path already does this and was about to be deleted — that is the
+argument for keeping it. Longer term the server is authoritative and the sheet
+drops to seeding only (ODK Central Entities pattern), so more sheet-dependence
+now is Phase 2 rework.
+
+## SOUND LIBRARY: NO STREAMING PLAYER (settled 2026-08-25)
+Asked about a "mini Spotify player" for sounds outside the bundled 22. Ruled
+out on three independent grounds, any one of which is fatal: the Web Playback
+SDK **requires Premium per user**; Spotify's developer policy forbids
+non-commercial-only use, synchronising and broadcasting its content, which is
+what playing audio to a class and capturing it in a consent-gated research video
+would be; and it is a **music catalogue, not a sound-effects library**. Above
+all it would trade the app's one hard-won property — works with no connection —
+for convenience.
+
+Direction agreed instead: grow the bundled library from CC0 sources
+(Freesound CC0 pool, Pixabay, BBC Sound Effects), and — the better answer for
+field-discovered sounds — **let the teacher record one**. A Kullu child
+identifying the auto-rickshaw that actually passes their school is a more valid
+trial than a stock siren. Rule if built: **environmental sounds only, never a
+person** — a child's voice is personal data with a different consent envelope,
+and Count Steps (Group) has a child BEING the sound source, so that boundary
+gets tested immediately.
+**Prerequisite before any sound is added:** a compression policy. `rain.mp3` is
+27.6 MB — 14 min 22 s at 256 kbps — for a drill cue. Target ≤10 s, 96 kbps
+mono, ~150 KB.
+
+## FONTS WERE NEVER REACHING THE FIELD (found 2026-08-25)
+`index.html` loaded Instrument Serif and Arimo from **fonts.googleapis.com**.
+This is an offline-first app for schools including Kullu, so on a disconnected
+phone every heading silently fell back to Georgia and every label to Arial —
+the typeface was a design decision that had never reached a single teacher.
+Nothing could see it: jsdom has no font stack and the emulator has wifi. Same
+family as the WAV-as-mp3 bug — **a defect that only exists on a real device in
+real conditions is invisible to all seven gates, forever.**
+
+- Both faces now live in `fonts/` (**committed**, like `img/` — a typeface is
+  artwork, not personal data) and are declared with `@font-face`. `build.sh`
+  step 3b mirrors the directory. 160 KB total, both OFL, licences ship beside
+  them.
+- Second win, worth stating to legal: the app now makes **no third-party
+  request at boot**. A Google Fonts fetch hands the device IP to a third party
+  from an app holding children's data. Removing it is a DPDP posture
+  improvement, not only a speed one.
+- **Instrument Serif → Fraunces**, and one of the two reasons is a defect
+  rather than taste: Instrument Serif ships a SINGLE weight (400) at high
+  stroke contrast, so in **high-contrast mode — the mode a low-vision teacher
+  actually turns on — the largest text on the screen got no sturdier.** Fraunces
+  is variable 100–900, so `[data-contrast="high"] .lede` can now ask for real
+  weight. The other reason is SOFT, which rounds the terminals and is what makes
+  it sit on warm paper rather than reading as a masthead.
+- Retune from `.lede`'s `font-variation-settings` (opsz 48, SOFT 40, WONK 0).
+  WONK 1 swaps in the single-storey g and the swash leg — charming, slightly
+  loud, off by default.
+
+## PRESS: one physics, and WEIGHT IS MEASURED NOT LISTED (2026-08-25)
+The app had press feedback already — as **nine unrelated scale values invented
+per component** (.92 on a transport button, .97 on a segment, .98 on a pad, .99
+on Surprise me, three different translateYs). Two pushed the WRONG WAY:
+`.card:active` and `.action-row:active` were **hover rules reused for touch**,
+so on a phone — where nothing hovers — pressing a card made it RISE, and the
+home row's `translateY(0)` meant the Activities/Students screen had no press
+feedback at all. Nothing read as a physical object because there was no shared
+model to read. That, not the absence of animation, is what "feels cheap" means.
+
+**The model: ink pressed into paper.** Everything goes DOWN, nothing rises, and
+elevation is LOST on press, never gained — which keeps guardrail #2 intact,
+since no second shadow tier is introduced. Every weight also carries an INSET,
+because scale alone is nearly invisible on a large surface: .985 across a 340px
+row is a 5px move, and dropping such a row to `--shadow-rest` changes nothing
+when it had no resting shadow to lose.
+
+- **Timing is asymmetric and that is the ingredient that reads as expensive.**
+  Down 80ms near-linear (the surface must meet the finger); up 340ms on a long
+  decelerating curve (it has mass). Equal in/out is what cheap UI does. No
+  overshoot — a bounce reads as playful, and this is a tool used over a child's
+  assessment.
+- **A 90ms floor on the press state**, so a fast tap is still SEEN. Most of why
+  a good button feels answered rather than merely obeyed.
+- **Driven by `pointerdown`, not `:active`.** Android's WebView delays or drops
+  `:active` inside a scrolling container — exactly where the biggest controls
+  live — and the app rebuilds screens with innerHTML, so per-element listeners
+  would not survive a repaint. One delegated listener on document.
+
+### The mistake worth remembering: a class-name list cannot stay correct
+The first cut assigned weight by matching CLASS NAMES, assembled by grepping
+`styles.css`. It was wrong within the hour: **`.card-media` — the activity
+cards, one of the most-tapped surfaces in the app — fell through to the generic
+`button` catch-all and shrank 3.5% like a 40px icon.** Aditya spotted it as
+"this didn't happen throughout the app". Every component added later would have
+defaulted to wrong until somebody remembered the constant existed.
+
+Weight is now **measured** (`pressWeightFor`, app.js) from the element's own
+box: `<=56x56` micro, `>=60 tall and >=190 wide` slab, else ctrl. A component
+built next month gets the right weight the first time it is touched.
+
+`PRESS_OVERRIDE` is the short exception list geometry LEFT — not a second copy
+of the inventory. Three kinds, all found by measuring:
+1. **Meaning beats size.** `.save` measures 355x56 = slab, but a slab press is
+   soft and the commit tap should feel decisive → pinned ctrl.
+2. **Drawn as text, not a surface.** `.help-tip-ok` measures 99x17; scaling a
+   line of type looks like a rendering fault → dims instead.
+3. **One component must not span a threshold.** `summary` is 355x74 where its
+   label wraps and 355x59 where it doesn't; `.cmd-pad` is 149x68 in the grid and
+   56x56 on the compass face; `.sb-tbtn` is 64x64 for play and 46x46 for its
+   neighbours. Each would have pressed two different ways on different screens.
+
+### `scripts/measure-press.mjs` — the tool that found all four
+Press weight cannot be reviewed by reading code, because the assignment depends
+on layout. **jsdom returns zeros from getBoundingClientRect, so all seven gates
+see every control as identical and none of them can ever catch this.** The
+script runs the real app in Chromium at 393x873, walks 20 screens, and prints
+every component's assigned weight; it exits non-zero if any component appears
+under two weights. Needs `npx playwright install chromium`; **deliberately NOT
+wired into build.sh** — the seven real gates must stay dependency-light enough
+that nobody is tempted to skip them.
+
+### Haptics without a plugin
+`navigator.vibrate` is already in the WebView; `@capacitor/haptics` would buy a
+gradle change and nothing else. 7ms ordinary, 14ms on a commit (score / Save /
+Review). **Slabs tick on RELEASE, not press** — a card is the thing a finger
+lands on to start a scroll, a vibration cannot be un-fired, and a grid that
+buzzed every time you scrolled past it would be intolerable. Settings → Display
+→ Touch feedback, default on, because R36 means these are teachers' own phones.
+
+## SELECTION: one fill meant two opposite things (2026-08-25)
+Five separate selection grammars existed — solid fill, the pinned judgment
+green, soft tint, badge+tint, ring — invented per component, no two agreeing.
+Two were already RIGHT and were left alone: the **pinned judgment green**
+(a score must mean the same thing in every category, so it correctly refuses the
+category hue) and the **roster tick** (tick + tint + border, three redundant
+carriers on the one screen where a mistake scores a session onto the wrong
+child).
+
+**The defect that mattered: solid category fill meant BOTH "you chose this" and
+"this is making noise right now".** Opposite kinds of state — one durable and
+bound for the research CSV, one gone in three seconds — and pixel-identical,
+separated only by an 11px equaliser that high contrast and a bright classroom
+both erase. It sharpened on 24 Aug when both Sound activities gained a scoring
+segment that sits on the same screen as a sound pad.
+
+- **CHOSEN = filled + pressed in** (inset, never elevation — which is also why
+  it is not the coloured glow first suggested: a glow adds a second shadow tier
+  and softens the very edge high contrast exists to sharpen). The fill arrives
+  on the **release curve (340ms)** instead of snapping at 150ms linear; that one
+  line does most of the perceived work.
+- **LIVE = never filled.** Outlined, ringed, breathing. This forced a dependency
+  that was nearly missed: the sound pad's glyph was `rgba(255,255,255,.2)` on
+  white text, which only worked because the pad behind it was filled — unfilled,
+  it would have been white on white.
+- **High contrast needed its own rule.** `[data-contrast="high"] [aria-pressed]`
+  fills everything with ink and would have put the two states straight back on
+  top of each other.
+- The picker tile's ring was retired. The stylesheet already recorded a 15 Jul
+  call that "rings read as buttons", after which the active-child row got a text
+  tag and the picker kept its ring anyway.
+
+### The category hue now reaches the shadow
+`--cat-shadow` per category feeds the EXISTING `--shadow-lift` — same tier, same
+depth, same opacity, only the hue moves. Not a glow, not a second elevation
+level. **It is set on `<html>`, not `<body>` like its four siblings**: a `var()`
+inside a declaration on `:root` resolves against `:root`, so a value parked on
+`<body>` would have silently done nothing. Both mode blocks replace
+`--shadow-lift` outright, so the tint does not participate in dark or high
+contrast at all.
+
+Also visible once the palette was laid out as swatches: **entry 5 (`#3a7d5d`) is
+a near-duplicate of entry 0**, and entries 5–6 are unused since the regroup left
+five categories against seven. Add a sixth category and it will read as
+Direction.
+
+## REAL SOPs LANDED, and they changed the record forms (2026-08-25)
+`SOP_CC_App.docx` from the content team covers four activities: Direction Basic,
+Direction Advanced, Sound Identification (`sound-which`) and Sound Localisation
+(`sound-source`). Steps → `sop[]`, Facilitator Notes → `facilitatorNote`,
+verbatim in meaning. **Their section boundaries were respected rather than
+re-edited** — e.g. Direction Basic's step 7 reads like a facilitator note but
+they filed it under Steps, so it stayed a step.
+
+- **New `meta` block** (resources / type / age / time) renders as "Before you
+  start" above the steps in the `?` sheet. Every key optional; an activity
+  without `meta` renders nothing, so the eleven activities still awaiting SOPs
+  are unaffected. Direction Advanced has no Time in the document — the key is
+  omitted rather than guessed.
+- **New `choice` field type.** `result` and `mastery` hard-code their scales;
+  the SOPs asked for "Confident / Required hints" and the next one will ask for
+  something else. `choice` reads `options: [...]` from activities.js plus
+  `achievedWhen`, so a new scale is a CONTENT edit. Option text travels in
+  `data-v`, not inside the onclick string — an apostrophe in content would
+  otherwise break the handler silently.
+- **A real data bug fell out of it.** The batch flow wrote `Achieved: No` on
+  every record with no scored field. Direction Advanced records trials and
+  correct answers and asks for no judgment at all, so every one of its rows
+  would have entered the research CSV stamped as a failure nobody observed.
+  `Achieved` is now written **only when a score exists**.
+- **Both Direction activities lost their Hindi, on purpose.** The drafts were
+  four machine-written lines matched to the four-step SOP these replace; against
+  seven English steps `generate-audio.js` would have narrated the OLD procedure
+  in Hindi under the NEW text on screen. The language button now renders
+  disabled (`langHasContent`) — the honest state until verified translations
+  arrive. Same standing rule: no machine translation for teacher-facing content.
+- **`--force` is not optional when regenerating narration.** `generate-audio.js`
+  SKIPS any file that already exists, so a re-run after a text change silently
+  changes nothing and leaves the audio disagreeing with the screen. The bridge
+  shell cannot reach api.sarvam.ai (`fetch failed`), so this one has to be run
+  from Aditya's own terminal. The generator failed cleanly and truncated
+  nothing, which is the 24 Aug guard working.
+- Counting Steps — **Individual now sits above — Group** in Straight Line Travel
+  (Adi's call, 25 Aug). Moved by brace-matching the whole block and asserting it
+  came out byte-identical with the file length unchanged.
+
+## Two helper scripts, because a placeholder cost a round trip (2026-08-25)
+`scripts/emulator.sh` boots the first AVD and **waits for `sys.boot_completed`**
+before returning — that wait is the actual fix for `installDebug`'s "No
+connected devices!", which is what a freshly launched emulator looks like for
+the first minute. `scripts/install.sh` refuses to start without a booted device,
+installs, then **compares the APK on disk with the one actually on the device**
+and force-stops the app so the WebView reloads from the new assets.
+
+Both exist because a handover of "run `-list-avds`, then type the name into the
+next command" was pasted literally, `<the name it prints>` and all, and zsh
+answered `parse error near '&'`. **MEMORY already carried that rule and it was
+still broken** — so the rule is now enforced by there being a script.
+
 ## AUDIO: Sarvam sends WAV when you ask for MP3 (found 2026-08-24)
 **Every cue and every SOP narration in the app had been silent since 13 July**
 and nobody knew. All 43 Sarvam-generated files were RIFF/WAVE bytes written into
