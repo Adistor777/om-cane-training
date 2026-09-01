@@ -2,7 +2,7 @@
    ACTIVITIES.JS  —  THIS IS THE ONLY FILE YOU NEED TO EDIT TO CHANGE CONTENT
    =============================================================================
 
-   Everything the teacher sees — the 7 categories, the activities inside them,
+   Everything the teacher sees — the 5 categories, the activities inside them,
    the instructions (SOP), and what data gets collected — lives in THIS file.
 
    You do NOT need to know how to code to edit this. Just follow the patterns
@@ -29,13 +29,27 @@
                  (e.g. "sound_id_hindi.mp3"). Leave "" for now — we add audio
                  in v1 using Sarvam. The slot is already here, ready.
    videoFile     Optional. Filename of a demo video. Leave "" if none yet.
+   meta          Optional. The header block of the SOP sheet, shown to the
+                 teacher ABOVE the steps under "Before you start". Any of
+                 resources / type / age / time; leave a key out and that line
+                 simply does not appear. Nothing breaks if an activity has no
+                 meta at all.
    dataFields    What the teacher records after running the activity. Each field
                  has a "type":
-                    "count"     → a number box (e.g. number of steps)
-                    "result"    → Independent / Prompted / Unable buttons
-                    "checkbox"  → a yes/no tick
-                    "notes"     → a free text box
+                    "count"        → a number box (e.g. number of steps)
+                    "result"       → Independent / Prompted / Unable buttons
+                    "mastery"      → Got it / With help / Not yet buttons
+                    "choice"       → buttons YOU name, e.g.
+                                     options: ["Confident", "Required hints"]
+                                     Add achievedWhen: "Confident" to say which
+                                     option counts as the child managing it.
+                    "checkbox"     → a yes/no tick
+                    "teacherNotes" → a folded, optional text box
+                    "notes"        → a plain free text box
                  Copy/remove these to change what's collected.
+                 ORDER MATTERS for the scored types (result / mastery / choice):
+                 when an activity has more than one, the LAST one is the score
+                 the summary and the Achieved column read.
    ============================================================================= */
 
 const ACTIVITY_DATA = [
@@ -89,29 +103,58 @@ const ACTIVITY_DATA = [
           { id: "stop",       label: "Stop" },
           { id: "turnaround", label: "Turn around" }
         ],
+        // SOP as delivered by the content team (SOP_CC_App.docx, 24 Aug 2026).
+        // Steps are THEIR section 'Steps', verbatim in meaning; Facilitator
+        // Notes are their section of that name. Do not silently re-edit either
+        // — send changes back to the content team.
+        meta: {
+          resources: "None",
+          type: "Group",
+          age: "8–12 years",
+          time: "15 minutes"
+        },
         sop: [
-          "Stand the children in a line facing you, an arm's length apart.",
-          "Warm up with the direction rhyme.",
-          "Tap a command — one at a time. Wait for everyone to finish the move.",
-          "Once they're settled, mix the order — use Surprise me."
+          "Ask the children to stand in a line facing the facilitator, about an arm's length apart.",
+          "Give simple commands from the app — Left, Right, Jump, Clap, Forward, Backwards, Stop, Turn Around.",
+          "Ask the children to perform the action for each command.",
+          "Start with one or two warm-up rounds so the children understand the activity.",
+          "After the warm-up, run at least five rounds, using different commands and changing their order.",
+          "Once the children are comfortable, use Surprise me twice to give commands in a random order.",
+          "If a child cannot tell left from right, go back to raising the left and right hand, then check with the left ear, right ear, left knee, right shoulder."
         ],
-        facilitatorNote: "Group drill (see the demo video), but score ONE child per session. Start in a fixed order — left, right, forward, backward — before mixing. Keep cues crisp with a clear pause after each: a child following the rhythm is not yet following the direction. Watch for first-cue responses; that's what 'Got it' means.",
-        // DRAFT translation (machine-drafted 2026-07-13) — content team must
-        // verify wording BEFORE pilot audio is generated. Steps line up 1:1
-        // with `sop` above, as required by generate-audio.js.
+        facilitatorNote: "During the warm-up use a fixed sequence: Turn Left, Turn Right, Jump-Jump, Clap-Clap. Give one command at a time and wait for the children to finish the action before the next one. Adapt the activity for a child with an additional disability — skip Jump if the child has difficulty moving their legs. Use the regional language if a child does not understand the command in English. For a child who needs more support, demonstrate the action or give physical guidance before asking them to respond independently.",
+        /* HINDI IS A MACHINE DRAFT (2026-08-25) — the content team must verify it
+           BEFORE any pilot audio is generated and before it reaches a school.
+           This was asked for explicitly, which suspends the standing rule in
+           MEMORY.md that teacher-facing text is never machine translated. The
+           rule is suspended for the DRAFT, not for what ships.
+           Lines are 1:1 with `sop` above — generate-audio.js speaks them in
+           that order, so adding or removing a line here without changing `sop`
+           narrates the wrong step against the right text on screen. App button
+           names (Surprise me) stay in English on purpose: that is what the
+           teacher is looking at. */
         sopTranslations: {
           hi: [
-            "बच्चों को एक हाथ की दूरी पर, आपकी ओर मुँह करके एक पंक्ति में खड़ा करें।",
-            "दिशा वाली कविता से वार्म-अप करें।",
-            "एक कमांड दबाएँ — एक बार में एक। सबके मूवमेंट पूरा करने की प्रतीक्षा करें।",
-            "जब बच्चे सहज हो जाएँ तो क्रम बदलें — Surprise me का उपयोग करें।"
+            "बच्चों को एक पंक्ति में, फ़ैसिलिटेटर की ओर मुँह करके, लगभग एक हाथ की दूरी पर खड़ा करें।",
+            "ऐप से सरल कमांड दें — बाएँ, दाएँ, कूदो, ताली, आगे, पीछे, रुको और पीछे मुड़ो।",
+            "हर कमांड के अनुसार बच्चों से वही क्रिया करने को कहें।",
+            "पहले एक या दो वार्म-अप राउंड कराएँ ताकि बच्चे गतिविधि समझ सकें।",
+            "वार्म-अप के बाद कम से कम पाँच राउंड कराएँ, हर बार अलग कमांड और अलग क्रम का उपयोग करते हुए।",
+            "जब बच्चे सहज हो जाएँ, तो Surprise me का दो बार उपयोग करके कमांड यादृच्छिक क्रम में दें।",
+            "यदि कोई बच्चा बाएँ और दाएँ में अंतर न कर पाए, तो पहले उससे बायाँ और दायाँ हाथ उठवाएँ, फिर बायाँ कान, दायाँ कान, बायाँ घुटना और दायाँ कंधा पहचानने को कहें।"
           ]
         },
         audioFile: "",
         videoFile: "demo-direction-basic.mp4",
         dataFields: [
-          { id: "result", label: "Did the child get it?", type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
+          // The SOP's "Record a Result": a rating before and a rating after.
+          // Both use the standing mastery scale so this activity is read the
+          // same way as every other. DECLARATION ORDER MATTERS — the last
+          // scored field is the one the derived Achieved column reads, so
+          // 'after' must stay below 'before'.
+          { id: "sense_before", label: "Direction sense before", type: "mastery" },
+          { id: "sense_after",  label: "Direction sense after",  type: "mastery" },
+          { id: "notes",        label: "Additional observations", type: "teacherNotes" }
         ]
       },
       {
@@ -137,21 +180,43 @@ const ACTIVITY_DATA = [
           { id: "west",      label: "West",        at: "w"  },
           { id: "northwest", label: "North-West",  at: "nw", speak: "North West" }
         ],
+        // SOP as delivered by the content team (SOP_CC_App.docx, 24 Aug 2026).
+        // Their sheet gives no Time for this one — the key is simply omitted
+        // rather than guessed; the ? sheet skips any meta line that is absent.
+        meta: {
+          resources: "None",
+          type: "Group / Individual",
+          age: "8–12 years"
+        },
         sop: [
-          "Agree with the child where North is — pick a landmark they can touch or hear.",
-          "The child starts facing North.",
-          "Tap a compass command — the child turns to face it.",
-          "Turn the child to a new position and repeat."
+          "Ask the child to stand facing the facilitator in a clear space.",
+          "Introduce the four basic directions — North, South, East and West.",
+          "Use the instructions from the app and ask the child to identify or point towards the given direction.",
+          "Once the child is comfortable, introduce North-East, North-West, South-East and South-West.",
+          "Run one or two practice rounds before recording responses.",
+          "Run at least five trials with each child, using different directions in a mixed order.",
+          "Use Surprise me to check whether the child can identify directions in a random order."
         ],
-        facilitatorNote: "The concept under test: compass directions stay with the ROOM, not the body. A child answering by rote from the start position hasn't got it yet. Re-anchor with the landmark (the door, the window with traffic sounds, the warmth of the sun) whenever they're lost — and note whether they re-anchor by themselves after being turned. Work the four cardinals until they are solid before using the in-between points (North-East and the rest) — those ask the child to hold two directions at once.",
-        // DRAFT translation (machine-drafted 2026-07-13) — content team must
-        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        facilitatorNote: "Make sure the children understand North, South, East and West before introducing the diagonal directions. Relate the directions to familiar surroundings where it helps — for example, \"the main gate is towards the North\". Use a consistent reference point throughout the activity. Use the regional language if the child does not understand the direction names in English. If a child cannot identify a direction, give a hint or use a familiar landmark to reinforce the concept.",
+        /* HINDI IS A MACHINE DRAFT (2026-08-25) — the content team must verify it
+           BEFORE any pilot audio is generated and before it reaches a school.
+           This was asked for explicitly, which suspends the standing rule in
+           MEMORY.md that teacher-facing text is never machine translated. The
+           rule is suspended for the DRAFT, not for what ships.
+           Lines are 1:1 with `sop` above — generate-audio.js speaks them in
+           that order, so adding or removing a line here without changing `sop`
+           narrates the wrong step against the right text on screen. App button
+           names (Surprise me) stay in English on purpose: that is what the
+           teacher is looking at. */
         sopTranslations: {
           hi: [
-            "बच्चे के साथ तय करें कि उत्तर किधर है — कोई ऐसा लैंडमार्क चुनें जिसे वह छू या सुन सके।",
-            "बच्चा उत्तर की ओर मुँह करके शुरू करे।",
-            "कोई कंपास कमांड दबाएँ — बच्चा उस दिशा की ओर मुड़े।",
-            "बच्चे को नई स्थिति में घुमाएँ और दोहराएँ।"
+            "बच्चे को खुली जगह में फ़ैसिलिटेटर की ओर मुँह करके खड़ा करें।",
+            "चार मुख्य दिशाएँ बताएँ — उत्तर, दक्षिण, पूर्व और पश्चिम।",
+            "ऐप के निर्देशों का उपयोग करें और बच्चे से दी गई दिशा पहचानने या उस ओर इशारा करने को कहें।",
+            "जब बच्चा सहज हो जाए, तो उत्तर-पूर्व, उत्तर-पश्चिम, दक्षिण-पूर्व और दक्षिण-पश्चिम बताएँ।",
+            "प्रतिक्रियाएँ दर्ज करने से पहले एक या दो अभ्यास राउंड कराएँ।",
+            "हर बच्चे के साथ कम से कम पाँच प्रयास कराएँ, हर बार अलग दिशाएँ मिश्रित क्रम में दें।",
+            "यह जाँचने के लिए कि बच्चा यादृच्छिक क्रम में दिशाएँ पहचान पाता है या नहीं, Surprise me का उपयोग करें।"
           ]
         },
         audioFile: "",
@@ -159,17 +224,146 @@ const ACTIVITY_DATA = [
         // specific video arrives; just swap the filename then.
         videoFile: "demo-direction-basic.mp4",
         dataFields: [
-          { id: "result", label: "Did the child get it?", type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
+          // The SOP asks for trials and correct responses and makes NO
+          // judgment call, so there is deliberately no mastery field here.
+          // Records from this activity carry no Achieved column at all, rather
+          // than a "No" nobody observed.
+          { id: "trials",  label: "Trials conducted",        type: "count" },
+          { id: "correct", label: "Correct responses",       type: "count" },
+          { id: "notes",   label: "Additional observations", type: "teacherNotes" }
         ]
       }
     ]
   },
 
   /* ===== CATEGORY 3 ============================================ */
+  /* ===== SOUND ===================================================
+     Split back out of Sound + Direction on 2026-08-25 (Adi). This reverses
+     the 24 Aug merge: identification and localisation are their own skill
+     ladder and read better as their own category, and Sound + Direction is
+     left holding the activities that genuinely combine the two.
+     Activity ids are UNCHANGED, so every saved record follows its activity —
+     records key on `rec_<activityId>` and no category index is ever
+     persisted. Category membership is presentation, not identity.
+     (The CATEGORY n numbers in the other comments are historical and no
+     longer match the order; go by the category name.) */
+  {
+    category: "Sound",
+    description: "Naming a sound, then pointing to where it came from.",
+    help: [
+      "Start with Which Sound? — the child names each sound you play from the app's sound library.",
+      "Then Source of Sound? — the child points to where the sound is coming from.",
+      "Stand about 3 steps from the child when playing sounds."
+    ],
+    activities: [
+      {
+        id: "sound-which",
+        name: "Which Sound? (Identification)",
+        withCane: false,
+        soundboard: true,
+        // SOP as delivered by the content team (SOP_CC_App.docx, 24 Aug 2026).
+        meta: {
+          resources: "Speaker and mobile",
+          type: "Individual (children can be seated as a group)",
+          age: "8–12 years",
+          time: "10 minutes"
+        },
+        sop: [
+          "Ask the children to sit beside each other, facing the facilitator.",
+          "Play one sound at a time from the app, bringing the speaker close to each child individually.",
+          "Ask the child to identify the sound.",
+          "Confirm the child's response before moving to the next sound.",
+          "Play two different sounds for each child."
+        ],
+        facilitatorNote: "Adjust the speaker distance and the volume according to the surrounding environment. Tell the children to wait for their turn and not interrupt another child's response. If a child cannot identify a sound, give a simple hint rather than revealing the answer directly.",
+        /* HINDI IS A MACHINE DRAFT (2026-08-25) — the content team must verify it
+           BEFORE any pilot audio is generated and before it reaches a school.
+           This was asked for explicitly, which suspends the standing rule in
+           MEMORY.md that teacher-facing text is never machine translated. The
+           rule is suspended for the DRAFT, not for what ships.
+           Lines are 1:1 with `sop` above — generate-audio.js speaks them in
+           that order, so adding or removing a line here without changing `sop`
+           narrates the wrong step against the right text on screen. App button
+           names (Surprise me) stay in English on purpose: that is what the
+           teacher is looking at. */
+        sopTranslations: {
+          hi: [
+            "बच्चों को एक-दूसरे के बगल में, फ़ैसिलिटेटर की ओर मुँह करके बैठाएँ।",
+            "ऐप से एक बार में एक ध्वनि चलाएँ और स्पीकर को हर बच्चे के पास अलग-अलग ले जाएँ।",
+            "बच्चे से ध्वनि पहचानने को कहें।",
+            "अगली ध्वनि पर जाने से पहले बच्चे के उत्तर की पुष्टि करें।",
+            "हर बच्चे के लिए दो अलग-अलग ध्वनियाँ चलाएँ।"
+          ]
+        },
+        audioFile: "",
+        videoFile: "demo-sound.mp4",
+        dataFields: [
+          // "Overall: Confident / Required Hints" is the content team's own
+          // wording. It is a `choice` field — the options live here, so the
+          // scale can be reworded without a coder. achievedWhen names the
+          // option that means the child managed it unaided, which is what the
+          // derived Achieved column reads.
+          { id: "trials",  label: "Trials conducted",  type: "count" },
+          { id: "correct", label: "Correct responses", type: "count" },
+          { id: "overall", label: "Overall", type: "choice",
+            options: ["Confident", "Required hints"], achievedWhen: "Confident" },
+          { id: "notes",   label: "Additional observations", type: "teacherNotes" }
+        ]
+      },
+      {
+        id: "sound-source",
+        name: "Source of Sound? (Localization)",
+        withCane: false,
+        soundboard: true,
+        // SOP as delivered by the content team (SOP_CC_App.docx, 24 Aug 2026).
+        // Note this one needs TWO adults — it is the only activity on the board
+        // that does, and a teacher running the app alone cannot do it.
+        meta: {
+          resources: "Speaker, mobile and two people",
+          type: "Individual (children can be seated as a group)",
+          age: "8–12 years",
+          time: "10 minutes"
+        },
+        sop: [
+          "Ask the child to stand facing Person A, the facilitator. Person B stands with the speaker at a suitable distance from the child, in one of four directions — front, back, left or right.",
+          "Person B plays a sound from the app while Person A asks the child to identify the sound, and then the direction it is coming from.",
+          "Repeat the activity with a different child, changing the sound and the direction.",
+          "Run at least three trials with each child to assess their ability to localise sounds."
+        ],
+        facilitatorNote: "Adjust the speaker distance and volume according to the environment and to how clearly the child can hear the sound. Ask the children to wait for their turn and not interrupt another child's response. If a child cannot identify the sound or the direction, give a simple hint rather than revealing the answer. Person B should remain as quiet as possible while moving with the speaker — avoid footsteps and other movement cues, and if it is appropriate and safe, Person B may remove their footwear to move more quietly.",
+        /* HINDI IS A MACHINE DRAFT (2026-08-25) — the content team must verify it
+           BEFORE any pilot audio is generated and before it reaches a school.
+           This was asked for explicitly, which suspends the standing rule in
+           MEMORY.md that teacher-facing text is never machine translated. The
+           rule is suspended for the DRAFT, not for what ships.
+           Lines are 1:1 with `sop` above — generate-audio.js speaks them in
+           that order, so adding or removing a line here without changing `sop`
+           narrates the wrong step against the right text on screen. App button
+           names (Surprise me) stay in English on purpose: that is what the
+           teacher is looking at. */
+        sopTranslations: {
+          hi: [
+            "बच्चे को व्यक्ति A, यानी फ़ैसिलिटेटर, की ओर मुँह करके खड़ा करें। व्यक्ति B स्पीकर लेकर बच्चे से उचित दूरी पर चार दिशाओं में से किसी एक में खड़ा हो — आगे, पीछे, बाएँ या दाएँ।",
+            "व्यक्ति B ऐप से ध्वनि चलाए, और व्यक्ति A बच्चे से पहले ध्वनि पहचानने को कहे, फिर यह कि ध्वनि किस दिशा से आ रही है।",
+            "दूसरे बच्चे के साथ गतिविधि दोहराएँ, ध्वनि और दिशा बदलते हुए।",
+            "हर बच्चे के साथ कम से कम तीन प्रयास कराएँ ताकि ध्वनि की दिशा पहचानने की क्षमता का आकलन हो सके।"
+          ]
+        },
+        audioFile: "",
+        videoFile: "",
+        dataFields: [
+          { id: "trials",  label: "Trials conducted",  type: "count" },
+          { id: "correct", label: "Correct responses", type: "count" },
+          { id: "overall", label: "Overall", type: "choice",
+            options: ["Confident", "Required hints"], achievedWhen: "Confident" },
+          { id: "notes",   label: "Additional observations", type: "teacherNotes" }
+        ]
+      }
+    ]
+  },
   {
     category: "Sound + Direction",
-    description: "Naming a sound and finding where it comes from, then judging how far away it is — by ear, then with the cane.",
+    description: "Judging how far away a sound is — by ear, then with the cane — and counting the steps to reach it.",
     /* Restructured 2026-07-13 from the four SOP demo videos (#2). Old ids
        snddir-clap / snddir-cane-count retired — pre-pilot, orphaned test
        records accepted knowingly (same call as the Direction restructure).
@@ -178,79 +372,63 @@ const ACTIVITY_DATA = [
        Counting Steps drills moved OUT to Straight Line Travel. Activity ids
        are unchanged, so saved records follow their activity — records key on
        the activity id, never on the category. */
+    /* NOTE 2026-08-25: category `help` / `helpVideo` / `helpImage` are no
+       longer RENDERED — the ? was removed from the category screen at Adi's
+       request. The data is kept because it is content-team work and costs
+       nothing; restoring the button is one block in showCategory. */
     help: [
-      "Start with Which Sound? — the child names each sound you play from the app's sound library.",
-      "Move to Source of Sound? — the child points to where the sound comes from: left-right, front-back, top and bottom.",
-      "Then Near-Far — the child judges sound distance by ear alone, and repeats it with the cane, pointing to the sound and touching it.",
+      "Start with Near-Far — the child judges sound distance by ear alone, then repeats it with the cane.",
+      "Then Counting Steps — the child estimates the distance in steps, then walks it counting to check.",
       "Stand about 3 steps from the child when playing sounds. Open an activity for the full steps and the demo."
     ],
     helpVideo: "demo-snddir-nearfar.mp4",
     activities: [
       {
-        id: "sound-which",
-        name: "Which Sound? (Identification)",
-        withCane: false,
-        soundboard: true,
-        sop: [
-          "Play a sound from the speaker.",
-          "Ask the child: \"Which sound is this?\"",
-          "Confirm identification before moving on."
-        ],
-        facilitatorNote: "Keep 3 steps away from the child when playing sounds on the speaker. When recording video, angle it to focus on both the child and the facilitators.",
-        audioFile: "",
-        videoFile: "demo-sound.mp4",
-        dataFields: [
-          { id: "correct", label: "Correct identifications", type: "count" },
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
-        ]
-      },
-      {
-        id: "sound-source",
-        name: "Source of Sound? (Localization)",
-        withCane: false,
-        soundboard: true,
-        sop: [
-          "Play a sound from a fixed position.",
-          "Ask the child to point to the source.",
-          "Test Left-Right, Front-Back, Top, and Bottom positions."
-        ],
-        facilitatorNote: "Keep 3 steps away from the child when playing sounds on the speaker.",
-        audioFile: "",
-        videoFile: "",
-        dataFields: [
-          { id: "correct", label: "Correct localizations", type: "count" },
-          { id: "result", label: "Overall", type: "result" },
-          { id: "notes", label: "Notes", type: "notes" }
-        ]
-      },
-      {
         id: "snddir-nearfar",
-        name: "Near-Far",
+        name: "Near-Far w/o Cane",
         withCane: false,
         soundboard: true,
+        // SOP as delivered by the content team (SOP.docx, 25 Aug 2026).
+        // Steps and Facilitator Notes are their sections; the Record a Result
+        // fields below are their list. Do not silently re-edit either — send
+        // changes back to the content team.
+        meta: {
+          resources: "Speaker, mobile and 2 people",
+          type: "Individual",
+          age: "8–12 years",
+          time: "5 minutes"
+        },
         sop: [
-          "Stand the child in open space, facing you.",
-          "Play a sound close to the child and ask — near or far?",
-          "Move a few steps away and play the same sound again.",
-          "Mix near and far in a random order."
+          "Ask the child and Person A to stand in an open space. Person B stands in one of the four directions, at least 5 m away, and plays a sound using the speaker.",
+          "Ask the child to identify the direction of the sound and orient their whole body towards it.",
+          "Ask: \"Is the sound close enough for you to touch?\" The child should answer without moving.",
+          "Ask the child to try reaching towards the sound source without moving their feet.",
+          "Person B moves 2–3 steps closer while remaining outside the child's reach. Repeat the question and ask the child to reach towards the sound source.",
+          "Person B then moves to a position just within the child's reach. Ask the same question, then allow the child to try to reach the sound source.",
+          "Repeat the activity if the child needs more practice to understand the difference between near and far."
         ],
-        facilitatorNote: "Keep the SAME sound all round — the child is judging distance, not identity. Leave a clear silence between plays. A child who turns toward the sound before answering is using their ears, not guessing. Score first answers.",
-        // DRAFT translation (machine-drafted 2026-07-13) — content team must
-        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        facilitatorNote: "Adjust the speaker distance and sound volume according to the surrounding environment. Use familiar sounds from the app to create a simple context. For example, play a dog sound and ask, \"Is the dog near enough for you to touch?\" Person B should remain as quiet as possible while moving with the speaker. Avoid footsteps and other movement cues. If safe and appropriate, Person B may remove footwear to minimise sound. Ensure the child remains in a safe, clear space while reaching.",
+        /* HINDI IS A MACHINE DRAFT (2026-08-25) — content team must verify before
+           any pilot audio is generated. Lines are 1:1 with `sop` above; see the
+           fuller note on Direction -> Basic. */
         sopTranslations: {
           hi: [
-            "बच्चे को खुली जगह में, अपनी ओर मुँह करके खड़ा करें।",
-            "बच्चे के पास आवाज़ बजाएँ और पूछें — पास या दूर?",
-            "कुछ कदम दूर जाकर वही आवाज़ फिर बजाएँ।",
-            "पास और दूर को बिना क्रम के मिलाकर दोहराएँ।"
+            "बच्चे और व्यक्ति A को खुली जगह में खड़ा करें। व्यक्ति B चार दिशाओं में से किसी एक में, कम से कम 5 मीटर दूर खड़ा होकर स्पीकर से ध्वनि चलाए।",
+            "बच्चे से ध्वनि की दिशा पहचानने और अपना पूरा शरीर उस ओर मोड़ने को कहें।",
+            "पूछें: \"क्या ध्वनि इतनी पास है कि आप उसे छू सकें?\" बच्चा बिना हिले उत्तर दे।",
+            "बच्चे से कहें कि पैर हिलाए बिना ध्वनि के स्रोत की ओर हाथ बढ़ाकर देखे।",
+            "व्यक्ति B 2–3 कदम पास आए, लेकिन बच्चे की पहुँच से बाहर रहे। वही प्रश्न दोहराएँ और बच्चे से ध्वनि के स्रोत की ओर हाथ बढ़ाने को कहें।",
+            "फिर व्यक्ति B ऐसी जगह आए जो बच्चे की पहुँच के भीतर हो। वही प्रश्न पूछें, और बच्चे को ध्वनि का स्रोत छूने का प्रयास करने दें।",
+            "यदि बच्चे को पास और दूर का अंतर समझने के लिए और अभ्यास चाहिए, तो गतिविधि दोहराएँ।"
           ]
         },
         audioFile: "",
         videoFile: "demo-snddir-nearfar.mp4",
         dataFields: [
-          { id: "result", label: "Did the child get it?", type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
+          { id: "oriented", label: "Correctly oriented towards the sound", type: "choice",
+            options: ["Yes", "No"], achievedWhen: "Yes" },
+          { id: "nearfar",  label: "Understanding of near and far", type: "rating" },
+          { id: "notes",    label: "Additional observations", type: "teacherNotes" }
         ]
       },
       {
@@ -258,31 +436,145 @@ const ACTIVITY_DATA = [
         name: "Near-Far with Cane",
         withCane: true,
         soundboard: true,
+        // SOP as delivered by the content team (SOP.docx, 25 Aug 2026).
+        // Steps and Facilitator Notes are their sections; the Record a Result
+        // fields below are their list. Do not silently re-edit either — send
+        // changes back to the content team.
+        meta: {
+          resources: "Speaker, mobile, cane (as per the child's height) and 2 people",
+          type: "Individual",
+          age: "8–12 years",
+          time: "10 minutes"
+        },
         sop: [
-          "Give the child their cane and stand them in open space.",
-          "Play a sound — the child says near or far.",
-          "The child points to the sound with the cane.",
-          "If it is within reach, the child touches the source with the cane tip."
+          "Ask the child and Person A to stand in an open, clear space. Person B stands facing the child, at least 5 m away, and plays a sound using the speaker.",
+          "Give the child a cane appropriate to their height. Ask: \"Is the sound close enough for you to touch with the cane?\" The child should answer without moving.",
+          "Ask the child to reach towards the sound source using the cane, without moving their feet. Provide guidance on holding the cane if needed.",
+          "Person B moves 2–3 steps closer, while remaining outside the child's cane reach. Repeat the question and ask the child to reach towards the sound with the cane.",
+          "Person B moves to a position just within the child's cane reach. Ask the same question and allow the child to touch the sound source with the cane.",
+          "Once the child is able to reach the source, explain that the cane extends their reach beyond their hand.",
+          "To demonstrate this difference, keep the cane tip at the sound source. Ask the child to estimate how many steps they would need to take to reach the source without the cane. Discuss how the cane helped them reach the source from a greater distance.",
+          "Repeat the activity if the child needs more practice to understand the difference between near and far and how the cane extends their reach."
         ],
-        facilitatorNote: "The cane is the pointer. Watch whether the child orients the tip BEFORE answering or only after — that order tells you if the ears are leading. A right answer with a wrong touch is 'With help', not 'Got it'.",
-        // DRAFT translation (machine-drafted 2026-07-13) — content team must
-        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
+        facilitatorNote: "Adjust the speaker distance and sound volume according to the surrounding environment. Ensure the cane length is appropriate for the child's height (height × 0.75). Use familiar sounds from the app to create a simple context. For example, play a dog sound and ask, \"Is the dog near enough for you to touch with the cane?\" Person B should remain as quiet as possible while moving with the speaker. Avoid footsteps and other movement cues. If safe and appropriate, Person B may remove footwear to minimise sound. Ensure the child has sufficient clear space and is supervised while using the cane. Do not ask the child to walk towards the sound source until the facilitator confirms that the path is clear and safe.",
+        /* HINDI IS A MACHINE DRAFT (2026-08-25) — content team must verify before
+           any pilot audio is generated. Lines are 1:1 with `sop` above; see the
+           fuller note on Direction -> Basic. */
         sopTranslations: {
           hi: [
-            "बच्चे को उसकी छड़ी दें और खुली जगह में खड़ा करें।",
-            "आवाज़ बजाएँ — बच्चा बताए, पास या दूर।",
-            "बच्चा छड़ी से आवाज़ की ओर इशारा करे।",
-            "अगर आवाज़ पहुँच में हो, तो बच्चा छड़ी की नोक से स्रोत को छुए।"
+            "बच्चे और व्यक्ति A को खुली, साफ़ जगह में खड़ा करें। व्यक्ति B बच्चे की ओर मुँह करके, कम से कम 5 मीटर दूर खड़ा होकर स्पीकर से ध्वनि चलाए।",
+            "बच्चे को उसकी लंबाई के अनुसार छड़ी दें। पूछें: \"क्या ध्वनि इतनी पास है कि आप उसे छड़ी से छू सकें?\" बच्चा बिना हिले उत्तर दे।",
+            "बच्चे से कहें कि पैर हिलाए बिना छड़ी से ध्वनि के स्रोत तक पहुँचने का प्रयास करे। ज़रूरत हो तो छड़ी पकड़ने का तरीका बताएँ।",
+            "व्यक्ति B 2–3 कदम पास आए, लेकिन बच्चे की छड़ी की पहुँच से बाहर रहे। वही प्रश्न दोहराएँ और बच्चे से छड़ी से ध्वनि की ओर पहुँचने को कहें।",
+            "व्यक्ति B ऐसी जगह आए जो बच्चे की छड़ी की पहुँच के भीतर हो। वही प्रश्न पूछें और बच्चे को छड़ी से ध्वनि का स्रोत छूने दें।",
+            "जब बच्चा स्रोत तक पहुँच जाए, तो समझाएँ कि छड़ी उसके हाथ से आगे तक उसकी पहुँच बढ़ाती है।",
+            "यह अंतर दिखाने के लिए छड़ी की नोक ध्वनि के स्रोत पर टिकाए रखें। बच्चे से पूछें कि छड़ी के बिना स्रोत तक पहुँचने में उसे कितने कदम लगेंगे। चर्चा करें कि छड़ी ने उसे अधिक दूरी से स्रोत तक पहुँचने में कैसे मदद की।",
+            "यदि बच्चे को पास और दूर का अंतर तथा छड़ी से पहुँच बढ़ने की बात समझने के लिए और अभ्यास चाहिए, तो गतिविधि दोहराएँ।"
           ]
         },
         audioFile: "",
         videoFile: "demo-snddir-nearfar-cane.mp4",
         dataFields: [
-          { id: "result", label: "Did the child get it?", type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
+          { id: "nearfar",   label: "Understanding of near and far", type: "rating" },
+          { id: "canereach", label: "Understanding of cane-extended reach", type: "rating" },
+          { id: "notes",     label: "Additional observations", type: "teacherNotes" }
         ]
       },
-
+      {
+        id: "snddir-steps-solo",
+        name: "Count Steps",
+        withCane: false,
+        soundboard: true,
+        // SOP as delivered by the content team (SOP.docx, 25 Aug 2026).
+        // Steps and Facilitator Notes are their sections; the Record a Result
+        // fields below are their list. Do not silently re-edit either — send
+        // changes back to the content team.
+        meta: {
+          resources: "Phone and speaker",
+          type: "Individual",
+          age: "8–12 years",
+          time: "15 minutes"
+        },
+        sop: [
+          "Ask the child to stand in an open, clear space. Place the speaker approximately 5 m away.",
+          "Play a sound and ask the child to estimate how many steps away the sound source is.",
+          "Ask the child to walk naturally towards the sound source while counting their steps.",
+          "If the child does not reach the source within the estimated number of steps, ask them to stop and estimate the remaining distance in steps. Continue until they reach the source.",
+          "If the child reaches the sound source in fewer than the estimated steps, then make them compare the estimated number of steps with the actual number of steps taken.",
+          "Repeat the activity at least 3 times using different distances."
+        ],
+        facilitatorNote: "Adjust the speaker distance and sound volume according to the surrounding environment. Encourage the child to walk at their natural pace and take comfortable, consistent steps. Ask the child to maintain a similar step length throughout the activity rather than deliberately taking shorter or longer steps to match the estimate. Encourage the child to compare their estimated and actual number of steps after each round. Ensure the walking path is clear and safe.",
+        /* HINDI IS A MACHINE DRAFT (2026-08-25) — content team must verify before
+           any pilot audio is generated. Lines are 1:1 with `sop` above; see the
+           fuller note on Direction -> Basic. */
+        sopTranslations: {
+          hi: [
+            "बच्चे को खुली, साफ़ जगह में खड़ा करें। स्पीकर लगभग 5 मीटर दूर रखें।",
+            "ध्वनि चलाएँ और बच्चे से अनुमान लगाने को कहें कि ध्वनि का स्रोत कितने कदम दूर है।",
+            "बच्चे से कहें कि अपने कदम गिनते हुए स्वाभाविक गति से ध्वनि के स्रोत की ओर चले।",
+            "यदि बच्चा अनुमानित कदमों में स्रोत तक न पहुँचे, तो उसे रुकने और बची हुई दूरी का अनुमान कदमों में लगाने को कहें। स्रोत तक पहुँचने तक यही दोहराएँ।",
+            "यदि बच्चा अनुमान से कम कदमों में स्रोत तक पहुँच जाए, तो उससे अनुमानित और वास्तविक कदमों की तुलना कराएँ।",
+            "अलग-अलग दूरियों के साथ गतिविधि कम से कम 3 बार दोहराएँ।"
+          ]
+        },
+        audioFile: "",
+        videoFile: "demo-snddir-steps-solo.mp4",
+        dataFields: [
+          { id: "rounds",   label: "Rounds conducted", type: "count" },
+          { id: "estimate", label: "Understanding of distance estimation", type: "rating" },
+          { id: "notes",    label: "Additional observations", type: "teacherNotes" }
+        ]
+      },
+      {
+        id: "snddir-steps-group",
+        name: "Count Steps (Group)",
+        withCane: false,
+        soundboard: true,
+        group: true,
+        // SOP as delivered by the content team (SOP.docx, 25 Aug 2026).
+        // Steps and Facilitator Notes are their sections; the Record a Result
+        // fields below are their list. Do not silently re-edit either — send
+        // changes back to the content team.
+        meta: {
+          resources: "Phone, speaker and 2 people",
+          type: "Group",
+          age: "8–12 years",
+          time: "30 minutes"
+        },
+        sop: [
+          "Ask 4 children to stand at different positions in an open, clear space.",
+          "Ask one child to choose any one of their friends. The selected child becomes the sound source and makes a sound from their position.",
+          "Ask the first child to identify their friend and estimate how many steps away the sound source is.",
+          "Ask the child to walk naturally towards their friend while counting their steps.",
+          "If the child does not reach their friend within the estimated number of steps, ask them to stop and estimate the remaining distance in steps. Continue until they reach their friend.",
+          "Once they reach their friend, make them compare the estimated number of steps with the actual number of steps taken.",
+          "Repeat the activity by allowing each child to take a turn as the sound source and the person estimating the distance.",
+          "Conduct at least 3 rounds, changing the positions and distances between children."
+        ],
+        facilitatorNote: "Ensure all children are standing in a clear and safe space. Ask the child to keep the sound source in the same position until their friend reaches them. Encourage the child to walk naturally and maintain a similar step length throughout. After each round, discuss the difference between the estimated and actual number of steps. Adjust the distance between children according to the available space and the children's abilities.",
+        /* HINDI IS A MACHINE DRAFT (2026-08-25) — content team must verify before
+           any pilot audio is generated. Lines are 1:1 with `sop` above; see the
+           fuller note on Direction -> Basic. */
+        sopTranslations: {
+          hi: [
+            "4 बच्चों को खुली, साफ़ जगह में अलग-अलग स्थानों पर खड़ा करें।",
+            "एक बच्चे से कहें कि वह अपने किसी एक साथी को चुने। चुना गया बच्चा ध्वनि का स्रोत बनेगा और अपनी जगह से आवाज़ करेगा।",
+            "पहले बच्चे से कहें कि वह अपने साथी को पहचाने और अनुमान लगाए कि ध्वनि का स्रोत कितने कदम दूर है।",
+            "बच्चे से कहें कि अपने कदम गिनते हुए स्वाभाविक गति से अपने साथी की ओर चले।",
+            "यदि बच्चा अनुमानित कदमों में अपने साथी तक न पहुँचे, तो उसे रुकने और बची हुई दूरी का अनुमान कदमों में लगाने को कहें। साथी तक पहुँचने तक यही दोहराएँ।",
+            "साथी तक पहुँचने पर उससे अनुमानित और वास्तविक कदमों की तुलना कराएँ।",
+            "हर बच्चे को ध्वनि का स्रोत बनने और दूरी का अनुमान लगाने की बारी दें।",
+            "कम से कम 3 राउंड कराएँ, हर बार बच्चों की जगह और आपस की दूरी बदलते हुए।"
+          ]
+        },
+        audioFile: "",
+        videoFile: "demo-snddir-steps-group.mp4",
+        dataFields: [
+          { id: "rounds",   label: "Rounds conducted", type: "count" },
+          { id: "estimate", label: "Understanding of distance estimation", type: "rating" },
+          { id: "notes",    label: "Additional observations", type: "teacherNotes" }
+        ]
+      }
     ]
   },
 
@@ -351,65 +643,6 @@ const ACTIVITY_DATA = [
           { id: "veer",   label: "Times drifted off line", type: "count" },
           { id: "result", label: "Did the child get it?",  type: "mastery" },
           { id: "notes",  label: "Teacher's notes",        type: "teacherNotes" }
-        ]
-      },
-      {
-        id: "snddir-steps-group",
-        name: "Counting Steps — Group",
-        withCane: false,
-        group: true,
-        sop: [
-          "Stand the children scattered around the room and settle it to quiet.",
-          "One child calls another child's name.",
-          "The called child points to the voice and estimates how many steps away it is.",
-          "Keep going until every child's name has been called."
-        ],
-        facilitatorNote: "Whole-group drill — the app saves ONE result for the group; no child is selected. The voice IS the sound source, so keep the room silent between calls. Watch the order: pointing first, estimate second means the ears are leading. Note who estimates confidently and who guesses — those are the children to follow up in the Individual drill.",
-        // DRAFT translation (machine-drafted 2026-07-13) — content team must
-        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
-        sopTranslations: {
-          hi: [
-            "बच्चों को कमरे में अलग-अलग जगह खड़ा करें और शांति करवाएँ।",
-            "एक बच्चा दूसरे बच्चे का नाम पुकारे।",
-            "जिसका नाम पुकारा गया, वह आवाज़ की ओर इशारा करे और बताए कि वह कितने कदम दूर है।",
-            "तब तक जारी रखें जब तक हर बच्चे का नाम न पुकारा जाए।"
-          ]
-        },
-        audioFile: "",
-        videoFile: "demo-snddir-steps-group.mp4",
-        dataFields: [
-          { id: "result", label: "Did the group get it?", type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",       type: "teacherNotes" }
-        ]
-      },
-      {
-        id: "snddir-steps-solo",
-        name: "Counting Steps — Individual",
-        withCane: false,
-        sop: [
-          "Stand the child in open space; you stand some steps away.",
-          "Call the child's name once.",
-          "The child points to your voice and estimates how many steps away you are.",
-          "The child walks to you counting aloud — compare the count with the estimate."
-        ],
-        facilitatorNote: "The gap between estimate and actual count IS the data — record both numbers every round. Move to a new spot each time and mix near with far. Even steps, no rushing; a shrinking gap across sessions is the progress you're looking for.",
-        // DRAFT translation (machine-drafted 2026-07-13) — content team must
-        // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
-        sopTranslations: {
-          hi: [
-            "बच्चे को खुली जगह में खड़ा करें; आप कुछ कदम दूर खड़े हों।",
-            "बच्चे का नाम एक बार पुकारें।",
-            "बच्चा आपकी आवाज़ की ओर इशारा करे और बताए कि आप कितने कदम दूर हैं।",
-            "बच्चा ज़ोर से गिनते हुए आप तक चले — गिनती की तुलना अनुमान से करें।"
-          ]
-        },
-        audioFile: "",
-        videoFile: "demo-snddir-steps-solo.mp4",
-        dataFields: [
-          { id: "estimate", label: "Estimated steps",       type: "count" },
-          { id: "steps",    label: "Actual steps counted",  type: "count" },
-          { id: "result",   label: "Did the child get it?", type: "mastery" },
-          { id: "notes",    label: "Teacher's notes",       type: "teacherNotes" }
         ]
       },
       {
