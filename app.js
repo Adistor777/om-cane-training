@@ -36,6 +36,7 @@ const homeDot = document.getElementById('homeDot') || { innerHTML:'' };
    font scale still multiplies in (see html{} in styles.css).
    --------------------------------------------------------------------------- */
 const TEXT_SCALE_KEY = 'a11yTextScale';
+const HAPTICS_KEY    = 'touchHaptics';
 const CONTRAST_KEY   = 'a11yContrast';
 const THEME_KEY      = 'a11yTheme';
 // Labelled in plain language, not percentages — "Larger" is what a teacher
@@ -49,6 +50,150 @@ const TEXT_SCALES = [
 function getTextScale(){
   const v = Store.getString(TEXT_SCALE_KEY, '1');
   return TEXT_SCALES.some(s=>s.v===v) ? v : '1';
+}
+/* ══ PRESS FEEDBACK ═══════════════════════════════════════════════════════
+   The physical half of the press system; styles.css has the visual half and
+   the reasoning — read the PRESS block there first.
+
+   WHY A DELEGATED LISTENER AND NOT :active — two practical reasons. Android's
+   WebView delays or silently drops :active inside a scrolling container, which
+   is exactly where the biggest controls live; and this app rebuilds whole
+   screens with innerHTML, so anything bound per element dies on the next
+   repaint. One listener on document survives every screen swap and costs one
+   closest() per touch.
+
+   WHY HAPTICS AT ALL — a teacher mid-assessment is watching the CHILD, not the
+   screen. A tick confirming the tap registered is functional here, not
+   decoration, and R36 means this is their own phone, so it is also the kind of
+   thing they should be able to switch off. Settings → Display.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function getHaptics(){ return Store.getString(HAPTICS_KEY, '') !== 'off'; }
+function buzz(ms){
+  if(!getHaptics()) return;
+  // No @capacitor/haptics dependency: the WebView already exposes this, and a
+  // native plugin here would buy nothing but a gradle change and a rebuild.
+  try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(_){}
+}
+async function toggleHaptics(on){
+  await Store.setString(HAPTICS_KEY, on ? 'on' : 'off');
+  if(on) buzz(14);   // answer the switch with the thing it switches on
+  toast(on ? 'Touch feedback on.' : 'Touch feedback off.');
+}
+/* WEIGHT IS MEASURED, NOT LISTED (rewritten 2026-08-24).
+   The first version of this matched CLASS NAMES, and that was wrong within a
+   day: the list was assembled by grepping styles.css, so `.card-media` — the
+   activity cards, one of the most-tapped surfaces in the app — fell through to
+   the generic `button` catch-all and shrank 3.5% like a 40px icon, while the
+   home screen's rows got a slab press too faint to notice. A hand-kept list of
+   class names cannot help but drift: every new component defaults to wrong
+   until somebody remembers this constant exists.
+   Measuring the element instead means a component built next month gets the
+   right weight the first time it is ever touched, with nothing to remember. */
+function pressWeightFor(el){
+  var r = el.getBoundingClientRect();
+  var w = r.width, h = r.height;
+  if(!w || !h) return 'ctrl';                    // hidden / not laid out yet
+  if(w <= 56 && h <= 56)   return 'micro';       // icon buttons, transport, chips
+  if(h >= 60 && w >= 190)  return 'slab';        // cards, hub rows, category rows
+  return 'ctrl';                                 // everything in between
+}
+/* Geometry is right about almost everything and wrong about a few, so this is
+   the short, deliberate exception list — not a second copy of the component
+   inventory. Every entry was found by MEASURING the running app in Chromium at
+   393x873 (scripts/measure-press.mjs), not guessed. Three kinds of exception:
+
+   MEANING BEATS SIZE. `.save` is 355x56 of button and measures slab, but a
+   slab press is soft and the commit tap should feel decisive. Same for the
+   confirm-dialog actions.
+
+   DRAWN AS TEXT, NOT AS A SURFACE. `.help-tip-ok` measures 99x17 — scaling a
+   line of type looks like a rendering fault, so these dim instead.
+
+   ONE COMPONENT MUST NOT SPAN A THRESHOLD. This is the real cost of measuring,
+   and it showed up in three places the moment the app was measured:
+     · `summary` is 355x74 where the label wraps and 355x59 where it doesn't —
+       the same row would have pressed two different ways depending on how long
+       somebody's copy was.
+     · `.cmd-pad` is 149x68 in the Direction grid but 56x56 on the compass
+       face, so one instrument would have had two presses in it.
+     · `.sb-tbtn` is 64x64 for play and 46x46 for its neighbours — one transport
+       row, two weights.
+   Pinning those three is not an admission that geometry failed; it is the
+   short, explicable list geometry LEFT, instead of the twenty-odd-entry
+   inventory the class-name version needed. */
+var PRESS_OVERRIDE = [
+  ['text',  '.linklike, .roster-all, .sumedit, .help-tip-ok'],
+  ['micro', '.sb-tbtn'],
+  ['ctrl',  '.save, .roster-cta, .confirm-go, .confirm-export, .confirm-cancel, .welcome-btn, .hint-ok, .breview, .bskip, .danger-btn, .cmd-pad'],
+  ['slab',  'summary'],
+];
+var PRESS_TARGET = 'button, [role="button"], summary';
+const PRESS_SKIP   = 'input, textarea, select, [disabled], [aria-disabled="true"]';
+// The taps that commit data rather than navigate get a firmer tick.
+const PRESS_COMMIT = '.seg button, .save, .breview';
+const PRESS_CANCEL_PX = 10;
+const PRESS_MIN_MS    = 90;
+
+function initPressFeedback(){
+  if(window._pressWired) return;
+  window._pressWired = true;
+  let held = null, weight = '', sx = 0, sy = 0, downAt = 0;
+
+  function classify(target){
+    if(!target || !target.closest) return null;
+    if(target.closest(PRESS_SKIP)) return null;
+    const el = target.closest(PRESS_TARGET);
+    if(!el) return null;
+    for(const [w, sel] of PRESS_OVERRIDE){ if(el.matches(sel)) return [w, el]; }
+    return [pressWeightFor(el), el];
+  }
+  /* A stuck press is a visible defect — a control left shrunk with no way
+     back — so every path that can end a press clears it, and the element is
+     dropped from the closure BEFORE the timer so a repaint mid-press cannot
+     resurrect it. */
+  function release(now){
+    if(!held) return;
+    const el = held, elapsed = Date.now() - downAt;
+    held = null; weight = '';
+    const off = ()=>{ try{ el.removeAttribute('data-pressed'); }catch(_){} };
+    // A fast tap would otherwise show no press at all. Holding the state to a
+    // floor of 90ms means every tap is SEEN, which is most of why a good
+    // button feels answered rather than merely obeyed.
+    if(!now && elapsed < PRESS_MIN_MS) setTimeout(off, PRESS_MIN_MS - elapsed);
+    else off();
+  }
+  document.addEventListener('pointerdown', e=>{
+    release(true);
+    const hit = classify(e.target);
+    if(!hit) return;
+    weight = hit[0]; held = hit[1]; sx = e.clientX; sy = e.clientY; downAt = Date.now();
+    /* Stamped once, kept forever. The RELEASE transition hangs off data-press
+       rather than a list of selectors, so a control gets the system's 340ms
+       settle from its very first touch onward — see the note in styles.css
+       about why that attribute is written twice in the selector. */
+    if(!held.hasAttribute('data-press')) held.setAttribute('data-press','');
+    held.setAttribute('data-pressed', weight);
+    /* Small controls tick on the way DOWN, where tactile confirmation belongs.
+       SLABS TICK ON RELEASE INSTEAD: a card is the thing a finger lands on to
+       start a scroll, and a grid that buzzed every time you scrolled past it
+       would be intolerable. A vibration cannot be un-fired, so the only safe
+       moment for the big surfaces is after we know it was a tap. */
+    if(weight !== 'slab') buzz(held.matches(PRESS_COMMIT) ? 14 : 7);
+  }, {passive:true});
+
+  document.addEventListener('pointermove', e=>{
+    if(!held) return;
+    if(Math.abs(e.clientX - sx) > PRESS_CANCEL_PX || Math.abs(e.clientY - sy) > PRESS_CANCEL_PX) release(true);
+  }, {passive:true});
+
+  document.addEventListener('pointerup', ()=>{
+    if(held && weight === 'slab') buzz(10);
+    release(false);
+  }, {passive:true});
+
+  ['pointercancel','contextmenu','visibilitychange','blur'].forEach(ev=>
+    window.addEventListener(ev, ()=>release(true), true));
+  window.addEventListener('scroll', ()=>release(true), true);
 }
 function getContrastMode(){ return Store.getString(CONTRAST_KEY, '') === 'high' ? 'high' : 'normal'; }
 function getThemeMode(){    return Store.getString(THEME_KEY,    '') === 'dark' ? 'dark' : 'light'; }
@@ -450,14 +595,24 @@ function activityStill(cat, act){
   const fb = STILL_CAT[cat && cat.category];
   return fb ? fb() : STILL['assess-procedure'];
 }
+/* `shadow` (2026-08-24) is the DEEP hue at the same opacity the neutral shadow
+   already used. It tints the one existing shadow tier — it does not add a
+   second one.
+   ORDER MATTERS: a category takes the entry at its own index, so adding a
+   category silently re-colours everything below it. Splitting Sound back out
+   on 2026-08-25 made six, which would have handed slot 5 to #3a7d5d — a
+   near-duplicate of Direction's #2f6f4e — so Other Activities would have
+   looked like Direction. Plum and that green were swapped: the duplicate now
+   sits at the LAST index, where nothing reaches it. If a seventh category is
+   ever added, give it a genuinely new hue rather than letting #3a7d5d ship. */
 const CATEGORY_PALETTE = [
-  { c:"#2f6f4e", deep:"#1f4d36", soft:"#e2efe5", line:"#cce0d1" },
-  { c:"#1f6f86", deep:"#124a5b", soft:"#dceef2", line:"#c2e0e8" },
-  { c:"#6a4ea8", deep:"#47326f", soft:"#eae3f5", line:"#dccff0" },
-  { c:"#b5521f", deep:"#8a3c12", soft:"#f6e3d6", line:"#eccdb6" },
-  { c:"#8a6f2b", deep:"#5f4c1c", soft:"#f3ead0", line:"#e6d6a8" },
-  { c:"#3a7d5d", deep:"#265a41", soft:"#e2f0e8", line:"#c8e2d2" },
-  { c:"#9a4060", deep:"#702c45", soft:"#f4e0e8", line:"#ecc6d5" },
+  { c:"#2f6f4e", deep:"#1f4d36", soft:"#e2efe5", line:"#cce0d1", shadow:"rgba(31,77,54,.30)" },
+  { c:"#1f6f86", deep:"#124a5b", soft:"#dceef2", line:"#c2e0e8", shadow:"rgba(18,74,91,.30)" },
+  { c:"#6a4ea8", deep:"#47326f", soft:"#eae3f5", line:"#dccff0", shadow:"rgba(71,50,111,.30)" },
+  { c:"#b5521f", deep:"#8a3c12", soft:"#f6e3d6", line:"#eccdb6", shadow:"rgba(138,60,18,.30)" },
+  { c:"#8a6f2b", deep:"#5f4c1c", soft:"#f3ead0", line:"#e6d6a8", shadow:"rgba(95,76,28,.30)" },
+  { c:"#9a4060", deep:"#702c45", soft:"#f4e0e8", line:"#ecc6d5", shadow:"rgba(112,44,69,.30)" },
+  { c:"#3a7d5d", deep:"#265a41", soft:"#e2f0e8", line:"#c8e2d2", shadow:"rgba(38,90,65,.30)" },
 ];
 const CAT_VARS = ['--cat','--cat-deep','--cat-soft','--cat-line'];
 
@@ -490,6 +645,7 @@ function themeFor(catIndex){
   if(modeOwnsPalette){
     // Remove, don't overwrite — the stylesheet's values must win the cascade.
     CAT_VARS.forEach(k => document.body.style.removeProperty(k));
+    root.style.removeProperty('--cat-shadow');
     return;
   }
   const p = CATEGORY_PALETTE[catIndex % CATEGORY_PALETTE.length];
@@ -497,6 +653,12 @@ function themeFor(catIndex){
   document.body.style.setProperty('--cat-deep', p.deep);
   document.body.style.setProperty('--cat-soft', p.soft);
   document.body.style.setProperty('--cat-line', p.line);
+  /* --cat-shadow goes on <html>, NOT <body> like the four above. --shadow-lift
+     is declared on :root and reads this with var(); custom-property
+     substitution resolves on the element the DECLARATION lives on, so a value
+     parked on <body> would never reach it. Both mode blocks replace
+     --shadow-lift outright, so the tint simply does not participate there. */
+  root.style.setProperty('--cat-shadow', p.shadow);
 }
 function resetTheme(){ themeFor(0); }
 function catColor(i){ return CATEGORY_PALETTE[i % CATEGORY_PALETTE.length].c; }
@@ -1755,6 +1917,7 @@ function showSettings(dir){
   ).join('');
   const highOn = getContrastMode() === 'high';
   const darkOn = getThemeMode()    === 'dark';
+  const hapticsOn = getHaptics();
   // Real checkboxes, not styled divs — a screen reader gets "checked/not
   // checked" and the switch-access / keyboard behaviour for free.
   const displayPanel = `
@@ -1779,6 +1942,13 @@ function showSettings(dir){
         <label for="a11yDark">Dark background</label>
       </div>
       <p class="setting-sub" id="a11yDarkHelp">Light text on a dark page — easier if bright screens hurt your eyes.</p>
+      <div class="checkrow" style="margin-top:var(--s2)">
+        <input type="checkbox" id="touchHaptics" ${hapticsOn?'checked':''}
+               onchange="toggleHaptics(this.checked)"
+               aria-describedby="touchHapticsHelp">
+        <label for="touchHaptics">Touch feedback</label>
+      </div>
+      <p class="setting-sub" id="touchHapticsHelp">A short buzz when you tap something. Useful when you are watching the child rather than the screen.</p>
     </div>`;
   paint(`
     <h1 class="lede">Settings<small>Preferences for this device, and your data tools.</small></h1>
@@ -2611,38 +2781,22 @@ function showCategory(ci, dir){
     </button>`;
   }).join('');
   const lede = cat.description ? esc(cat.description) : 'Pick an activity to read the steps and record a result.';
-  // Category-level ? — same headless-sheet pattern as the activity screens.
-  // Renders only when the category defines `help` in activities.js (guidance
-  // lines + optional demo video), so categories opt in content-side.
-  const hasHelp = Array.isArray(cat.help) && cat.help.length;
-  const helpBtn = hasHelp
-    ? `<button type="button" class="${helpBtnClass()}" aria-label="About ${esc(cat.category)} — what to pick and why"
-        aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'catRefSheet')">?</button>${helpCallout()}`
-    : '';
-  const helpVideo = hasHelp && cat.helpVideo
-    ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(cat.helpVideo)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
-    : '';
-  // Optional setup photo — same opt-in pattern as helpVideo. Content team sets
-  // `helpImage` on the category in activities.js (filename at root, bundled
-  // like demo videos). Renders between the demo video and the help lines.
-  const helpImage = hasHelp && cat.helpImage
-    ? `<div class="ref-block"><span class="section-label">Setup example</span><img src="${esc(cat.helpImage)}" alt="How the ${esc(cat.category)} setup looks when laid out" style="width:100%;margin-top:10px;border-radius:14px;"/></div>`
-    : '';
-  const helpSheet = hasHelp
-    ? `<div class="ref-src" id="catRefSheet" data-help-title="${esc(cat.category)}" hidden>
-          ${helpVideo}
-          ${helpImage}
-          <h2 class="section-label">How to use this category</h2>
-          <ol class="sop-list">${cat.help.map(h=>`<li>${esc(h)}</li>`).join('')}</ol>
-      </div>`
-    : '';
+  /* NO ? ON THIS SCREEN (2026-08-25, Adi).
+     The category screen used to carry its own ? sheet, built from `help`,
+     `helpVideo` and `helpImage` on the category in activities.js. It is gone:
+     this screen is a list of activities, and the guidance a teacher actually
+     needs is the SOP for the activity they are about to run — which is one tap
+     away, on the record screen, and is the ? that stayed.
+     Two ? buttons a tap apart, showing different things, taught a teacher that
+     ? means "some help, unclear which".
+     The category data is deliberately NOT deleted from activities.js — it is
+     content-team work and costs nothing at rest. Restoring the button means
+     restoring this block and the two slots in the template below. */
   paint(`<section class="cat-group">
     <div class="cat-head"><span class="cat-ic" style="background:${col}">${catIcon(ci)}</span><span class="cat-name" style="color:${pal.deep}">${esc(cat.category)}</span></div>
     <div class="lede-row">
       <h1 class="lede" style="margin-top:6px">${esc(cat.category)}<small>${lede}</small></h1>
-      ${helpBtn}
     </div>
-    ${helpSheet}
     <div class="cat-cards" ${groupAttrs(cat.activities.length,'activity','activities')}>${cards}</div>
   </section>`, dir || 'fwd', true);
 }
@@ -3312,6 +3466,18 @@ function buildRefSheet(act, domId){
     ? `<p class="visually-hidden">This demonstration is a silent video. The written steps and the spoken narration below cover the same procedure.</p>`
     : '';
   const noteHtml = act.facilitatorNote ? `<div class="note"><strong>Facilitator note</strong>${esc(act.facilitatorNote)}</div>` : '';
+  // ACTIVITY META (2026-08-24) — the header block of the content team's SOP
+  // document: what you need, how it is run, who it is for, how long it takes.
+  // A teacher reads this BEFORE the steps, so it renders above them. Every key
+  // is optional and an activity with no `meta` renders nothing at all, which
+  // is why this is safe to add while eleven activities are still waiting for
+  // their SOPs.
+  const META_ORDER = [['resources','What you need'],['type','How it is run'],['age','Age group'],['time','Time']];
+  const metaRows = act.meta ? META_ORDER.filter(function(e){ return act.meta[e[0]]; }).map(function(e){
+    return `<div class="meta-row"><dt>${esc(e[1])}</dt><dd>${esc(act.meta[e[0]])}</dd></div>`; }).join('') : '';
+  const metaHtml = metaRows
+    ? `<div class="ref-block"><span class="section-label">Before you start</span><dl class="act-meta">${metaRows}</dl></div>`
+    : '';
   const audioHtml = buildAudioHtml(act);
   const demoVideoHtml = act.videoFile
     ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(act.videoFile)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
@@ -3319,6 +3485,7 @@ function buildRefSheet(act, domId){
   return `<div class="ref-src" id="${domId}" data-help-title="${esc(act.name)}" hidden>
         ${videoNote}
         ${demoVideoHtml}
+        ${metaHtml}
         <h2 class="section-label">Sequence of procedure</h2><ol class="sop-list">${sopSteps}</ol>
         ${noteHtml}
         ${audioHtml}
@@ -4270,6 +4437,11 @@ async function commitPendingVideo(researchId){
 // `sfx` (optional) namespaces every field id — the batch sheet renders the SAME
 // dataFields once per child as `f_<field>_<profileId>`, so one activity screen
 // can hold N children's inputs without collisions. Solo/group callers omit it.
+// Score values meaning the child managed it unaided. 'Got it' and
+// 'Independent' are the two standing scales; 'Confident' arrived with the
+// content team's Sound SOPs (2026-08-24). A `choice` field can name its own
+// winner instead, via achievedWhen — see buildField.
+const ACHIEVED_YES = new Set(['Got it','Independent','Confident']);
 function buildField(f, sfx){
   sfx = sfx || '';
   const fid = `f_${f.id}${sfx}`;
@@ -4297,6 +4469,32 @@ function buildField(f, sfx){
       <summary>${ICON.edit}<span class="tnotes-title">${esc(f.label)}</span><span class="tnotes-opt">optional</span></summary>
       <textarea id="${fid}" placeholder="Anything worth remembering — what helped, what surprised you, what to try next session."></textarea>
     </details>`;
+  }
+  // 'choice' — a segmented single-select whose OPTIONS COME FROM activities.js
+  // (2026-08-24, added for the content team's real SOPs). 'result' and
+  // 'mastery' hard-code their three answers because they are the app's two
+  // standing scales; the Sound SOPs ask for a two-way "Confident / Required
+  // hints" overall, and the next SOP will ask for something else again. Rather
+  // than growing a fourth hard-coded scale, this type reads `options: [...]`,
+  // so a new scale is a CONTENT edit and needs no coder.
+  // `achievedWhen` names the option meaning the child managed it — that is what
+  // the batch flow's derived Achieved column reads. Leave it out and the field
+  // is still recorded, just never treated as the score.
+  // The value travels in data-v rather than inside the onclick string: option
+  // text comes from a content file, and an apostrophe in it would otherwise
+  // break the handler silently.
+  if(f.type === 'choice'){
+    const opts = (f.options && f.options.length) ? f.options : ['Yes','No'];
+    return `<div class="field fc-judge"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label><div class="seg" id="${fid}" data-value="" role="group" aria-labelledby="lbl_${f.id}${sfx}">${opts.map(v=>`<button type="button" data-v="${esc(v)}" onclick="pickSeg('${fid}',this.dataset.v,this)" aria-pressed="false">${esc(v)}</button>`).join('')}</div></div>`;
+  }
+  // 'rating' — a 1-to-5 scale (2026-08-25). Added because the second SOP
+  // document asks for "Rate 1-5" on four activities and nothing here did that;
+  // the numbers and the range come from the content team, not from us.
+  // Each button carries its own aria-label because "3" on its own tells a
+  // screen-reader user nothing — they need the scale and what is being rated,
+  // and a toggle's activation announces STATE, never the button's name.
+  if(f.type === 'rating'){
+    return `<div class="field fc-judge"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label><div class="seg seg-rate" id="${fid}" data-value="" role="group" aria-labelledby="lbl_${f.id}${sfx}">${['1','2','3','4','5'].map(v=>`<button type="button" data-v="${v}" onclick="pickSeg('${fid}',this.dataset.v,this)" aria-pressed="false" aria-label="${esc(f.label)}: ${v} out of 5">${v}</button>`).join('')}</div></div>`;
   }
   if(f.type === 'checkbox'){ return `<div class="field"><div class="checkrow"><input type="checkbox" id="${fid}"><label for="${fid}">${esc(f.label)}</label></div></div>`; }
   return `<div class="field fc-notes"><label for="${fid}">${esc(f.label)}</label><textarea id="${fid}" placeholder="Type any observations..."></textarea></div>`;
@@ -4344,7 +4542,7 @@ async function handleSave(activityId){
   act.dataFields.forEach(f=>{
     const el = document.getElementById('f_'+f.id);
     if(f.type === 'count')        values[f.label] = el.value || '0';
-    else if(f.type === 'result' || f.type === 'mastery') values[f.label] = el.dataset.value || '—';
+    else if(f.type === 'result' || f.type === 'mastery' || f.type === 'choice' || f.type === 'rating') values[f.label] = el.dataset.value || '—';
     else if(f.type === 'checkbox')values[f.label] = el.checked ? 'Yes' : 'No';
     else                          values[f.label] = el.value || '';
   });
@@ -4424,7 +4622,7 @@ function batchHasData(pid){
     const el = document.getElementById('f_'+f.id+'_'+pid);
     if(!el) return false;
     if(f.type === 'count') return !!(el.value && el.value !== '0');
-    if(f.type === 'result' || f.type === 'mastery') return !!el.dataset.value;
+    if(f.type === 'result' || f.type === 'mastery' || f.type === 'choice' || f.type === 'rating') return !!el.dataset.value;
     if(f.type === 'checkbox') return el.checked;
     return !!(el.value || '').trim();
   });
@@ -4479,14 +4677,29 @@ function batchReview(){
     if(scored){
       n++;
       const bits = [];
+      // Scored fields are collected separately so they keep their DECLARED
+      // order and still lead the row. The old code unshifted them, which was
+      // fine while every activity had exactly one — Direction → Basic now has
+      // two (a rating before and a rating after) and unshift would print them
+      // backwards.
+      const segBits = [];
+      const segCount = act.dataFields.filter(d=>d.type==='result'||d.type==='mastery'||d.type==='choice'||d.type==='rating').length;
       act.dataFields.forEach(f=>{
         const el = document.getElementById('f_'+f.id+'_'+pid);
         if(!el) return;
-        if(f.type === 'result' || f.type === 'mastery'){ if(el.dataset.value) bits.unshift(`<strong>${esc(el.dataset.value)}</strong>`); }
+        if(f.type === 'result' || f.type === 'mastery' || f.type === 'choice' || f.type === 'rating'){
+          // One scored field reads fine bare ("Got it"). Two bare values side
+          // by side do not, and this is the screen a teacher confirms before
+          // committing records for several children at once — so label them.
+          if(el.dataset.value) segBits.push(segCount > 1
+            ? `${esc(f.label)}: ${esc(el.dataset.value)}`
+            : `<strong>${esc(el.dataset.value)}</strong>`);
+        }
         else if(f.type === 'count'){ if(el.value && el.value !== '0') bits.push(`${esc(el.value)} ${esc(f.label.toLowerCase())}`); }
         else if(f.type === 'teacherNotes' || !f.type){ if((el.value||'').trim()) bits.push('note ✎'); }
       });
-      detail = bits.length ? bits.join(' · ') : 'detail only';
+      const allBits = segBits.concat(bits);
+      detail = allBits.length ? allBits.join(' · ') : 'detail only';
     }
     // The row reads as one line; "Edit" alone is useless in a column of them.
     const spoken = `${p.name}: ${scored ? detail.replace(/<[^>]+>/g,'') : 'skipped'}`;
@@ -4524,18 +4737,45 @@ async function handleBatchSave(activityId){
     const child = profileById(pid);
     if(!child) continue;
     const values = {};
-    let scored = false, hasDetail = false, scoreVal = '';
+    let scored = false, hasDetail = false, scoreVal = '', scoreField = null;
     act.dataFields.forEach(f=>{
       const el = document.getElementById('f_'+f.id+'_'+pid);
       if(!el) return;
       if(f.type === 'count'){ const v = el.value || ''; if(v && v !== '0') hasDetail = true; values[f.label] = v || '0'; }
-      else if(f.type === 'result' || f.type === 'mastery'){ const v = el.dataset.value || ''; if(v){ scored = true; scoreVal = v; } values[f.label] = v || '—'; }
+      else if(f.type === 'result' || f.type === 'mastery' || f.type === 'choice' || f.type === 'rating'){
+        const v = el.dataset.value || '';
+        // The LAST scored field wins, and that is deliberate: Direction → Basic
+        // declares a rating BEFORE and a rating AFTER in that order, so the
+        // after rating is what the derived Achieved column reads. Reordering
+        // the fields in activities.js changes which one counts — that is the
+        // intended lever, not an accident.
+        if(v){ scored = true; scoreVal = v; scoreField = f; }
+        values[f.label] = v || '—';
+      }
       else if(f.type === 'checkbox'){ if(el.checked) hasDetail = true; values[f.label] = el.checked ? 'Yes' : 'No'; }
       else { const v = el.value || ''; if(v.trim()) hasDetail = true; values[f.label] = v; }
     });
     if(!scored && !hasDetail) continue; // skipped student → no record, on purpose
     // Achieved DERIVES from the score — one control, one truth.
-    values['Achieved'] = (scoreVal === 'Got it' || scoreVal === 'Independent') ? 'Yes' : 'No';
+    // WRITTEN ONLY WHEN THERE IS A SCORE (2026-08-24). Direction → Advanced
+    // records trials and correct answers and asks the teacher for no judgment
+    // at all; the old unconditional line stamped every one of those records
+    // 'Achieved: No', which is a verdict nobody gave and which would have gone
+    // straight into the research CSV as though it were observed.
+    if(scored && scoreField){
+      const win = scoreField.achievedWhen;
+      if(win){
+        values['Achieved'] = (scoreVal === win) ? 'Yes' : 'No';
+      } else if(scoreField.type === 'result' || scoreField.type === 'mastery'){
+        values['Achieved'] = ACHIEVED_YES.has(scoreVal) ? 'Yes' : 'No';
+      }
+      /* A 1-5 RATING WRITES NO Achieved COLUMN, and neither does a `choice`
+         that declines to name a winning option. The teacher marked a point on
+         a scale, not a pass or a fail, and there is no non-arbitrary line
+         between 3 and 4. Deriving one would put a judgement into the research
+         data that nobody actually made — the same defect as stamping
+         'Achieved: No' on an activity that asks for no judgement at all. */
+    }
     const ok = await saveRecord(activityId, { researchId: child.researchId, profileId: child.id, values });
     if(ok) saved++; else failed++;
   }
@@ -4633,6 +4873,10 @@ async function confirmDeleteRecord(activityId, recordId){
     applyDisplayPrefs();             // text size / contrast / dark, BEFORE first paint
   }
   catch(e){ setTimeout(()=>toast('Storage failed to load — please restart the app.'), 400); }
+  // Outside the try on purpose: press feedback must not depend on storage
+  // having loaded. A broken Store should cost the teacher their data warning,
+  // not every button in the app going dead to the touch.
+  initPressFeedback();
   // Login gates the app. Once signed in, the welcome-seen flag decides whether
   // to show the one-time welcome or drop straight into the hub.
   try {

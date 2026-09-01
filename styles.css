@@ -6,7 +6,7 @@
    DESIGN DIRECTION — "field notebook, not dashboard"
    ───────────────────────────────────────────────────────────────────────
    Quiet, editorial, confident. The personality lives in ONE place per
-   screen (the large Instrument Serif title) and ONE accent placement (the
+   screen (the large Fraunces title) and ONE accent placement (the
    category colour). Everything else is calm and out of the way so a teacher
    can glance and log a result in seconds. The point of view is RESTRAINT —
    the opposite of a busy, evenly-decorated layout.
@@ -27,9 +27,9 @@
         hover-lifted cards, so "elevated" means "interactive/important."
         Do NOT add a second shadow level or float the records.
 
-     3. The serif is SACRED and SINGULAR. Instrument Serif appears once per
+     3. The serif is SACRED and SINGULAR. Fraunces appears once per
         screen, large, on the .lede only — never on labels, buttons, or
-        panel titles. Need a second heading? Use Inter 600, not the serif.
+        panel titles. Need a second heading? Use Arimo 600, not the serif.
 
      4. Differentiated radii are intentional: 20px containers / 14px records
         / 11px controls. All-one-radius reads as a template; keep the
@@ -47,6 +47,40 @@
 
    See DESIGN_NOTES.md for the full rationale.
    ========================================================================= */
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     FONTS ARE BUNDLED, NOT FETCHED (2026-08-24).
+     This app is offline-first by design — Kullu barely has a connection. The
+     build before this one pulled Instrument Serif and Arimo from
+     fonts.googleapis.com in index.html, so on a disconnected phone EVERY
+     heading silently fell back to Georgia and every label to Arial. The
+     typeface was a design decision that never reached a teacher in the field,
+     and nothing in the test suite could see it: jsdom has no font stack, and
+     the emulator has wifi.
+     Two consequences beyond the look:
+       · rendering is now identical on every device, connected or not;
+       · the app makes NO third-party request at boot. A Google Fonts fetch
+         hands the device IP to a third party from an app that handles
+         children's data — removing it is a DPDP posture improvement, not
+         only a speed one.
+     Files live in fonts/ — COMMITTED, like img/, because a typeface is
+     artwork and not personal data — and are mirrored into www/ by build.sh
+     step 3b. Both faces are OFL-licensed and the licences ship beside them.
+     ───────────────────────────────────────────────────────────────────────── */
+  @font-face{
+    font-family:"Fraunces";
+    src:url("fonts/fraunces-var-latin.woff2") format("woff2");
+    font-weight:100 900;
+    font-style:normal;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:"Arimo";
+    src:url("fonts/arimo-var-latin.woff2") format("woff2");
+    font-weight:400 700;
+    font-style:normal;
+    font-display:swap;
+  }
 
   @property --cat       { syntax:'<color>'; inherits:true; initial-value:#2f6f4e; }
   @property --cat-deep  { syntax:'<color>'; inherits:true; initial-value:#1f4d36; }
@@ -69,13 +103,32 @@
     --t-display:2.375rem; --t-title:1.125rem; --t-body:1.0625rem;
     --t-bodysm:.9375rem; --t-caption:.8125rem; --t-micro:.75rem;
     --r-lg:20px; --r-md:14px; --r-sm:11px;
-    --shadow-lift:0 1px 2px rgba(60,45,15,.05), 0 18px 40px -16px rgba(70,55,25,.22);
+    /* The far shadow's HUE is the category's, via --cat-shadow (set by
+       themeFor). Same tier, same depth, same opacity — only the colour moves,
+       so guardrail #2 holds: this is not a second elevation level, it is the
+       one shadow tinted. Across a screen it makes the category read as a light
+       source rather than a stripe. The fallback is the old neutral brown, so
+       any surface reached before a category is chosen looks exactly as before.
+       NOTE --cat-shadow is set on <html>, not <body> like its four siblings:
+       a var() inside a declaration on :root resolves against :root, so a value
+       parked on <body> would never be seen here. */
+    --shadow-lift:0 1px 2px rgba(60,45,15,.05), 0 18px 40px -16px var(--cat-shadow, rgba(70,55,25,.22));
     --shadow-rest:0 1px 2px rgba(60,45,15,.04);
     /* The one selection ring for "this item is active" (active child, etc.).
        Used by both the picker tile and the manage-data row so the highlight is
        identical everywhere. */
     --ring-active:0 0 0 3px var(--cat-soft);
     --ease:cubic-bezier(.22,.61,.36,1);
+    /* PRESS PHYSICS (2026-08-24) — the whole feel is these five values; the
+       reasoning is in the PRESS block lower down. Down is fast and nearly
+       linear so the surface meets the finger; up is four times longer on a
+       decelerating curve so it settles with mass. Deliberately NO overshoot:
+       a bounce reads as playful, and this is a tool used over a child's
+       assessment. Weight follows size — a 300px card and a 34px icon cannot
+       share a scale value. Retune the feel here and nowhere else. */
+    --press-down:80ms cubic-bezier(.3,0,.5,1);
+    --press-up:340ms cubic-bezier(.16,1,.3,1);
+    --press-slab:.975; --press-ctrl:.965; --press-micro:.93;
     /* RECORD-FORM COLOR CODE (2026-07-21, "tinted blocks"). Color = the
        FIELD'S MEANING, constant across every activity: amber = counting,
        green = judgment (result/mastery), blue = written reflection, plum =
@@ -217,15 +270,34 @@
     #screen, #screen[data-dir="back"], .stagger .card, .stagger .cat-group{ animation:fade .2s ease both; }
     @keyframes fade{ from{opacity:0;} to{opacity:1;} }
     .card:hover{ transform:none !important; }
-    .card:active{ transform:none !important; }
-    .seg button:active, .save:active{ transform:none !important; }
+    /* No press motion at all here. The haptic tick and the colour :active
+       states still fire, so the control is still confirmed — it just does not
+       move. Vestibular disorders travel with low vision often enough that
+       this is the default worth honouring. */
+    [data-pressed]{ transform:none !important; box-shadow:none !important; }
     details.sop summary .chev{ transition:none !important; }
     details.disclosure > summary .chev{ transition:none !important; }
     .sop-body{ transition:none !important; }
   }
-  /* THE ONE SERIF MOMENT — .lede only, never elsewhere (guardrail #3). */
-  .lede{ font-family:"Instrument Serif", Georgia, serif; font-weight:400; font-size:var(--t-display);
-    line-height:1.04; letter-spacing:-.01em; margin:0 0 var(--s4); color:var(--ink); max-width:20ch; }
+  /* THE ONE SERIF MOMENT — .lede only, never elsewhere (guardrail #3).
+     FRAUNCES, not Instrument Serif (2026-08-24). One reason is taste and one
+     is an accessibility defect:
+       · Instrument Serif ships a SINGLE weight (400) at high stroke contrast.
+         In high-contrast mode — the mode a low-vision teacher actually turns
+         on — the hairlines stayed hairlines and the heading got no sturdier,
+         so the one mode that exists to help them left the largest text on the
+         screen untouched. Fraunces is variable 100–900, so the mode can ask
+         for real weight (see the [data-contrast="high"] rule further down).
+       · SOFT rounds the terminals. That is what makes it sit on the warm
+         paper like ink rather than like a magazine masthead.
+     opsz is set explicitly instead of leaving font-optical-sizing:auto to it:
+     the display heading wants the large-size drawing whatever the teacher has
+     done to --text-scale. WONK 1 swaps in the single-storey g and the swash
+     leg — charming, slightly loud, off by default. Flip the 0 to a 1 to see
+     it; nothing else has to change. */
+  .lede{ font-family:"Fraunces", Georgia, serif; font-weight:500; font-size:var(--t-display);
+    font-variation-settings:"opsz" 48, "SOFT" 40, "WONK" 0;
+    line-height:1.06; letter-spacing:-.015em; margin:0 0 var(--s4); color:var(--ink); max-width:20ch; }
   .lede small{ display:block; font-family:"Arimo", Arial, sans-serif; font-weight:400; font-size:var(--t-bodysm);
     line-height:1.5; color:var(--ink-soft); margin-top:var(--s2); max-width:52ch; letter-spacing:0; }
   .lede:focus{ outline:none; }
@@ -235,9 +307,9 @@
     width:100%; position:relative; overflow:hidden;
     transition:transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s; }
   @media (hover:hover){
-    .card:hover{ transform:translateY(-4px); box-shadow:var(--shadow-lift); border-color:var(--c); }
+    .card:hover:not([data-pressed]){ transform:translateY(-4px); box-shadow:var(--shadow-lift); border-color:var(--c); }
   }
-  .card:active{ transform:translateY(-1px); box-shadow:var(--shadow-lift); border-color:var(--c); }
+  .card:active{ border-color:var(--c); }   /* colour only — the press itself is the system's, see PRESS */
   .card:focus-visible{ outline:3px solid var(--c); outline-offset:3px; }
   /* The wayfinding spine — the ONLY place it's allowed. See guardrail #1. */
   .card::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--c); }
@@ -351,7 +423,6 @@
   .sb-pad .sb-glyph svg{ width:15px; height:15px; }
   .sb-pad .sb-label{ flex:1; min-width:0; }
   @media (hover:hover){ .sb-pad:hover{ border-color:var(--cat-line); box-shadow:var(--shadow-rest); } }
-  .sb-pad:active{ transform:scale(.98); }
   .sb-pad:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
   .sb-pad[aria-pressed="true"]{ background:var(--cat); color:#fff; border-color:var(--cat); }
   .sb-pad[aria-pressed="true"] .sb-glyph{ background:rgba(255,255,255,.2); border-color:transparent; color:#fff; }
@@ -408,7 +479,6 @@
     .sb-tbtn.side:hover, .sb-tbtn.toggle:hover{ background:var(--cat-soft); color:var(--cat-deep); }
     .sb-tbtn.main:hover{ filter:brightness(1.06); }
   }
-  .sb-tbtn:active{ transform:scale(.92); }
   .sb-tbtn:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
   .sb-tbtn.toggle.on{ background:var(--cat-soft); color:var(--cat-deep); }
   .sb-tbtn .badge{ position:absolute; right:7px; bottom:7px; font-size:9px; font-weight:700; line-height:1;
@@ -433,7 +503,6 @@
     cursor:pointer; transition:border-color .15s, background .15s, color .15s, box-shadow .15s, transform .08s; }
   .cmd-pad .cmd-label{ font-weight:600; font-size:var(--t-body); letter-spacing:-.005em; }
   @media (hover:hover){ .cmd-pad:hover{ border-color:var(--cat-line); box-shadow:var(--shadow-rest); } }
-  .cmd-pad:active{ transform:scale(.98); }
   .cmd-pad:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
   .cmd-pad[aria-pressed="true"], .cmd-pad.is-speaking{ background:var(--cat); color:#fff; border-color:var(--cat); }
   /* ---- COMPASS ROSE (Direction → Advanced, activity has compass:true) ------
@@ -492,7 +561,6 @@
     transition:background .15s, border-color .15s, transform .08s; }
   .cmd-surprise svg{ width:16px; height:16px; }
   @media (hover:hover){ .cmd-surprise:hover{ border-color:var(--cat); } }
-  .cmd-surprise:active{ transform:scale(.99); }
   .cmd-surprise:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
   @media (prefers-reduced-motion:reduce){
     .cmd-pad:active, .cmd-surprise:active{ transform:none; }
@@ -540,9 +608,15 @@
   @media (hover:hover){
     .seg button:hover{ border-color:var(--cat-line); color:var(--ink); }
   }
-  .seg button:active{ transform:scale(.97); }
   .seg button[aria-pressed="true"]{ background:var(--cat); color:#fff; border-color:var(--cat); font-weight:600; }
   .seg button:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  /* 1-5 RATING. The generic .seg goes vertical under 640px, which is right for
+     word labels ("With help") and wrong for a numeric scale: five stacked
+     full-width buttons stop reading as a scale at all. Grid keeps the five
+     abreast at every width. Higher specificity than the breakpoint rule, so
+     order in this file cannot break it. */
+  .seg.seg-rate{ display:grid; grid-template-columns:repeat(5,1fr); gap:var(--s1); }
+  .seg.seg-rate button{ min-width:0; width:auto; padding:13px 4px; font-variant-numeric:tabular-nums; }
   .checkrow{ display:flex; align-items:center; gap:12px; }
   .checkrow input{ width:24px; height:24px; accent-color:var(--cat); }
   .checkrow label{ margin:0; font-weight:600; font-size:var(--t-bodysm); color:var(--ink); }
@@ -578,9 +652,8 @@
     font-size:var(--t-body); font-weight:600; cursor:pointer; font-family:"Arimo",Arial,sans-serif; width:100%;
     letter-spacing:-.005em; transition:transform .12s, filter .15s, background .15s; margin-top:var(--s1); }
   @media (hover:hover){
-    .save:hover{ filter:brightness(1.07); transform:translateY(-1px); }
+    .save:hover:not([data-pressed]){ filter:brightness(1.07); transform:translateY(-1px); }
   }
-  .save:active{ transform:translateY(0) scale(.99); }
   .save:disabled, .save[aria-disabled="true"]{ opacity:.55; cursor:default; transform:none; filter:none; }
   .save:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
   .record{ background:var(--card); border:1px solid var(--line); border-radius:var(--r-md);
@@ -706,7 +779,7 @@
     text-align:center; font:inherit; }
   .bchip .cface{ width:50px; height:50px; border-radius:14px; background:var(--paper);
     border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center;
-    font-family:"Instrument Serif",Georgia,serif; font-size:22px; color:var(--ink-soft);
+    font-family:"Fraunces",Georgia,serif; font-size:22px; color:var(--ink-soft);
     object-fit:cover; transition:all .18s var(--ease); }
   img.cface{ display:block; }
   .bchip.cur .cface{ border-color:var(--cat); background:var(--cat-soft); color:var(--cat-deep);
@@ -731,7 +804,7 @@
     margin:0 0 14px; font-size:inherit; font-weight:inherit; }
   .bcard-head:focus{ outline:none; }
   .bcard-head .fface{ width:44px; height:44px; border-radius:14px; background:var(--cat-soft);
-    display:flex; align-items:center; justify-content:center; font-family:"Instrument Serif",Georgia,serif;
+    display:flex; align-items:center; justify-content:center; font-family:"Fraunces",Georgia,serif;
     font-size:22px; color:var(--cat-deep); object-fit:cover; }
   img.fface{ display:block; }
   .bname{ font-weight:700; font-size:var(--t-title); }
@@ -750,7 +823,7 @@
     border:1px solid var(--line); border-radius:var(--r-md); padding:11px 13px;
     margin-bottom:8px; font-size:var(--t-bodysm); }
   .sumrow .sface{ width:32px; height:32px; border-radius:10px; background:var(--cat-soft);
-    display:flex; align-items:center; justify-content:center; font-family:"Instrument Serif",Georgia,serif;
+    display:flex; align-items:center; justify-content:center; font-family:"Fraunces",Georgia,serif;
     font-size:16px; color:var(--cat-deep); flex:0 0 auto; object-fit:cover; }
   img.sface{ display:block; }
   .sumname{ font-weight:600; flex:0 0 auto; }
@@ -800,7 +873,7 @@
   .pick-tile.is-active .face{ border-color:var(--cat); box-shadow:var(--ring-active); }
   .pick-tile.is-active .pick-name{ color:var(--cat-deep); }
   @media (hover:hover){ .pick-tile:hover .face{ border-color:var(--cat-line); transform:translateY(-2px); } }
-  .pick-tile:active .face{ transform:translateY(0); border-color:var(--cat); }
+  .pick-tile:active .face{ border-color:var(--cat); }
   .pick-tile:focus-visible{ outline:none; }
   .pick-tile:focus-visible .face{ outline:3px solid var(--cat); outline-offset:2px; }
   /* The ? help button, parked at the end of the lede row. */
@@ -867,7 +940,7 @@
      lives in a hidden .ref-src div and is MOVED into the card while open.
      Motion: backdrop fades, card rises + settles — .28s on the house ease.
      Restraint rules still apply: card surface, one shadow (the card IS the
-     elevated/important thing), Inter 600 title — the serif stays on .lede. */
+     elevated/important thing), Arimo 600 title — the serif stays on .lede. */
   .ref-src{ display:none; }
   /* Motion contract: ARRIVING is a long decelerating glide (the iOS-sheet
      curve); LEAVING is shorter and accelerates away. Symmetric in/out reads
@@ -970,6 +1043,14 @@
     display:flex; align-items:center; justify-content:center; }
   .photo-preview svg{ width:26px; height:26px; }
   .photo-actions{ display:flex; flex-direction:column; gap:8px; }
+  /* Activity meta — the SOP header block (what you need / how it is run / age
+     / time). Deliberately plain: a definition list on the paper, no card, no
+     tint, no icon. It is reference material inside a sheet that already has a
+     heading hierarchy, and guardrail #1 says it does not get an accent. */
+  .act-meta{ margin:10px 0 0; display:grid; gap:6px; }
+  .act-meta .meta-row{ display:flex; gap:10px; align-items:baseline; }
+  .act-meta dt{ flex:0 0 8.5rem; font-size:var(--t-caption); font-weight:600; color:var(--ink-faint); }
+  .act-meta dd{ margin:0; font-size:var(--t-bodysm); color:var(--ink); }
   .section-label{ font-family:"Arimo",Arial,sans-serif; font-weight:600; font-size:var(--t-bodysm); color:var(--ink-soft);
     margin:var(--s4) 0 var(--s2); letter-spacing:-.005em; }
   /* Demo block inside the ? reference sheet — first child has no top margin so it
@@ -1023,8 +1104,7 @@
   .action-row .action-text small{ display:block; font-weight:400; font-size:var(--t-micro); color:var(--ink-faint); margin-top:2px; }
   .action-row .action-go{ flex:0 0 auto; color:var(--ink-faint); display:flex; }
   .action-row .action-go svg{ width:20px; height:20px; }
-  @media (hover:hover){ .action-row:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lift); border-color:var(--cat); } }
-  .action-row:active{ transform:translateY(0); box-shadow:var(--shadow-lift); }
+  @media (hover:hover){ .action-row:hover:not([data-pressed]){ transform:translateY(-2px); box-shadow:var(--shadow-lift); border-color:var(--cat); } }
   .action-row:disabled, .action-row[aria-disabled="true"]{ opacity:.55; cursor:default; }
   .action-row:disabled:hover, .action-row:disabled:active{ transform:none; box-shadow:none; border-color:var(--line); }
   .action-row:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
@@ -1091,6 +1171,143 @@
     .save{ padding:18px 24px; }
     .panel{ padding:var(--s3); }
     .card{ padding:var(--s3); }
+  }
+
+/* =========================================================================
+   PRESS — one physics for every control (2026-08-24)
+   -------------------------------------------------------------------------
+   WHAT WAS WRONG: press feedback existed, but as nine unrelated values
+   invented per component — scale .92 on a transport button, .97 on a segment,
+   .98 on a pad, .99 on Surprise me, translateY on cards and rows. Two pushed
+   the WRONG WAY: `.card:active` and `.action-row:active` were hover rules
+   reused for touch, so on a phone — where nothing hovers — pressing a card
+   made it RISE. Nothing read as a physical object because there was no shared
+   physical model to read. That, not the absence of animation, is why it felt
+   cheap.
+
+   THE MODEL: ink pressed into paper. Everything goes DOWN. Nothing rises on
+   press, and elevation is LOST on press, never gained — which also keeps
+   guardrail #2 intact, since no new shadow tier is introduced.
+
+   WEIGHT FOLLOWS SIZE. Three weights, assigned by PRESS_WEIGHTS in app.js so
+   the list lives in one place instead of being sprinkled through this file
+   again. .985 on a slab is a whole card shifting a pixel; .93 on a 34px icon
+   is the same perceived movement.
+
+   DRIVEN BY pointerdown, NOT :active. Android's WebView delays or drops
+   :active inside a scrolling container, and this app rebuilds whole screens
+   with innerHTML, so per-element listeners would not survive a repaint. One
+   delegated listener sets data-pressed — see PRESS FEEDBACK in app.js.
+   ========================================================================= */
+  /* Release: the slow curve. Hung off [data-press], which the listener stamps
+     on a control the first time it is touched — NOT off a list of component
+     selectors. The list version had to be edited every time a component was
+     added, and the day it was written it already missed the activity cards.
+
+     WHY THE ATTRIBUTE IS WRITTEN TWICE: several components declare their own
+     `transition` with a class selector earlier in this file (`.seg button`,
+     `.sb-pad`, `.card` …). A single attribute selector scores below those and
+     would lose, leaving exactly those controls on a 120ms release while
+     everything else settled over 340ms — the inconsistency this system exists
+     to remove. Doubling it buys one point of specificity and nothing else.
+     This is the only place in the file that plays that game. */
+  [data-press][data-press]{
+    transition:transform var(--press-up), box-shadow var(--press-up),
+               filter var(--press-up), opacity var(--press-up),
+               border-color .2s var(--ease), background-color .18s, color .18s; }
+  /* Press: the fast curve, and the weights. Doubled for the same reason. */
+  [data-pressed][data-pressed]{
+    transition:transform var(--press-down), box-shadow var(--press-down),
+               filter var(--press-down), opacity var(--press-down); }
+  /* EVERY weight now presses INTO the paper, not just downward in scale.
+     Scale alone is close to invisible on a large surface: .985 across a 340px
+     hub row is a 5px move, and dropping such a row to --shadow-rest changes
+     nothing because it had no resting shadow to lose. The inset is what makes
+     a big quiet surface read as pressed, and it is the same ink-in-paper idea
+     the selection system finishes — a chosen thing is simply a press that
+     never came back up. */
+  [data-pressed="slab"][data-pressed]{
+    transform:scale(var(--press-slab));
+    box-shadow:var(--shadow-rest), inset 0 2px 7px rgba(0,0,0,.09); }
+  [data-pressed="ctrl"][data-pressed]{
+    transform:scale(var(--press-ctrl));
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.07); }
+  [data-pressed="micro"][data-pressed]{
+    transform:scale(var(--press-micro)); filter:brightness(.96); }
+  /* Text-drawn controls dim; scaling a line of type looks like a bug. */
+  [data-pressed="text"][data-pressed]{ opacity:.5; }
+
+/* -------------------------------------------------------------------------
+   SELECTION — the second half of the same sentence (2026-08-24)
+   -------------------------------------------------------------------------
+   The press system says a control is ink pressed into paper. Selection simply
+   finishes it: YOU PUSH IT, AND THE CHOSEN ONE STAYS PUSHED. Chosen things sit
+   IN the page. Live things sit on it and move. Once that rule exists, the five
+   competing selection grammars collapse into two.
+
+   THE DEFECT THIS FIXES, and it is not cosmetic: solid category fill used to
+   mean BOTH "you chose this" and "this is making noise right now". Those are
+   opposite kinds of state — one is durable and lands in the research CSV, the
+   other is gone in three seconds — and they were pixel-identical, separated
+   only by an 11px equaliser that high contrast and a bright classroom both
+   erase. It got sharper on 24 Aug: both Sound activities now put a scoring
+   segment and a sound pad on the same screen, and before this change both were
+   the same green block.
+
+   CHOSEN  = filled + pressed in (inset, never elevation).
+   LIVE    = never filled. Outlined, ringed, breathing.
+   ------------------------------------------------------------------------- */
+  /* CHOSEN. The inset is the absence of elevation, so no new shadow tier —
+     guardrail #2 is why this is inset rather than the coloured glow the brief
+     first suggested, which would also have softened the very edge that high
+     contrast exists to sharpen. The fill arrives on the RELEASE curve (340ms)
+     instead of snapping in at 150ms linear; that single line does most of the
+     perceived work. Colour is left fast so clearing a choice feels immediate. */
+  .seg button[aria-pressed="true"],
+  .sb-tab[aria-selected="true"]{
+    transform:scale(.985);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.20), inset 0 -1px 0 rgba(255,255,255,.13);
+    transition:transform var(--press-up), box-shadow var(--press-up),
+               background-color var(--press-up), border-color var(--press-up), color 150ms; }
+  /* Re-pressing something already chosen must still answer the finger. */
+  .seg button[aria-pressed="true"][data-pressed][data-pressed],
+  .sb-tab[aria-selected="true"][data-pressed][data-pressed]{
+    transform:scale(var(--press-ctrl));
+    box-shadow:inset 0 3px 7px rgba(0,0,0,.26), inset 0 -1px 0 rgba(255,255,255,.13); }
+
+  /* Chosen, for the face tiles: same idea, gentler, because a photo is already
+     carrying most of the identification. */
+  .roster-tile.sel .face,
+  .bchip.cur .cface,
+  .pick-tile.is-active .face{
+    transform:scale(.97);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.16);
+    transition:transform var(--press-up), box-shadow var(--press-up),
+               background-color var(--press-up), border-color var(--press-up); }
+  /* The picker tile kept a ring after the 15 Jul call that "rings read as
+     buttons" retired it from the active-child row. Retired here too — it now
+     speaks the same language as the roster tile beside it. */
+  .pick-tile.is-active .face{ background:var(--cat-soft); color:var(--cat-deep); }
+
+  /* LIVE — a sound playing, a command being spoken. Outlined and breathing,
+     never filled, so it can never be read as a recorded decision. */
+  @keyframes live-ring{
+    0%,100%{ box-shadow:0 0 0 1px var(--cat); }
+    50%    { box-shadow:0 0 0 3px var(--cat-soft); }
+  }
+  .sb-pad[aria-pressed="true"],
+  .cmd-pad[aria-pressed="true"], .cmd-pad.is-speaking{
+    background:#fff; color:var(--cat-deep); border-color:var(--cat);
+    box-shadow:0 0 0 1px var(--cat); transform:none;
+    animation:live-ring 2.1s var(--ease) infinite; }
+  /* The glyph used white-on-translucent-white, which only worked because the
+     pad behind it was filled. Unfilled, that was white on white. */
+  .sb-pad[aria-pressed="true"] .sb-glyph{
+    background:var(--cat-soft); border-color:var(--cat-line); color:var(--cat-deep); }
+  .sb-eq i{ background:currentColor; }
+  @media (prefers-reduced-motion:reduce){
+    .sb-pad[aria-pressed="true"],
+    .cmd-pad[aria-pressed="true"], .cmd-pad.is-speaking{ animation:none; }
   }
 
 /* =========================================================================
@@ -1268,6 +1485,14 @@
   [data-contrast="high"] select,
   [data-contrast="high"] .select{ border:2px solid var(--line); box-shadow:none; }
   [data-contrast="high"] button{ border-width:2px; }
+  /* The display heading gets heavier and less delicate in high contrast.
+     This is the rule Instrument Serif could not support at any value — it had
+     one weight. Lower opsz asks Fraunces for its small-size drawing, which is
+     chunkier and lower-contrast; less SOFT keeps the terminals crisp against
+     pure white. Mode-gated, so the 1x design is untouched (a11y-nochange.js
+     fails the build if a rule in here escapes its gate). */
+  [data-contrast="high"] .lede{ font-weight:700;
+    font-variation-settings:"opsz" 24, "SOFT" 12, "WONK" 0; letter-spacing:-.005em; }
   /* Selected state must not rest on hue alone at this contrast level. */
   [data-contrast="high"] [aria-pressed="true"],
   [data-contrast="high"] [aria-selected="true"]{
@@ -1344,3 +1569,20 @@
       animation-duration:.01ms !important; animation-iteration-count:1 !important;
       transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }
+
+  /* Activity meta at large text: the fixed 8.5rem label column stops being a
+     column once the words in it wrap. Stack instead. Mode-gated, so the 1x
+     layout above is untouched (a11y-nochange.js fails the build otherwise). */
+  [data-text-scale="up"] .act-meta .meta-row{ flex-direction:column; gap:2px; }
+  [data-text-scale="up"] .act-meta dt{ flex:none; }
+
+  /* High contrast fills every [aria-pressed] with ink, which would put the
+     "chosen" and "live" states back on top of each other — the exact collision
+     the selection system exists to end. Live keeps the outline grammar here
+     too, just at this mode's weight: pure white, black rule, heavy ring. */
+  [data-contrast="high"] .sb-pad[aria-pressed="true"],
+  [data-contrast="high"] .cmd-pad[aria-pressed="true"],
+  [data-contrast="high"] .cmd-pad.is-speaking{
+    background:#fff; color:#000; border-color:#000; box-shadow:0 0 0 3px #000; }
+  [data-contrast="high"] .sb-pad[aria-pressed="true"] .sb-glyph{
+    background:#fff; border-color:#000; color:#000; }
