@@ -3035,7 +3035,14 @@ async function handleProfileSave(existingId){
   if(consentChecked && !consentRel){ toast('Pick the guardian\u2019s relation to the child.'); return; }
   const btn = document.getElementById('saveProfileBtn');
   if(btnBusy(btn)) return;
-  lockBtn(btn); setTimeout(()=>unlockBtn(btn), 300);
+  lockBtn(btn);
+  /* DOUBLE-SUBMIT GUARD — unlock on COMPLETION, never on a clock.
+     This was `setTimeout(()=>unlockBtn(btn), 300)`: the button re-armed after
+     300ms whether or not the save had finished, so a second tap wrote a SECOND
+     record. Duplicate rows corrupt research data and look identical to real
+     ones. `finally` also covers every early return inside — several of which
+     left the button locked forever once the timer was removed. */
+  try{
   // >>> CLOUD ENROLMENT (Architecture A) — server-assigned child ID. <<<
   // With CLOUD_SYNC on, a NEW child is enrolled through the enrol_child() RPC:
   // the SERVER mints research_id and creates the children row (school stamped
@@ -3164,6 +3171,7 @@ async function handleProfileSave(existingId){
     showChildPicker(ctx.catIndex, ctx.actIndex, 'none', { skipLedeFocus:true, newId: profile.id });
   }
   else showStudents('none');
+  }finally{ unlockBtn(btn); }
 }
 /* ---------------------------------------------------------------------------
    SOP AUDIO — multi-language narration.
@@ -4528,7 +4536,14 @@ async function handleSave(activityId){
   const researchId = isGroup ? '' : child.researchId;
   const btn = document.getElementById('saveBtn');
   if(btnBusy(btn)) return;
-  lockBtn(btn); setTimeout(()=>unlockBtn(btn), 300);
+  lockBtn(btn);
+  /* DOUBLE-SUBMIT GUARD — unlock on COMPLETION, never on a clock.
+     This was `setTimeout(()=>unlockBtn(btn), 300)`: the button re-armed after
+     300ms whether or not the save had finished, so a second tap wrote a SECOND
+     record. Duplicate rows corrupt research data and look identical to real
+     ones. `finally` also covers every early return inside — several of which
+     left the button locked forever once the timer was removed. */
+  try{
   const values = {};
   // Same null guard as pickSeg: if the form is not on screen any more (a
   // re-render raced the tap — likelier with a screen reader's double-tap),
@@ -4576,6 +4591,7 @@ async function handleSave(activityId){
   // the repaint no longer matters — see the note on toast().
   toast(savedMsg);
   showActivity(state.category, state.activity, { sopCollapsed:true, focusForm:true, dir:'none' });
+  }finally{ unlockBtn(btn); }
 }
 /* ---- FOCUS FLOW engine (rosters of 2+) ------------------------------------
    One student's scorecard visible at a time. "Scored" = the activity's
@@ -4731,7 +4747,14 @@ async function handleBatchSave(activityId){
   const act = cat.activities[state.activity];
   const btn = document.getElementById('saveBtn');
   if(btnBusy(btn)) return;
-  lockBtn(btn); setTimeout(()=>unlockBtn(btn), 400);
+  lockBtn(btn);
+  /* DOUBLE-SUBMIT GUARD — unlock on COMPLETION, never on a clock.
+     This was `setTimeout(()=>unlockBtn(btn), 400)`: the button re-armed after
+     400ms whether or not the save had finished, so a second tap wrote a SECOND
+     record. Duplicate rows corrupt research data and look identical to real
+     ones. `finally` also covers every early return inside — several of which
+     left the button locked forever once the timer was removed. */
+  try{
   let saved = 0, failed = 0;
   for(const pid of batchKids){
     const child = profileById(pid);
@@ -4787,6 +4810,7 @@ async function handleBatchSave(activityId){
   // screen heading, which is right: after saving a batch you want to be told
   // where you have landed.
   showActivity(state.category, state.activity, { dir:'none' });
+  }finally{ unlockBtn(btn); }
 }
 // Human-readable timestamp, derived AT RENDER from the canonical whenISO.
 // Legacy records that never got a safe whenISO fall back to their stored
