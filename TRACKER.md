@@ -188,6 +188,50 @@ Two smaller drifts fixed with it: the file still described the repo as
 `index.html` + `activities.js` (predating the 6 July four-file split) and advised
 `git add .`, which contradicts this project's own commit rule.
 
+**FINAL SOPs landed 1 Sep** (`SOP_CC_App.docx`, final). The document carries 13
+activity SOPs. Eight were already in — Direction x2, Sound x2, Sound+Direction x4
+were built from the 25 Aug version of the same file and match it. **Five had never
+had it** and were still running on July's video-deduced text: `slt-withcane-toy`,
+`slt-withcane`, `terrain-intro`, `terrain-walk`, `terrain-obstacle`. All five now
+carry the delivered `meta`, `sop` and `facilitatorNote`, transcribed, nothing
+invented. Gates green after: 621 controls, 40/40 unit. Method: targeted block
+replacement with a backup, asserting the id set is unchanged and that the count of
+`dataFields` / `videoFile` / `soundboard` / `group` / `compass` / `commandBoard` /
+`commands` is identical — the 2026-07-14 whole-file-overwrite lesson.
+
+- [ ] **TEN STALE AUDIO FILES, all dated 24 Aug — regenerate five, delete five.**
+      The `_en` narration for those five activities speaks the OLD deduced steps.
+      This is the `dir-basic-commands_en` bug from this morning, five times over,
+      and `build.sh` will mirror them straight into the APK.
+      ```
+      node scripts/generate-audio.js --only slt-withcane-toy slt-withcane terrain-intro terrain-walk terrain-obstacle --force
+      rm audio/slt-withcane-toy_hi.mp3 audio/slt-withcane_hi.mp3 audio/terrain-intro_hi.mp3 audio/terrain-walk_hi.mp3 audio/terrain-obstacle_hi.mp3
+      ```
+      The Hindi is DELETED, not regenerated: the old hi[] was 1:1 with the old
+      steps and has been removed from activities.js. No machine translation for
+      teacher-facing text — this waits on the content team.
+- [ ] **`dataFields` for those five still disagree with the document's "Record a
+      Result".** Not changed: that is instrument design, not transcription, and it
+      moves CSV columns. Deltas — push toy wants *Response to toy* (Excited /
+      Neutral / Not interested) + *confidence 1-5*; with-cane wants *left-to-right
+      movement* (Yes / With support / No) + *confidence 1-5*; terrain-intro wants
+      *changes identified*, *terrains described*, *vocabulary 1-5*;
+      terrain-walk adds *boundaries 1-5*, *arc 1-5*, *assistance level*;
+      terrain-obstacle adds *re-orientation* (Independent / With support / Unable).
+      Pre-pilot, so it is cheap now and expensive after records exist.
+- [ ] **`slt-nocane` has NO SOP in the final document.** SLT ships three stages;
+      the content team delivered two (With Push Toy, With Cane). This looks like
+      the answer to the July question of whether to collapse to two stages —
+      confirm before the pilot, don't assume.
+- [ ] **The document's Terrain "Introduction (Set up)" has no home in the app.**
+      Four contrasting surfaces, 2 ft x 6 ft each, U-shaped path recommended,
+      Velcro fixing, per-session safety check. It is category-level setup, not an
+      activity SOP, and there is no field for it. Probably category `help[]`.
+- [ ] **The three terrain activity NAMES are now wrong.** They are really
+      *Terrain Identification with Feet* / *with Cane* / *Find the Obstacles*.
+      `terrain-intro` reading "Introduction" now collides with the document's own
+      separate Introduction section. Renaming is safe (records key on id).
+
 **Found on the way, not fixed:**
 - **`audio/dir-basic-commands_en.mp3` is stale** — see the BLOCKING section.
 - **Next-biggest sounds:** `tabla` 1.9 MB · `flush` 1.7 MB ·
@@ -433,6 +477,14 @@ days, and none of them wait on a decision._
 ### Decisions needed from humans
 
 **Adi alone — four still open. Everything in the class model waits on these.**
+
+> **All four are AUTHORISATION decisions** — see `docs/AUTH-ARCHITECTURE.md`
+> (1 Sep). D1 is the offline degradation clock. D4a is whether an ended assignment
+> still grants read. D5 is `teachers.active`, which the access helpers already
+> filter on — so the recommended answer (switch off, don't delete) is one boolean
+> and free. D9 is the `class_id is null` branch in the `children` policy. Three
+> of them are literally one line each in that design, and none can be written by
+> an engineer.
 - [ ] **D1 — offline window** before identifying data goes dark. **14 days
       proposed.** R36 (personal phones) sharpens this rather than settling it: a
       departing teacher takes the phone with them and we cannot wipe a personal

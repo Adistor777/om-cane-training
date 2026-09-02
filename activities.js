@@ -650,23 +650,32 @@ const ACTIVITY_DATA = [
         name: "Straight Line Travel — With Cane + Push Toy",
         withCane: true,
         soundboard: true,
+        // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
+        // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
+        // Do not silently re-edit either - send changes back to the content team.
+        meta: {
+          resources: "Push toy, cane (as per height), speaker, 1 facilitator",
+          type: "Individual",
+          age: "8-12 years",
+          time: "15 minutes"
+        },
         sop: [
-          "Attach the push toy to the cane and introduce it — give it a name and a little story.",
-          "Place the device straight ahead and play a sound from the app.",
-          "The child pushes the toy along the floor, straight toward the sound; count the steps.",
-          "The child stops when the toy reaches the sound."
+          "Give the child a push toy without the cane and allow them to explore it freely. Observe their initial response and interest.",
+          "Build curiosity through a simple story. Remove the cane tip, attach the push toy to the cane, and allow the child to explore it again.",
+          "Ask the child to stand in an open, clear space. Place the speaker approximately 5 m away and continue the story.",
+          "Example: play a dog sound and use a frog push toy - “Can you take the frog to meet the dog?”",
+          "Ask the child to move towards the sound source using the cane with the push toy. Observe how they naturally hold and move the cane.",
+          "Once the child reaches the sound source, observe how accurately they locate it with the push toy. Provide directional guidance only if needed."
         ],
-        facilitatorNote: "The toy is the whole point — it turns the cane into something the child wants to hold, so lean into the story ('roll the puppy to the sound'). Keep the toy on the floor and tracking a straight line, with the same sound playing throughout. Following the story but wandering off line is 'With help', not 'Got it'. This stage builds the bond with the cane; the next stage tests it without the toy.",
+        facilitatorNote: "Allow enough time for the child to freely explore the push toy, both with and without the cane. Use simple stories and familiar sounds to make the activity playful and purposeful. The concept of push toys might not be interesting enough for some mature children, in which case this activity can be skipped only for them. Adjust the speaker distance and volume according to the environment. Keep the travel path clear and safe. Avoid correcting the child's cane hold immediately; first observe their natural grip, posture, and movement.",
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
-        sopTranslations: {
-          hi: [
-            "छड़ी में पुश-टॉय लगाएँ और उसका परिचय दें — उसे एक नाम और छोटी सी कहानी दें।",
-            "डिवाइस को सीधे सामने रखें और ऐप से एक आवाज़ बजाएँ।",
-            "बच्चा टॉय को फर्श पर धकेलते हुए सीधे आवाज़ की ओर ले जाए; कदम गिनें।",
-            "टॉय के आवाज़ तक पहुँचने पर बच्चा रुक जाए।"
-          ]
-        },
+        /* HINDI REMOVED 2026-09-01. The previous hi[] was 1:1 with the OLD
+           video-deduced steps; the final SOP replaced them, so those lines now
+           describe a different activity. Machine translation is not used for
+           teacher-facing text, so this waits on the content team. Any stale
+           audio/<id>_hi.mp3 on disk must be DELETED - build.sh mirrors audio/
+           and the app would happily narrate the old steps over the new ones. */
         audioFile: "",
         videoFile: "demo-slt-withcane-toy.mp4",
         dataFields: [
@@ -681,24 +690,34 @@ const ACTIVITY_DATA = [
         name: "Straight Line Travel — With Cane",
         withCane: true,
         soundboard: true,
+        // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
+        // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
+        // Do not silently re-edit either - send changes back to the content team.
+        meta: {
+          resources: "Cane, roller tip, speaker",
+          type: "Individual",
+          age: "8-12 years",
+          time: "15 minutes"
+        },
         sop: [
-          "Take the toy off — the child travels with the cane alone now.",
-          "Place the device straight ahead and play a sound from the app.",
-          "The child walks to the sound in a straight line, cane tip in steady floor contact; count the steps.",
-          "The child stops on reaching the sound; compare with the push-toy run."
+          "Give the child a cane appropriate to their height and allow them to hold and explore it comfortably.",
+          "Demonstrate the features of the cane - how it folds, reopens, grips, and its tips.",
+          "Introduce the cane tip through a simple narrative: “Imagine the cane tip has a tyre like a car. When you move it from left to right, it rolls smoothly and helps you find what is in your path.”",
+          "Demonstrate a gentle left-to-right movement of the cane and ask the child to try it slightly angled in front of the body, holding it in a way that feels comfortable.",
+          "Place a speaker approximately 5 m away and ask the child to move towards the sound while continuing the left-to-right cane movement.",
+          "Allow the child to walk at their natural pace. Observe their cane hold, posture, movement, and confidence without immediately correcting them.",
+          "Once the child reaches the sound source, appreciate the attempt and discuss how the cane helped them explore the path ahead."
         ],
-        facilitatorNote: "The goal state — the same straight-line travel, toy gone. A little slip-back is normal when the scaffold first comes off. Keep the cane in steady floor contact; a lifted or waving cane is a drift waiting to happen. Same sound playing throughout. Fewer drifts than the push-toy run means the positive association has carried over into real cane use.",
+        facilitatorNote: "Keep the introduction simple; the aim is to build familiarity with cane movement, not teach perfect cane technique at this stage. Allow the child to choose a comfortable way of holding the cane. Encourage a smooth and relaxed left-to-right movement rather than forceful movement. Give physical guidance only if the child is unable to understand the movement through verbal instructions or demonstration. Adjust the speaker distance and volume according to the environment. Ensure the walking path is clear and safe. Observe the child's natural grip, cane angle, posture, movement pattern, and confidence.",
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
         // No toy-faded demo filmed yet — wire the filename once it exists.
-        sopTranslations: {
-          hi: [
-            "टॉय हटा दें — अब बच्चा सिर्फ़ छड़ी के साथ चले।",
-            "डिवाइस को सीधे सामने रखें और ऐप से एक आवाज़ बजाएँ।",
-            "बच्चा सीधी रेखा में आवाज़ तक चले, छड़ी की नोक फर्श पर टिकी रहे; कदम गिनें।",
-            "आवाज़ तक पहुँचने पर बच्चा रुके; पुश-टॉय वाली बारी से तुलना करें।"
-          ]
-        },
+        /* HINDI REMOVED 2026-09-01. The previous hi[] was 1:1 with the OLD
+           video-deduced steps; the final SOP replaced them, so those lines now
+           describe a different activity. Machine translation is not used for
+           teacher-facing text, so this waits on the content team. Any stale
+           audio/<id>_hi.mp3 on disk must be DELETED - build.sh mirrors audio/
+           and the app would happily narrate the old steps over the new ones. */
         audioFile: "",
         videoFile: "",
         dataFields: [
@@ -749,24 +768,33 @@ const ACTIVITY_DATA = [
         id: "terrain-intro",
         name: "Terrain — Introduction",
         withCane: false,
+        // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
+        // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
+        // Do not silently re-edit either - send changes back to the content team.
+        meta: {
+          resources: "Terrain mats, 1 facilitator",
+          type: "Individual",
+          age: "8-12 years",
+          time: "10 minutes"
+        },
         sop: [
-          "Walk the child over the lane with footwear on, one mat at a time.",
-          "On each mat, let the child stop and feel it — underfoot and by its sound — and say its name.",
-          "Repeat the lane with the cane: the tip touches each new surface first.",
-          "Ask the child to name each surface as they reach it."
+          "Take the child to the starting point of the terrain path. Explain that there are different surfaces along the path and ask them to say “Change” whenever they feel the surface change under their feet.",
+          "On each surface, ask: “Does it feel smooth or textured?” If needed, encourage the child to gently rub one foot over the surface to explore it.",
+          "Ask the child to describe how the surface feels in their own words. If needed, offer words such as soft, hard, rough, bumpy, or smooth.",
+          "Ask the child to gently tap or move their foot on the surface and listen to the sound. Encourage them to describe how it sounds. For comparison, ask them to do it on the floor also.",
+          "Ask whether the surface feels or sounds familiar and if it reminds them of any place or surface they have experienced before.",
+          "Continue walking and repeat the same exploration for each new terrain."
         ],
-        facilitatorNote: "Feet first, cane second — the order is deliberate: the child's own soles learn the textures, then the cane becomes an extension of them. Give each surface a short, consistent name ('grass', 'bumpy', 'lines') and keep the same names in every session — the names are what the later stages score. No hurry here; this stage is exploration, not travel.",
+        facilitatorNote: "Allow the child to describe the surface in their own words first before suggesting vocabulary. There is no single correct way to describe how a surface feels or sounds; focus on whether the child can notice and differentiate changes. If a child is getting confused, use the floor feedback to create a comparison. If the child's cognitive level allows, relate surfaces to familiar environments where possible, such as grass, tiles, concrete, carpet, mud, or gravel. Ensure the terrain path is clear of unintended obstacles and safe for exploration.",
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1
         // with `sop` above, as required by generate-audio.js.
-        sopTranslations: {
-          hi: [
-            "बच्चे को जूते पहनाकर लेन पर चलाएँ — एक बार में एक मैट।",
-            "हर मैट पर बच्चे को रुकने दें और उसे महसूस करने दें — पैरों से और उसकी आवाज़ से — और उसका नाम बोलने दें।",
-            "अब छड़ी के साथ लेन दोहराएँ: छड़ी की नोक हर नई सतह को पहले छुए।",
-            "हर सतह पर पहुँचने पर बच्चे से उसका नाम पूछें।"
-          ]
-        },
+        /* HINDI REMOVED 2026-09-01. The previous hi[] was 1:1 with the OLD
+           video-deduced steps; the final SOP replaced them, so those lines now
+           describe a different activity. Machine translation is not used for
+           teacher-facing text, so this waits on the content team. Any stale
+           audio/<id>_hi.mp3 on disk must be DELETED - build.sh mirrors audio/
+           and the app would happily narrate the old steps over the new ones. */
         audioFile: "",
         videoFile: "",
         dataFields: [
@@ -779,23 +807,37 @@ const ACTIVITY_DATA = [
         id: "terrain-walk",
         name: "Terrain — Walk the Course",
         withCane: true,
+        // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
+        // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
+        // Do not silently re-edit either - send changes back to the content team.
+        meta: {
+          resources: "Terrain mats, cane with roller tip (as per height), 1 small training cone, 1 candy, 1 facilitator",
+          type: "Individual",
+          age: "8-12 years",
+          time: "10 minutes"
+        },
         sop: [
-          "Stand the child at the start of the lane, cane tip on the first mat.",
-          "The child walks the full lane, keeping the cane in contact with the floor.",
-          "At every surface change the child stops and names the new surface.",
-          "Count the surfaces named correctly, and every hesitation or stall."
+          "Place a training cone with a reward/object inside it on the last terrain mat.",
+          "Take the child to the starting point and provide a cane appropriate to their height.",
+          "Introduce the index-finger grip and demonstrate a gentle left-to-right touch-and-drag movement of the cane.",
+          "Use the left and right edges of the mat as reference points. Ask the child to move the cane from slightly outside one edge of the mat to slightly outside the other edge.",
+          "Help the child notice the change in tactile and/or sound feedback as the cane moves between the floor and mat. Explain that these changes can help them recognise the mat boundaries.",
+          "Ask the child to move forward while maintaining a consistent left-to-right arc. Encourage them to use the mat boundaries to stay oriented towards the centre of the path.",
+          "As the child approaches the final mat, ask them to stop immediately when the cane contacts an obstacle.",
+          "Ask the child to keep the cane in contact with or directed towards the obstacle and carefully approach it until they are close enough to locate it.",
+          "Once close, ask the child to squat or bend safely, keeping the cane as a reference. Guide their free hand along the cane towards the tip to locate the obstacle.",
+          "Ask the child to identify and retrieve the object from the training cone.",
+          "Help the child return to a standing position, re-establish their cane position and left-to-right arc, and continue moving."
         ],
-        facilitatorNote: "The skill is the cane announcing the change BEFORE the feet arrive — watch for the tip catching a border and the child reading it. Walk alongside with a light touch; steer, don't turn. A hesitation at a transition is information, not failure — log it and let the child work it out. Fewer hesitations across sessions is the progress line.",
+        facilitatorNote: "Introduce the grip and cane movement before starting the terrain path. Initially provide verbal or physical guidance as required, then gradually reduce assistance. Encourage the child to notice differences in sound and tactile feedback from each terrain. Use the mat boundaries as learning references but encourage the child to gradually rely on cane feedback rather than continuous facilitator instructions. Avoid forcing an exact arc width - the aim is a controlled and consistent arc that provides useful coverage. When an obstacle is detected, encourage the child to stop first and gather information before approaching it. Ensure the terrain path and surrounding area are clear of unintended hazards. Adapt squatting, bending, grip, or retrieval methods according to the child's physical abilities.",
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated.
-        sopTranslations: {
-          hi: [
-            "बच्चे को लेन की शुरुआत पर खड़ा करें, छड़ी की नोक पहले मैट पर।",
-            "बच्चा पूरी लेन चले, छड़ी फ़र्श से लगी रहे।",
-            "हर सतह बदलने पर बच्चा रुककर नई सतह का नाम बोले।",
-            "सही नाम बताई गई सतहें गिनें, और हर झिझक या रुकावट भी।"
-          ]
-        },
+        /* HINDI REMOVED 2026-09-01. The previous hi[] was 1:1 with the OLD
+           video-deduced steps; the final SOP replaced them, so those lines now
+           describe a different activity. Machine translation is not used for
+           teacher-facing text, so this waits on the content team. Any stale
+           audio/<id>_hi.mp3 on disk must be DELETED - build.sh mirrors audio/
+           and the app would happily narrate the old steps over the new ones. */
         audioFile: "",
         videoFile: "demo-terrain-walk.mp4",
         dataFields: [
@@ -809,23 +851,37 @@ const ACTIVITY_DATA = [
         id: "terrain-obstacle",
         name: "Terrain — Find the Obstacle",
         withCane: true,
+        // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
+        // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
+        // Do not silently re-edit either - send changes back to the content team.
+        meta: {
+          resources: "Terrain mats, cane with roller tip (as per height), small training cones, reward (candy), 1 facilitator",
+          type: "Individual",
+          age: "8-12 years",
+          time: "10 minutes"
+        },
         sop: [
-          "Place a red disc on every mat except one — don't say which one is empty.",
-          "The child walks the lane, sweeping the cane in an arc from border to border.",
-          "On finding a disc, the child picks it up and carries on.",
-          "Count the discs found; check the child searches the empty mat fully too."
+          "Pre-requisite: the child should have completed Terrain Identification with Cane and practised detecting, approaching, and locating an obstacle before attempting this activity.",
+          "Place one obstacle with a small reward on each terrain along the path.",
+          "Take the child to the starting point and provide a cane appropriate to their height.",
+          "Explain that rewards are placed, one on each mat, along the path, and they need to find them using their cane.",
+          "Ask the child to move independently using the previously practised left-to-right cane movement. Remind or guide them only if they are unable to maintain the movement.",
+          "Encourage the child to notice terrain changes and boundaries and use this feedback to stay oriented on the path.",
+          "When the cane contacts an obstacle, allow the child to stop, locate, approach, and retrieve the reward independently, using the techniques practised earlier.",
+          "If the child misses an obstacle, bring them back to the beginning of that mat and allow them to try again. Give a verbal hint or guidance only if required.",
+          "If the terrain path includes turns, first allow the child to identify and negotiate the turn. Provide directional guidance if needed.",
+          "After retrieving each reward, ask the child to re-orient to the path before continuing.",
+          "Continue until the child has explored the complete terrain path and found all the rewards."
         ],
-        facilitatorNote: "Border reference and the arc sweep are what this stage trains — the disc is just the reason to sweep well. The empty mat is the honest test: a child who searches it end to end and moves on has the technique; one who declares it empty after one poke doesn't. A toffee under (or instead of) a disc keeps the hunt worth winning.",
+        facilitatorNote: "Conduct this activity only after the child has practised the terrain path with a cane. Give the child enough time to problem-solve independently before providing assistance. Avoid immediately correcting cane movement, direction, or orientation - step in only when the child is stuck or there is a safety concern. Use verbal hints before providing physical assistance. Observe whether the child independently uses previously learnt skills such as terrain feedback, mat boundaries, cane arc, obstacle detection, and re-orientation. Do not guide the child towards the rewards through unintended cues. Keep the complete path clear of unintended hazards.",
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated.
-        sopTranslations: {
-          hi: [
-            "एक को छोड़कर हर मैट पर एक लाल डिस्क रखें — यह न बताएँ कि कौन-सा खाली है।",
-            "बच्चा लेन पर चले, छड़ी को किनारे से किनारे तक अर्ध-गोले में घुमाते हुए।",
-            "डिस्क मिलने पर बच्चा उसे उठाए और आगे बढ़े।",
-            "मिली डिस्कें गिनें; देखें कि बच्चा खाली मैट को भी पूरा टटोलता है।"
-          ]
-        },
+        /* HINDI REMOVED 2026-09-01. The previous hi[] was 1:1 with the OLD
+           video-deduced steps; the final SOP replaced them, so those lines now
+           describe a different activity. Machine translation is not used for
+           teacher-facing text, so this waits on the content team. Any stale
+           audio/<id>_hi.mp3 on disk must be DELETED - build.sh mirrors audio/
+           and the app would happily narrate the old steps over the new ones. */
         audioFile: "",
         videoFile: "",
         dataFields: [
