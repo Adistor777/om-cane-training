@@ -174,6 +174,20 @@ a phone.
       checked to be a real MP3 (the 24 Aug WAV-as-mp3 lesson). `sounds/` is now
       **8.9 MB, down from 36 MB** — the APK should drop by about 27 MB.
 
+**Also 1 Sep — `docs/GITHUB-SETUP.md` gutted back to a page of history.** It was
+the July walkthrough that first put the project on GitHub; every step was done
+long ago. It was not merely stale — **its step 2 pasted a whole `.gitignore` over
+the real one**, and that July list excluded three folders where today's excludes
+sixteen entries. Anyone following it would have started tracking `faces/`
+(photographs of real children) and `.env` (the Sarvam key) on the next
+`git add .`. A superseded plan is safe to keep; a superseded document carrying a
+runnable command that commits children's photographs is not. It now states what is
+true — `.gitignore` is the only source of truth, a fresh clone cannot build,
+commits stay focused, CI runs on every push and what its green tick does not mean.
+Two smaller drifts fixed with it: the file still described the repo as
+`index.html` + `activities.js` (predating the 6 July four-file split) and advised
+`git add .`, which contradicts this project's own commit rule.
+
 **Found on the way, not fixed:**
 - **`audio/dir-basic-commands_en.mp3` is stale** — see the BLOCKING section.
 - **Next-biggest sounds:** `tabla` 1.9 MB · `flush` 1.7 MB ·
@@ -297,6 +311,15 @@ Gates green throughout: 40/40 unit · 93/93 flows · 22/22 no-change · 55 contr
 ## PARKED FOR A REAL DEVICE — do these in one sitting
 _The emulator cannot answer any of them. Confirmed 2026-08-24: audio plays on a
 real phone and is silent on `Pixel_10_Pro_XL(AVD)`._
+
+> **Written up as `docs/DEVICE-MATRIX.md` (1 Sep) — run from there, record the
+> results in it, and commit it. That is what closes Phase 0.** It carries the five
+> cloud assertions, the video-picker checks, the audio pass and the touch-target
+> pass, plus two things the roadmap did not spell out: **A5 cannot run until a
+> SECOND auth user exists** (only `saksham01@test.local` was ever provisioned, and
+> cross-school isolation needs a second school to be refused as), and **A1 gives a
+> false pass on a weak connection**, because `PILOT_LOCAL_AUTH` correctly falls
+> back to the stub when the server is unreachable.
 - [ ] **Audio pass.** Every command cue, the soundboard, and SOP narration in
       each language that has files. **No gate can catch an audio defect** —
       jsdom has no decoder, which is exactly how six weeks of silence passed
