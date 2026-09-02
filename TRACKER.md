@@ -199,6 +199,19 @@ replacement with a backup, asserting the id set is unchanged and that the count 
 `dataFields` / `videoFile` / `soundboard` / `group` / `compass` / `commandBoard` /
 `commands` is identical — the 2026-07-14 whole-file-overwrite lesson.
 
+- [ ] **SARVAM IS OUT OF CREDITS (2026-09-02).** `generate-audio.js` returns
+      `HTTP 402 insufficient_quota_error` on every request — 0 generated, 5 failed.
+      This is a NEW blocker and it is on the critical path for content: it gates
+      the five regenerations below, the Hindi for those five when the content team
+      delivers it, and any future SOP wording change. Top up the Sarvam account,
+      then run the regeneration command below.
+      **Interim (2026-09-02): the five stale `_en` files were DELETED rather than
+      shipped.** They narrated July's video-deduced steps over the final SOPs —
+      confidently wrong audio is worse than none, and the app degrades honestly:
+      `onerror="audioMissing()"` swaps in "Audio for this language isn't generated
+      yet". So those five activities show the missing-audio slot until credits
+      return. The written SOP on screen is correct and is the primary content.
+
 - [ ] **TEN STALE AUDIO FILES, all dated 24 Aug — regenerate five, delete five.**
       The `_en` narration for those five activities speaks the OLD deduced steps.
       This is the `dir-basic-commands_en` bug from this morning, five times over,
