@@ -1,5 +1,5 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-08-25 pm (two SOP docs, fonts, press + selection, regroup, Hindi)_
+_Last updated: 2026-09-02 (SOP document verbatim, purpose on screen, the ? sheet split in two)_
 
 ## STATE (2026-08-21) — the requirements sheet is now the outer target
 **Read `OM-Requirements.md` (Adi, 21 Aug) first.** It is the source of truth for
@@ -150,6 +150,88 @@ of the deleted Sound category).
       verify the regroup passed on a broken file. The 40-test suite caught it.
       Verify arrays with `length` + an index scan.
 
+## Done 2026-09-02 (the SOP document verbatim · purpose on screen · the ? sheet split)
+Adi re-sent `SOP_CC_App.docx` with one instruction: everything in it, the
+procedure kept, and **the terms exactly as written**. All seven gates green
+before and after: 40/40 unit · contrast · 22/22 no-change · 93/93 flows · 7/7
+runtime theme · axe clean · smoke now activates **688 controls** (was 621).
+**Not built** — `./scripts/build.sh` still has to run in your own terminal
+before any of this reaches a phone.
+
+- [x] **All 13 SOPs re-transcribed VERBATIM.** The 25 Aug and 1 Sep passes had
+      quietly rewritten the content team's wording into house style — "Run at
+      least five trials" for their "Conduct at least 5 trials", "Speaker and
+      mobile" for their "Speaker and Mobile", `Individual (children can be
+      seated as a group)` for their `Individual (Seating can be in a group)`.
+      Every one of those is now the document's. See the lesson in MEMORY.
+- [x] **`purpose` is a new content field, and it is NOT behind the ?.** It
+      prints under the activity name on the picking screen AND the record
+      screen, on every visit, with a "Why this activity" label above a hairline.
+      13 activities have it (the four with no SOP in the document render
+      nothing). `purposeStrip()` in app.js; `.purpose-strip` in styles.css.
+- [x] **Both screen heads now read name / category / purpose.** The picking
+      screen's subtitle used to be "Who is doing this activity?" while the
+      record screen's was the category; that instruction moved down beside the
+      face grid it refers to (`.roster-ask`).
+- [x] **The ? sheet is two tabs — Run it / Prepare** (Adi picked "Draft B" from
+      the review page). Run it = steps, facilitator notes, narration. Prepare =
+      purpose, Resources / Type of Activity / Recommended Age group / Time, the
+      terrain set-up, the demo clip. Reuses `.sb-tab`, the sound library's
+      control, so there is no new interaction vocabulary. An activity with
+      nothing to prepare gets no tab strip at all.
+- [x] **Facilitator notes are the document's BULLETS, one per line**, in the
+      document's own order — `facilitatorNotes: []` replaces the joined
+      paragraph. They are deliberately NOT re-ordered into safety-first: which
+      sentence counts as a safety instruction is the content team's call.
+      (The old single-string `facilitatorNote` still renders for the four
+      activities that have no document SOP.)
+- [x] **New field type `fraction`** — two boxes read as "correct / total", for
+      the three "___ / ___" lines. Saved as one value ("4 / 6") so the CSV keeps
+      one column per document line. Untouched fields save nothing, never "0 / 0".
+- [x] **Every "Record a Result" list now matches the document.** This closes the
+      1 Sep item. Straight Line and Terrain were still carrying July's
+      video-deduced fields (steps / drifts / mastery); they now carry Response
+      to Push Toy, confidence 1-5, the assistance level, re-orientation, and the
+      fraction fields. **CSV COLUMN HEADINGS CHANGED** — pre-pilot, so free now.
+- [x] **The three terrain activities renamed** to the document's names, and the
+      category `Terrain Game` -> `Terrain Path`. Ids unchanged, so every saved
+      record followed.
+- [x] **The document's Terrain "Introduction (Set up)" has a home** — `setup: []`
+      on the category, rendered in the Prepare tab of all three terrain
+      activities. It replaced four invented July setup lines written from a
+      course photo.
+- [x] **The dashed "Demo video slot - add a filename in activities.js" is gone.**
+      Developer text, shown to a teacher, on the four activities with no clip.
+- [x] **Four stale narration files deleted** — `dir-basic-commands` and
+      `dir-advanced-commands`, en and hi. Both English files spoke the old
+      wording; both Hindi drafts were 1:1 with steps that no longer exist, so
+      the Hindi text was removed from activities.js too and the language button
+      renders disabled. Same call as 1 Sep: no audio beats confidently wrong
+      audio. Regenerate when Sarvam credits return.
+
+### Carried out of 2026-09-02 - ASK ADI / CONTENT TEAM
+- [ ] **`slt-nocane` still has no SOP in the document.** Straight Line Travel
+      ships three stages; the document delivers two (With Push Toy, With Cane).
+      It is the only activity in that category with no purpose and July's
+      video-deduced fields. Collapse to two stages, or get its SOP written?
+- [ ] **Direction -> Basic: is "Rate direction sense before/after" a 1-5?** The
+      document says "Rate" but does not say "Rate 1-5" the way it does
+      elsewhere. Built as 1-5 (it was Got it / With help / Not yet). Confirm.
+- [ ] **No `achievedWhen` was invented anywhere.** "Correctly oriented towards
+      the sound: Yes / No" and the assistance levels could each name a winning
+      option and drive the derived Achieved column; the document does not say
+      which, so nothing does. Say the word and it is one line per field.
+- [ ] **Sound narration wording now differs slightly from the screen** for
+      `sound-which` (spoken "two different sounds", screen "2") and
+      `sound-source` (clauses reordered, meaning identical). Kept rather than
+      deleted - not misleading. Regenerate on the next Sarvam run.
+- [ ] **The ? callout bubble overlaps the purpose strip.** `.help-tip` is
+      absolutely positioned at `top:56px` in `.lede-row` and floats over
+      whatever follows - which is now the purpose. Pre-existing behaviour, new
+      collision. Look at it on the phone before deciding.
+- [ ] **Three orphan audio files** for retired ids: `push-race_en`,
+      `snddir-cane-count_en`, `snddir-clap_en`. Dead weight in the APK.
+
 ## Done 2026-09-01 (foundation pass: CI, the verify gate, double-submit, rain)
 Working tree was clean at `69d407a` when this started. All seven gates green
 before and after: contrast · no-change · flows · smoke · runtime-theme · axe ·
@@ -223,8 +305,8 @@ replacement with a backup, asserting the id set is unchanged and that the count 
       The Hindi is DELETED, not regenerated: the old hi[] was 1:1 with the old
       steps and has been removed from activities.js. No machine translation for
       teacher-facing text — this waits on the content team.
-- [ ] **`dataFields` for those five still disagree with the document's "Record a
-      Result".** Not changed: that is instrument design, not transcription, and it
+- [x] ~~**`dataFields` for those five still disagree with the document's "Record a
+      Result".**~~ DONE 2026-09-02 - all 13 rebuilt from the document. Not changed: that is instrument design, not transcription, and it
       moves CSV columns. Deltas — push toy wants *Response to toy* (Excited /
       Neutral / Not interested) + *confidence 1-5*; with-cane wants *left-to-right
       movement* (Yes / With support / No) + *confidence 1-5*; terrain-intro wants
@@ -236,11 +318,12 @@ replacement with a backup, asserting the id set is unchanged and that the count 
       the content team delivered two (With Push Toy, With Cane). This looks like
       the answer to the July question of whether to collapse to two stages —
       confirm before the pilot, don't assume.
-- [ ] **The document's Terrain "Introduction (Set up)" has no home in the app.**
+- [x] ~~**The document's Terrain "Introduction (Set up)" has no home in the app.**~~
+      DONE 2026-09-02 - category `setup: []`, shown in the Prepare tab.
       Four contrasting surfaces, 2 ft x 6 ft each, U-shaped path recommended,
       Velcro fixing, per-session safety check. It is category-level setup, not an
       activity SOP, and there is no field for it. Probably category `help[]`.
-- [ ] **The three terrain activity NAMES are now wrong.** They are really
+- [x] ~~**The three terrain activity NAMES are now wrong.**~~ DONE 2026-09-02. They are really
       *Terrain Identification with Feet* / *with Cane* / *Find the Obstacles*.
       `terrain-intro` reading "Introduction" now collides with the document's own
       separate Introduction section. Renaming is safe (records key on id).

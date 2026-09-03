@@ -1,5 +1,132 @@
 # MEMORY.md — O&M Cane Training
 
+## WE KEPT REWRITING THE CONTENT TEAM INTO HOUSE STYLE (found 2026-09-02)
+Adi re-sent `SOP_CC_App.docx` asking for everything in it with **the terms
+exactly as written**. Diffing the document against the app showed that both
+earlier transcriptions - 25 Aug and 1 Sep, both of which believed they were
+transcribing - had quietly edited it:
+
+| the document | what shipped |
+|---|---|
+| Conduct at least 5 trials | Run at least five trials |
+| Speaker and Mobile | Speaker and mobile |
+| Individual (Seating can be in a group) | Individual (children can be seated as a group) |
+| "Surprise Me!" | Surprise me |
+| Demonstrate the features of the Cane (How it folds, reopens, grips, and tips) | Demonstrate the features of the cane - how it folds, reopens, grips, and its tips |
+
+Every one is defensible on its own and the set is not. **A teacher runs the
+activity with the printed SOP beside the phone; if the two disagree in wording
+she has to work out whether they disagree in meaning.** The app's own meta
+labels had drifted the same way - "What you need" for the document's
+"Resources", "How it is run" for "Type of Activity" - so the screen and the
+paper named the same four facts differently. All of it is now the document's.
+
+**RULE: content from the content team is transcribed, not edited.** House style
+applies to text WE write. If their wording is wrong it goes back to them; it
+does not get improved in passing. The one liberty taken, and it is recorded in
+the file: the document nests two sub-bullets under one Localisation step and
+the app has no sub-steps, so those three lines became one step with their words
+unchanged and only the punctuation flattened.
+
+## PURPOSE IS ON THE SCREEN, NOT BEHIND THE ? (2026-09-02)
+`purpose` is a new content field and the only part of an SOP that does not live
+in the reference sheet: it prints under the activity name on BOTH the
+student-picking screen and the record screen, every visit, under a "Why this
+activity" label above a hairline.
+
+- **The label is doing the work.** Without it the purpose is a third line of
+  grey text under a serif heading and reads as more subtitle - the exact fate
+  it was being rescued from. With it, a teacher learns the position once and
+  finds it without reading. It is also the only reason the picking screen can
+  carry both the purpose and "Who is doing this activity?" without either being
+  mistaken for the other.
+- **A hairline, not a tint.** On the record screen the category colour is spent
+  in exactly two places (Save, and the active result selection) - guardrail #1 -
+  and a tinted card would have been a third, permanently, for a line nobody
+  needs after the first read. It also avoids a second shadow tier (#2).
+- **Both screen heads now read name / category / purpose.** Before this they
+  disagreed: the record screen's subtitle was the category, the picking
+  screen's was an instruction. "Persistent across both pages" only reads as
+  persistent if the two are identical; otherwise it reads as coincidence.
+- `.purpose-strip` claws back the lede's `margin-bottom:var(--s4)` with
+  `calc(var(--s2) - var(--s4))` **in the same tokens**, so it tracks the
+  text-size setting instead of drifting apart at 1.5x.
+
+## THE ? SHEET IS TWO TABS NOW - RUN IT / PREPARE (2026-09-02)
+Adi: "'?' has too much to process". Measured before touching it: mean 204 words
+across 17 activities, worst 383 (Terrain Identification With Cane, 11 steps),
+five sheets over 250. But length was the symptom. **One flat scroll was serving
+three different moments at equal weight, in an order nobody's day matches** -
+demo video first (wanted least, and a dashed "add a filename in activities.js"
+developer placeholder on the four activities that have no clip), then setup
+facts, and only then the steps, which is what a teacher opens the ? for at
+nearly every open.
+
+- **Run it** = steps, facilitator notes, narration. **Prepare** = purpose,
+  Resources / Type of Activity / Recommended Age group / Time, the terrain
+  set-up, the demo clip. The sheet also stops growing as content lands.
+- **Reuses `.sb-tab`** - the sound library's tab strip, already `role="tablist"`
+  and already category-accented. No new interaction vocabulary.
+- **The tabs and both panels live INSIDE the `.ref-src` node.** `toggleRefSheet`
+  MOVES those children into the popup rather than cloning them (so a playing
+  narration keeps its handlers), which means anything parked outside would be
+  left behind. Switching a tab flips `hidden` only - no DOM moves - so a tab
+  switch cannot interrupt playback either.
+- The strip is `position:sticky` with a negative top margin equal to the sheet
+  body's own top padding; without that, steps scroll visibly through the gutter
+  above the tabs.
+- An activity with nothing to prepare renders **no tab strip at all** rather
+  than an empty second tab.
+
+### The facilitator note was the real bulk, and it is NOT re-ordered
+The notes always arrived from the content team as a bulleted list and were being
+joined into one paragraph - which is how Near-Far with Cane ended up with its
+two safety sentences at word 165 of 172, below eight steps, inside a modal.
+`facilitatorNotes: []` renders one line per bullet.
+**They are deliberately left in the document's order.** Pulling the safety
+sentences to the top was drafted and not shipped: deciding which sentence is a
+safety instruction for a blind child with a cane is the content team's call, and
+Adi's instruction was the document as written. The proposal stands; it needs
+their signature, not ours.
+
+## `fraction`, AND WHY NOT TWO COUNT FIELDS (2026-09-02)
+Three "Record a Result" lines are written `___ / ___` - terrain changes
+identified correctly, terrains correctly described, obstacles found
+independently. Two `count` fields would have worked and would have been **our
+paraphrase**: "4 out of 6 changes" only means anything as a pair, and splitting
+it invents two labels the content team never wrote. `fraction` renders two
+narrow boxes with a "/" and saves one value, "4 / 6", so the CSV keeps one
+column per document line.
+- Each box carries its own `aria-label` ("...how many correct" / "...out of how
+  many"): a screen reader announcing two unlabelled number fields under one
+  heading gives no way to tell them apart, and the visible "/" is decoration it
+  never reads.
+- `fracValue()` is the single reader used by the record screen, the batch flow
+  and the review summary, so they cannot disagree about what empty means. An
+  untouched field saves **nothing**, never "0 / 0" - which would look like an
+  observed score of none correct.
+- The document is itself inconsistent here: Direction -> Advanced asks for
+  "Number of trials conducted" and "Number of correct responses" as two lines,
+  which is the same information as a fraction. Both shapes are transcribed as
+  written rather than harmonised.
+
+## THE BRIDGE MAKES gates.sh REPORT A STALE FAILURE (found 2026-09-02)
+`bash scripts/gates.sh` over the mount printed `/tmp/a11y-smoke.log: Permission
+denied` and then **`GATE FAILED: a control throws`** - listing screens with the
+OLD activity names. Nothing was broken. The redirect to `/tmp/a11y-smoke.log`
+fails (the file belongs to a real-terminal run), so node never ran, and the
+failure branch `cat`s that stale log from a previous day.
+**A gate that cannot write its log reports the last run's result as if it were
+this one.** Run the gates individually with a writable log path when working
+through the bridge:
+```
+L=$HOME/gatelogs; mkdir -p $L
+for g in a11y-contrast a11y-nochange a11y-flows a11y-smoke a11y-runtime-theme; do
+  node scripts/$g.js > $L/$g.log 2>&1 && echo "PASS $g" || { echo "FAIL $g"; tail -20 $L/$g.log; }
+done
+```
+Worth fixing properly in `gates.sh` with `mktemp`.
+
 ## A SECOND SOP DOCUMENT, AND THE `rating` TYPE (2026-08-25 pm)
 `SOP.docx` covered the four Sound + Direction activities — Near-Far w/o Cane,
 Near-Far with Cane, Count Steps, Count Steps (Group). Steps and Facilitator
