@@ -1954,9 +1954,9 @@ function showSettings(dir){
     <h1 class="lede">Settings<small>Preferences for this device, and your data tools.</small></h1>
     ${displayPanel}
     <div class="panel">
-      <h2 class="panel-title">${ICON.audio} Narration language</h2>
-      <p class="setting-sub">The language spoken when you play an activity's step-by-step guide. More languages arrive as translations are verified.</p>
-      <div class="seg" role="group" aria-label="Narration language">${langBtns}</div>
+      <h2 class="panel-title">${ICON.audio} Activity steps language</h2>
+      <p class="setting-sub">Sets the language an activity's steps are <strong>written</strong> in and the language they are <strong>spoken</strong> in — they are the same choice. You can also switch it inside any activity's <strong>?</strong>. More languages arrive as translations are verified.</p>
+      <div class="seg" role="group" aria-label="Activity steps language">${langBtns}</div>
     </div>
     <div class="panel">
       <h2 class="panel-title">${ICON.list} Student list sheet</h2>
@@ -3216,51 +3216,175 @@ function getAudioLang(){
   return AUDIO_LANGS.some(l=>l.code===v) ? v : AUDIO_LANGS[0].code;
 }
 function audioPathFor(activityId, lang){ return `audio/${activityId}_${lang}.mp3`; }
-function buildAudioHtml(act){
-  // The switcher renders whenever narration is POSSIBLE: any activity with
-  // sop[] can have English narration (spoken from the steps themselves);
-  // sopTranslations only gates the other languages.
-  if(act.sopTranslations || (act.sop && act.sop.length)){
-    const tr = act.sopTranslations || {};
-    const cur = getAudioLang();
-    const buttons = AUDIO_LANGS.map(l=>{
-      // English narrates the sop[] itself; other languages need a translation.
-      const has = l.code==='en' ? !!(act.sop && act.sop.length)
-                                : !!(tr[l.code] && tr[l.code].length);
-      // Languages with no translation text yet are shown disabled (no audio file will exist).
-      return `<button type="button" onclick="switchAudioLang('${act.id}','${l.code}',this)" ${langBtnAttrs(l, l.code===cur, has)}>${l.label}</button>`;
-    }).join('');
-    const src = audioPathFor(act.id, cur);
-    // onerror → if the derived file isn't bundled yet, fall back to the placeholder text in-place.
-    return `<div class="audio-lang">
-      <span class="audio-lang-label">SOP narration — choose a language</span>
-      <div class="seg" role="group" aria-label="Audio language">${buttons}</div>
-      <audio id="sopAudio" controls src="${src}" onerror="audioMissing()"></audio>
-      <div class="media-slot" id="sopAudioMissing" style="display:none">${ICON.audio}<span>Audio for this language isn't generated yet — run generate-audio.js, then rebuild.</span></div>
+/* ---------------------------------------------------------------------------
+   SOP LANGUAGE — ONE control for the WRITTEN steps and the SPOKEN narration.
+
+   Rebuilt 2026-09-02 (Adi: "the SOP narration is looking bad and takes up too
+   much place" + "I also want the written translation of the SOP").
+
+   What it replaced: a labelled block ("SOP narration — choose a language"), a
+   row of FOUR language buttons two of which were always disabled, a full-width
+   native <audio controls>, and a dashed placeholder — five stacked elements,
+   roughly a third of the sheet, for a control most teachers use once. And the
+   translations were only ever SPOKEN: a teacher who reads Hindi more easily
+   than she hears English still read the steps in English.
+
+   Now: one row. The language buttons switch the steps ON THE PAGE and the
+   narration together, because they were never two different questions. Only
+   languages this ACTIVITY actually has text for are offered — no permanently
+   disabled buttons for Tamil and Bengali on every screen — and the row does not
+   render at all when English is the only one.
+   --------------------------------------------------------------------------- */
+function sopLangsFor(act){
+  const tr = act.sopTranslations || {};
+  return AUDIO_LANGS.filter(l => l.code === 'en'
+    ? !!(act.sop && act.sop.length)
+    : !!(tr[l.code] && tr[l.code].length));
+}
+// The app-wide choice (Settings) unless this activity has no text for it.
+function sopLangCurrent(act){
+  const want = getAudioLang();
+  return sopLangsFor(act).some(l => l.code === want) ? want : 'en';
+}
+/* A translation is only shown when it is line-for-line with the English. If the
+   two ever fall out of step, the numbered step a teacher reads would not be the
+   step the narration speaks, and neither would be flagged — so fall back to
+   English rather than print a mismatch. generate-audio.js relies on the same
+   1:1 rule. */
+function sopLinesFor(act, code){
+  const en = act.sop || [];
+  if(code === 'en') return en;
+  const t = (act.sopTranslations || {})[code];
+  return (t && t.length === en.length) ? t : en;
+}
+function sopStepsHtml(act, code){
+  return sopLinesFor(act, code).map(s => `<li>${esc(s)}</li>`).join('');
+}
+/* Every translation in this app is a MACHINE DRAFT until the content team says
+   otherwise (standing rule: no machine translation for teacher-facing text).
+   Narrating one was already a stretch; printing it as the instructions a
+   teacher follows while running a physical activity with a blind child is a
+   bigger claim, so it says what it is. Set `verifiedTranslations: ["hi"]` on
+   the activity in activities.js and this line disappears — a content edit, no
+   code change. */
+function sopDraftNote(act, code){
+  if(code === 'en') return '';
+  const ok = Array.isArray(act.verifiedTranslations) && act.verifiedTranslations.indexOf(code) !== -1;
+  const l = AUDIO_LANGS.find(x => x.code === code);
+  return ok ? '' : `<p class="sop-draft" id="sopDraft">Draft ${esc(l ? l.name : code)} translation — not yet checked by the content team. The English steps are the approved version.</p>`;
+}
+function fmtClock(sec){
+  if(!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+// The one row: languages on the left, listen on the right.
+function sopBarHtml(act){
+  const langs = sopLangsFor(act);
+  const cur = sopLangCurrent(act);
+  const langHtml = langs.length > 1
+    ? `<div class="sop-langs" role="group" aria-label="Language of these steps">${langs.map(l =>
+        `<button type="button" lang="${l.lang}" aria-label="${esc(l.name)} — steps and narration"
+          aria-pressed="${l.code === cur}" onclick="switchSopLang('${act.id}','${l.code}',this)">${l.label}</button>`
+      ).join('')}</div>`
+    : '';
+  const listenHtml = (act.sop && act.sop.length)
+    ? `<button type="button" class="sop-listen" id="sopListen" aria-pressed="false" onclick="SOPA.toggle()">
+         <span class="sop-listen-ic" aria-hidden="true">${ICON.sbPlay}</span>
+         <span id="sopListenLabel">Listen</span>
+         <span class="sop-time" id="sopTime" aria-hidden="true"></span>
+       </button>
+       <audio id="sopAudio" preload="metadata" src="${audioPathFor(act.id, cur)}"></audio>`
+    : '';
+  if(!langHtml && !listenHtml) return '';
+  return `<div class="sop-bar">${langHtml}${listenHtml}
+      <p class="sop-noaudio" id="sopNoAudio" hidden>Narration for this language isn't generated yet.</p>
     </div>`;
-  }
-  if(act.audioFile){
-    return `<audio controls src="${esc(act.audioFile)}" style="width:100%;margin-top:16px;"></audio>`;
-  }
-  return `<div class="media-slot">${ICON.audio}<span>Audio narration slot — add sopTranslations (or audioFile) in activities.js once generated.</span></div>`;
 }
-async function switchAudioLang(activityId, lang, btn){
-  await Store.setString(AUDIO_LANG_KEY, lang);
-  // Update pressed state on the buttons.
+/* Compact player. Native <audio controls> is a full-width slab in the Android
+   WebView and cannot be restyled; this is a button and a clock.
+   Play rejections are TOASTED, never swallowed: play() rejects for policy
+   reasons and fires no error event, so a blocked cue and a muted phone looked
+   identical for six weeks in August. */
+const SOPA = {
+  el(){ return document.getElementById('sopAudio'); },
+  _wire(){
+    const a = this.el(); if(!a || a._sopWired) return; a._sopWired = true;
+    const self = this;
+    a.addEventListener('loadedmetadata', ()=> self._paint());
+    a.addEventListener('timeupdate',     ()=> self._paint());
+    a.addEventListener('ended',          ()=> self._paint());
+    a.addEventListener('pause',          ()=> self._paint());
+    a.addEventListener('play',           ()=> self._paint());
+    a.addEventListener('error', ()=>{
+      const n = document.getElementById('sopNoAudio');
+      const b = document.getElementById('sopListen');
+      if(n) n.hidden = false;
+      if(b) b.hidden = true;
+    });
+  },
+  toggle(){
+    const a = this.el(); if(!a) return;
+    this._wire();
+    if(!a.paused){ a.pause(); return; }
+    const p = a.play();
+    if(p && p.catch) p.catch(err => {
+      toast('Narration did not start: ' + ((err && err.name) || 'unknown'));
+      this._paint();
+    });
+  },
+  reset(){
+    const a = this.el();
+    if(a){ try{ a.pause(); a.currentTime = 0; }catch(e){} }
+    this._paint();
+  },
+  _paint(){
+    const a = this.el();
+    const btn = document.getElementById('sopListen');
+    const lbl = document.getElementById('sopListenLabel');
+    const t   = document.getElementById('sopTime');
+    if(!a || !btn) return;
+    const playing = !a.paused && !a.ended;
+    btn.setAttribute('aria-pressed', String(playing));
+    btn.classList.toggle('is-playing', playing);
+    if(lbl) lbl.textContent = playing ? 'Stop' : 'Listen';
+    const ic = btn.querySelector('.sop-listen-ic');
+    if(ic) ic.innerHTML = playing ? ICON.sbPause : ICON.sbPlay;
+    if(t){
+      const d = a.duration;
+      t.textContent = !isFinite(d) || !d ? ''
+        : (playing ? fmtClock(Math.max(0, d - a.currentTime)) : fmtClock(d));
+    }
+  }
+};
+/* Switching language re-renders the steps IN PLACE rather than repainting the
+   screen: the sheet is a modal whose content was MOVED into it, so a repaint
+   would close it and lose the teacher's place. */
+async function switchSopLang(activityId, code, btn){
+  await Store.setString(AUDIO_LANG_KEY, code);
   const group = btn.parentElement;
-  [...group.children].forEach(b=>b.setAttribute('aria-pressed','false'));
-  btn.setAttribute('aria-pressed','true');
-  // Swap the audio source and reset the missing-fallback.
-  const audio = document.getElementById('sopAudio');
-  const missing = document.getElementById('sopAudioMissing');
-  if(missing) missing.style.display = 'none';
-  if(audio){ audio.style.display = ''; audio.src = audioPathFor(activityId, lang); audio.load(); }
+  if(group) [...group.children].forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+  const act = findActivityById(activityId);
+  const box = document.getElementById('sopSteps');
+  if(act && box) box.innerHTML = sopStepsHtml(act, code);
+  const draftSlot = document.getElementById('sopDraftSlot');
+  if(act && draftSlot) draftSlot.innerHTML = sopDraftNote(act, code);
+  const a = SOPA.el();
+  const listen = document.getElementById('sopListen');
+  const noAudio = document.getElementById('sopNoAudio');
+  if(noAudio) noAudio.hidden = true;
+  if(listen) listen.hidden = false;
+  if(a){ try{ a.pause(); }catch(e){} a.src = audioPathFor(activityId, code); a.load(); }
+  SOPA._wire();
+  SOPA._paint();
+  const l = AUDIO_LANGS.find(x => x.code === code);
+  announce(`Steps now in ${l ? l.name : code}.`);
 }
-function audioMissing(){
-  const audio = document.getElementById('sopAudio');
-  const missing = document.getElementById('sopAudioMissing');
-  if(audio) audio.style.display = 'none';
-  if(missing) missing.style.display = '';
+function findActivityById(id){
+  for(const c of ACTIVITY_DATA){
+    for(const a of (c.activities || [])) if(a.id === id) return a;
+  }
+  return null;
 }
 /* ---------------------------------------------------------------------------
    CHILD PICKER (screen between an activity tap and the run screen).
@@ -3286,7 +3410,10 @@ function showChildPicker(catIndex, actIndex, dir, opts){
   // path is forwarded to the record screen, same as the category card.
   if(act.group){ showActivity(catIndex, actIndex, { dir: dir || 'fwd' }); return; }
   state = { category:catIndex, activity:actIndex };
-  crumbEl.textContent = act.name;
+  // The header crumb carries the CATEGORY on both screens now that the lede
+  // does not. On the picker it used to repeat the activity name sitting an
+  // inch below it.
+  crumbEl.textContent = cat.category;
   backBtn.style.display = 'flex';
   backBtn.onclick = ()=>showCategory(catIndex,'back');
   homeDot.innerHTML = ICON.home;
@@ -3345,8 +3472,14 @@ function showChildPicker(catIndex, actIndex, dir, opts){
 
   paint(`
     <div class="lede-row">
-      <h1 class="lede">${esc(act.name)}<small>${esc(cat.category)}</small></h1>
-      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — steps, narration and how to prepare"
+      <!-- NO CATEGORY SUBTITLE (2026-09-02, Adi). Tapping Direction and then
+           landing on a screen that says "Direction" again under the title is a
+           line of type that tells the teacher something they just did. The
+           header crumb already carries the activity name and the back chevron
+           already says where they came from. Removing it also pulls the purpose
+           up to where it belongs, under the title. -->
+      <h1 class="lede">${esc(act.name)}</h1>
+      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — instructions and demo"
         aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'pickerRefSheet')">?</button>
       ${helpCallout()}
     </div>
@@ -3354,18 +3487,16 @@ function showChildPicker(catIndex, actIndex, dir, opts){
     ${sopBlock}
     ${hintOnce('roster', 'Tap every student taking part — you can pick several. Then <strong>Start</strong>. New students can be added right below.')}
     ${profiles.length ? `
-      <!-- The head of this screen now reads name / category / purpose, exactly
-           as the record screen does, so moving between the two never re-teaches
-           a teacher where to look. "Who is doing this activity?" was the
-           subtitle and has moved down here, beside the faces it is talking
-           about — an instruction belongs next to the thing it instructs. -->
-      <p class="roster-ask">Who is doing this activity? Tap everyone taking part.</p>
+      <!-- ONE LINE, not three (2026-09-02, Adi: "make that more simplified and
+           clean"). This used to be an instruction paragraph, then a separate bar
+           holding a bare count and Select all. The count IS the instruction now:
+           it teaches while nothing is picked ("Tap everyone taking part") and
+           counts once something is. The Start button below already names the
+           number, so it was being said three times on one screen.
+           NOT a live region (2026-07-29): it used to be the only thing that
+           spoke on a tap, so the teacher heard "3 of 12 selected" and never the
+           child's name. Announcements go through #srStatus led by the name. -->
       <div class="roster-selbar">
-        <!-- NOT a live region any more (2026-07-29). It used to be, and it was
-             the ONLY thing that spoke when a child was tapped — so the teacher
-             heard "3 of 12 selected" and never the child's name. Announcements
-             now go through the shared #srStatus region led by the name; this
-             span is the visible count only. -->
         <span class="roster-count" id="rosterCount"></span>
         <button type="button" class="roster-all" id="rosterAllBtn" onclick="rosterSelectAll()">Select all</button>
       </div>
@@ -3427,12 +3558,12 @@ function rosterPaintCount(lead){
   const total = loadProfiles().length;
   const n = rosterSel.length;
   const cnt = document.getElementById('rosterCount');
-  // The VISIBLE count stays a bare count — a sighted teacher does not need
-  // "Vaishu selected" written next to the grid, they can see the ring. The
-  // spoken version leads with the name (see rosterToggle) and goes through the
-  // shared status region, which is cleared first so two taps in a row on
-  // different children both announce.
-  if(cnt) cnt.textContent = `${n} of ${total} selected`;
+  // The VISIBLE line teaches while empty and counts once used — a sighted
+  // teacher does not need "Vaishu selected" written next to the grid, they can
+  // see the tick. The spoken version leads with the name (see rosterToggle) and
+  // goes through the shared status region, which is cleared first so two taps in
+  // a row on different children both announce.
+  if(cnt) cnt.textContent = n ? `${n} of ${total} selected` : 'Tap everyone taking part';
   if(lead) announce(`${lead}. ${n} of ${total} selected.`);
   const allBtn = document.getElementById('rosterAllBtn');
   if(allBtn) allBtn.textContent = (n === total && total > 0) ? 'Clear' : 'Select all';
@@ -3469,7 +3600,7 @@ async function startBatch(catIndex, actIndex){
    playing narration/demo element intact and its inline handlers wired).
    --------------------------------------------------------------------------- */
 function buildRefSheet(act, domId, cat){
-  const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
+  const sopLang = sopLangCurrent(act);
   // A11Y (2026-07-28): the demo clip has no narration track — it is a silent
   // recording of a drill. A teacher who cannot see it gets NOTHING from it, and
   // it is the first thing in this sheet, so they would swipe into a video
@@ -3511,60 +3642,65 @@ function buildRefSheet(act, domId, cat){
   const metaHtml = metaRows
     ? `<div class="ref-block"><span class="section-label">Before you start</span><dl class="act-meta">${metaRows}</dl></div>`
     : '';
-  const audioHtml = buildAudioHtml(act);
+  const sopBar = sopBarHtml(act);
   // The demo is only mentioned when there IS one. The old dashed placeholder
   // ("add a filename in activities.js") was developer text shown to a teacher
   // in a classroom, on the four activities that have no clip.
   const demoVideoHtml = act.videoFile
     ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(act.videoFile)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
     : '';
-  // Purpose is on screen already; it repeats here as the sheet's own framing,
-  // because Prepare is read on its own before a session.
-  const purposeHtml = act.purpose
-    ? `<div class="ref-block"><span class="section-label">Purpose</span><p class="ref-purpose">${esc(act.purpose)}</p></div>`
-    : '';
+  /* Purpose does NOT repeat in here. It prints on the screen behind this
+     sheet, on both screens, permanently — saying it twice is exactly the
+     padding this pass is removing. */
   /* CATEGORY-LEVEL SETUP — the document's "Introduction (Set up)" for Terrain
      Path. It belongs to the category, not to any one activity, so all three
      terrain activities show it, in Prepare, where it is actually read. */
   const setupList = cat && Array.isArray(cat.setup) ? cat.setup.filter(Boolean) : null;
   const setupHtml = (setupList && setupList.length)
-    ? `<div class="ref-block"><span class="section-label">Setting up ${esc(cat.category)}</span><ul class="ref-setup">${setupList.map(s=>`<li>${esc(s)}</li>`).join('')}</ul></div>`
+    ? `<div class="ref-block"><span class="section-label">Setting up</span><ul class="ref-setup">${setupList.map(s=>`<li>${esc(s)}</li>`).join('')}</ul></div>`
     : '';
 
-  /* TWO TABS, SPLIT BY THE MOMENT (2026-09-02, "Draft B").
-     RUN IT is what you need with a child in front of you — the steps, the
-     facilitator notes, the narration. PREPARE is what you read once before a
-     session — purpose, resources, how the path is built, the demo clip.
-     Before this the sheet was one flat scroll of five blocks in the order
-     demo → meta → steps → notes → narration: the demo is wanted least and came
-     first, the steps are wanted at nearly every open and came third, and the
-     longest sheet (Terrain Identification With Cane, 11 steps) ran to roughly
-     four screenfuls inside a modal. The split also stops the sheet growing as
-     the content team delivers more.
+  /* TWO TABS — DEMO, THEN INSTRUCTIONS (2026-09-02, Adi's naming and order).
+     Started life as "Prepare / Run it"; renamed and reordered on his call, so
+     a teacher meeting an activity for the first time sees how it looks before
+     reading how to do it. DEMO opens by default; flipping that back is one
+     word (`aria-selected` on the two buttons plus the panel's `hidden`).
+
+     Before either of them, the sheet was one flat scroll of five blocks in the
+     order demo -> meta -> steps -> notes -> narration: the demo is wanted least
+     and came first, the steps are wanted at nearly every open and came third,
+     and the longest sheet (Terrain Identification With Cane, 11 steps) ran to
+     roughly four screenfuls inside a modal.
+
      Tabs and panels live INSIDE this .ref-src node on purpose: toggleRefSheet
      MOVES these children into the popup rather than cloning them, so anything
      kept outside would be left behind. Switching a tab only flips `hidden` —
      no DOM moves, so a playing narration survives it.
-     The tab strip reuses .sb-tab, the sound library's control, so this adds no
-     new interaction vocabulary to learn. */
-  const runPanel = `
-        <h2 class="section-label">Sequence of procedure</h2><ol class="sop-list">${sopSteps}</ol>
-        ${noteHtml}
-        ${audioHtml}`;
-  const prepPanel = `${purposeHtml}${metaHtml}${setupHtml}${videoNote}${demoVideoHtml}`;
-  // An activity with nothing to prepare (no purpose, no meta, no setup, no
-  // clip) gets no tab strip at all rather than an empty second tab.
-  const hasPrep = !!(purposeHtml || metaHtml || setupHtml || demoVideoHtml);
-  const inner = hasPrep ? `
-        <div class="ref-tabs sb-tabs" role="tablist" aria-label="Reference sections">
-          <button type="button" class="sb-tab" role="tab" id="${domId}_t_run" aria-selected="true"
-            aria-controls="${domId}_p_run" onclick="refTab(this)" onkeydown="refTabKey(event,this)">Run it</button>
-          <button type="button" class="sb-tab" role="tab" id="${domId}_t_prep" aria-selected="false" tabindex="-1"
-            aria-controls="${domId}_p_prep" onclick="refTab(this)" onkeydown="refTabKey(event,this)">Prepare</button>
+
+     They are drawn as a SEGMENTED CONTROL, not pills (Adi: "don't feel like a
+     button"). Two equal halves in a tray, the chosen one filled and pressed in
+     — the app's existing selection grammar, the same shape as the result
+     picker a teacher already taps on every record. */
+  const stepsPanel = `
+        ${sopBar}
+        <h2 class="section-label">Steps</h2>
+        <ol class="sop-list" id="sopSteps">${sopStepsHtml(act, sopLang)}</ol>
+        <div id="sopDraftSlot">${sopDraftNote(act, sopLang)}</div>
+        ${noteHtml}`;
+  const demoPanel = `${videoNote}${demoVideoHtml}${metaHtml}${setupHtml}`;
+  // An activity with nothing to show (no clip, no meta, no setup) gets no tab
+  // strip at all rather than an empty first tab.
+  const hasDemo = !!(demoVideoHtml || metaHtml || setupHtml);
+  const inner = hasDemo ? `
+        <div class="ref-tabs" role="tablist" aria-label="Reference sections">
+          <button type="button" class="ref-tab" role="tab" id="${domId}_t_demo" aria-selected="true"
+            aria-controls="${domId}_p_demo" onclick="refTab(this)" onkeydown="refTabKey(event,this)">Demo</button>
+          <button type="button" class="ref-tab" role="tab" id="${domId}_t_steps" aria-selected="false" tabindex="-1"
+            aria-controls="${domId}_p_steps" onclick="refTab(this)" onkeydown="refTabKey(event,this)">Instructions</button>
         </div>
-        <div class="ref-panel" id="${domId}_p_run" role="tabpanel" aria-labelledby="${domId}_t_run">${runPanel}</div>
-        <div class="ref-panel" id="${domId}_p_prep" role="tabpanel" aria-labelledby="${domId}_t_prep" hidden>${prepPanel}</div>`
-    : runPanel;
+        <div class="ref-panel" id="${domId}_p_demo" role="tabpanel" aria-labelledby="${domId}_t_demo">${demoPanel}</div>
+        <div class="ref-panel" id="${domId}_p_steps" role="tabpanel" aria-labelledby="${domId}_t_steps" hidden>${stepsPanel}</div>`
+    : stepsPanel;
   return `<div class="ref-src" id="${domId}" data-help-title="${esc(act.name)}" hidden>${inner}</div>`;
 }
 /* ---------------------------------------------------------------------------
@@ -3902,6 +4038,7 @@ function closeRefSheet(instant){
     opener.setAttribute('aria-expanded','false');
     if(!instant) opener.focus({preventScroll:true});
   }
+  if(typeof SOPA !== 'undefined') SOPA.reset();
   const finish = ()=>{ ov.hidden = true; ov.classList.remove('closing'); restoreHelpContent(); };
   ov.classList.remove('open');
   ov.classList.add('closing'); // exit runs shorter + accelerating (see CSS)
@@ -4381,7 +4518,6 @@ function showActivity(catIndex, actIndex, opts){
   backBtn.onclick = ()=>{ if(typeof SB !== 'undefined') SB.reset(); if(typeof CB !== 'undefined') CB.reset(); showCategory(catIndex,'back'); };
   homeDot.innerHTML = ICON.home;
   themeFor(catIndex);
-  const audioHtml = buildAudioHtml(act);
   const resultLabels = act.dataFields.filter(f=>f.type==='result'||f.type==='mastery').map(f=>f.label);
   const records = loadRecords(act.id);
   const recHtml = records.length ? records.map(r=>renderRecord(r, resultLabels, act.id)).join('') : '<p class="empty">No results logged yet — run the activity, then record below.</p>';
@@ -4442,8 +4578,9 @@ function showActivity(catIndex, actIndex, opts){
   const refSheet = buildRefSheet(act, 'actRefSheet', cat);
   paint(`
     <div class="lede-row">
-      <h1 class="lede">${esc(act.name)}<small>${esc(cat.category)}</small></h1>
-      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — steps, narration and how to prepare"
+      <!-- No category subtitle here either — see the note on the picking screen. -->
+      <h1 class="lede">${esc(act.name)}</h1>
+      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — instructions and demo"
         aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'actRefSheet')">?</button>
       ${helpCallout()}
     </div>

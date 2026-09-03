@@ -633,53 +633,26 @@ const ACTIVITY_DATA = [
      stage as the association carries over into real cane use. */
   {
     category: "Straight Line Travel",
-    description: "Travel in a straight line toward a sound played on the app — first by ear, then estimating and counting the steps, then with the cane and a push toy for a positive start, then with the cane alone.",
+    description: "Travel in a straight line toward a sound played on the app — estimating and counting the steps, then with the cane and a push toy for a positive start, then with the cane alone.",
     /* GROUP NOTE: `group: true` on Counting Steps — Group marks a whole-group
        activity — the app skips the child picker and saves ONE result for the
        group. Copy that line onto any activity that is scored as a group,
        delete it for per-child scoring. (Both Counting Steps drills moved here
        from Sound + Direction on 2026-08-24; their ids are unchanged, so saved
        records follow them.) */
+    /* ADI, 2026-09-02: "Straight Line Travel - Without Cane" was DELETED. The
+       final SOP document delivers two straight-line stages, With Push Toy and
+       With Cane, and never described a without-cane baseline; that activity had
+       been deduced from a July video and carried no purpose, no document SOP
+       and July's record fields. Its id `slt-nocane` is retired and never
+       reused. Any pre-pilot records under it are orphaned, knowingly.
+       `demo-slt-nocane.mp4` is now unreferenced - safe to delete from the Mac. */
     help: [
-      "Start Without Cane — the child walks to the sound by ear. This is the baseline.",
-      "Counting Steps: run the Group drill first (one shared result — no child is selected), then score each child in Individual.",
-      "Add the cane With Push Toy — the toy and its story make the cane fun and familiar; the child pushes it straight to the sound.",
-      "Finish With Cane once the toy comes off — the same straight-line travel, now independent. Steps and drifts should shrink stage to stage."
+      "Counting Steps: run the Group drill first (one shared result - no child is selected), then score each child in Individual.",
+      "Add the cane With Push Toy - the toy and its story make the cane fun and familiar; the child pushes it straight to the sound.",
+      "Finish With Cane once the toy comes off - the same straight-line travel, now independent."
     ],
-    helpVideo: "demo-slt-nocane.mp4",
     activities: [
-      {
-        id: "slt-nocane",
-        name: "Straight Line Travel — Without Cane",
-        withCane: false,
-        soundboard: true,
-        sop: [
-          "Place the device straight ahead and play a sound from the app.",
-          "Stand the child at the start line, facing the sound — no cane.",
-          "The child walks to the sound in a straight line; count the steps.",
-          "The child stops on reaching the sound."
-        ],
-        facilitatorNote: "Straightness is the skill, not just arrival — a child who reaches the sound but wanders there hasn't got it yet. Keep the SAME sound playing so the ears have a steady target, and keep the path clear. Steer drifts with a light touch — don't turn the child — and log every correction. Fewer drifts and fewer steps across sessions is the progress.",
-        // DRAFT translation (machine-drafted 2026-07-14) — content team must
-        // verify wording BEFORE pilot audio is generated. Steps line up 1:1
-        // with `sop` above, as required by generate-audio.js.
-        sopTranslations: {
-          hi: [
-            "डिवाइस को सीधे सामने रखें और ऐप से एक आवाज़ बजाएँ।",
-            "बच्चे को शुरुआती रेखा पर, आवाज़ की ओर मुँह करके खड़ा करें — बिना छड़ी।",
-            "बच्चा सीधी रेखा में आवाज़ तक चले; कदम गिनें।",
-            "आवाज़ तक पहुँचने पर बच्चा रुक जाए।"
-          ]
-        },
-        audioFile: "",
-        videoFile: "demo-slt-nocane.mp4",
-        dataFields: [
-          { id: "steps",  label: "Number of steps",        type: "count" },
-          { id: "veer",   label: "Times drifted off line", type: "count" },
-          { id: "result", label: "Did the child get it?",  type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",        type: "teacherNotes" }
-        ]
-      },
       {
         id: "slt-withcane-toy",
         name: "With Push Toy",

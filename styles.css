@@ -387,12 +387,9 @@
   .media-slot{ margin-top:var(--s2); border:1.5px dashed var(--line); border-radius:var(--r-md);
     padding:var(--s2) var(--s3); font-size:var(--t-bodysm); color:var(--ink-faint); text-align:left; display:flex; align-items:center; gap:10px; }
   .media-slot svg{ width:18px; height:18px; flex:0 0 auto; }
-  /* SOP audio language switcher: reuses .seg styling (same control as the result
-     picker), inherits the category accent. The native-script labels (हिन्दी /
-     தமிழ் / বাংলা) let a teacher recognise their language at a glance. */
-  .audio-lang{ margin-top:var(--s2); }
-  .audio-lang .audio-lang-label{ display:block; font-size:var(--t-micro); color:var(--ink-faint); font-weight:500; margin-bottom:8px; }
-  .audio-lang audio{ width:100%; margin-top:12px; }
+  /* The old .audio-lang block (label + four language buttons + a native
+     <audio controls>) was retired 2026-09-02 — see .sop-bar further down, which
+     does language and playback in one row and also switches the WRITTEN steps. */
   /* SOUND LIBRARY (soundboard) — sound-category activities only.
      A restrained media player on the warm-paper system: a flat .panel (the form
      panel stays the one elevated hero, guardrail #2), monoline icons (no emoji).
@@ -766,7 +763,7 @@
   .roster-tile .roster-new{ position:absolute; top:-4px; left:2px; font-size:10px; font-weight:700;
     letter-spacing:.04em; text-transform:uppercase; background:#8a3c12; color:#fff;
     padding:2px 7px; border-radius:6px; }
-  .roster-selbar{ display:flex; align-items:center; justify-content:space-between; margin:0 0 var(--s1); }
+  .roster-selbar{ display:flex; align-items:center; justify-content:space-between; gap:var(--s2); margin:0 0 var(--s2); }
   .roster-count{ font-size:var(--t-caption); color:var(--ink-soft); }
   .roster-all{ font:inherit; font-size:var(--t-caption); font-weight:600; color:var(--cat-deep);
     background:none; border:0; cursor:pointer; padding:6px 2px; }
@@ -1424,23 +1421,74 @@
     text-transform:uppercase; color:var(--ink-faint); margin-bottom:3px; }
   .purpose-v{ margin:0; font-size:var(--t-bodysm); line-height:1.5; color:var(--ink); max-width:60ch; }
 
-  /* "Who is doing this activity?" — was the picking screen's subtitle, now a
-     line beside the grid it refers to, so both screens' heads read the same. */
-  .roster-ask{ margin:0 0 var(--s2); font-size:var(--t-bodysm); color:var(--ink-soft); }
+  /* The picking screen's instruction and its count are ONE line now — the
+     count teaches while empty ("Tap everyone taking part") and counts once
+     used. See the note in showChildPicker. */
 
   /* Tab strip inside the ? sheet. Reuses .sb-tab (the sound library's control)
      for the buttons; this only pins the strip so it survives a long scroll —
      the panel below it can run to eleven steps. */
-  /* The negative top margin + matching padding let the pinned strip cover the
+  /* A SEGMENTED CONTROL, NOT PILLS (2026-09-02, Adi: the tabs "don't feel like
+     a button"). The pills were two loose outlines floating on the card — the
+     unselected one had no fill and no tray, so nothing said "these two belong
+     together and one of them is on". Now: a recessed tray, two equal halves,
+     the chosen one filled and pressed in. That is the app's existing selection
+     grammar (chosen = filled + inset, never elevated) and the same shape as the
+     result picker a teacher already taps on every record, so it reads as a
+     control on sight.
+     The negative top margin + matching padding let the pinned strip cover the
      sheet body's own top padding; without it, steps scroll visibly through the
      1rem gutter above the tabs. */
   .ref-tabs{ position:sticky; top:0; z-index:2;
     margin:calc(var(--s2) * -1) 0 var(--s3); padding:var(--s2) 0 10px;
-    background:var(--card); }
+    background:var(--card); display:flex; gap:0; }
+  .ref-tabs > *{ flex:1 1 0; }
+  .ref-tab{ font:inherit; font-size:var(--t-bodysm); font-weight:600; color:var(--ink-soft);
+    background:var(--paper); border:1px solid var(--line); padding:12px 10px; min-height:46px;
+    cursor:pointer; transition:background .2s var(--ease), color .2s var(--ease),
+      border-color .2s var(--ease), box-shadow .2s var(--ease); }
+  .ref-tab:first-child{ border-radius:var(--r-sm) 0 0 var(--r-sm); }
+  .ref-tab:last-child{ border-radius:0 var(--r-sm) var(--r-sm) 0; margin-left:-1px; }
+  .ref-tab[aria-selected="true"]{ background:var(--cat); border-color:var(--cat); color:#fff;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.16); position:relative; z-index:1; }
+  @media (hover:hover){ .ref-tab:not([aria-selected="true"]):hover{ border-color:var(--cat-line); color:var(--ink); } }
+  .ref-tab:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; position:relative; z-index:2; }
   .ref-panel:focus{ outline:none; }
-  .ref-purpose{ margin:10px 0 0; font-size:var(--t-bodysm); line-height:1.55; color:var(--ink); }
   .ref-setup{ margin:10px 0 0; padding-left:20px; display:grid; gap:8px;
     font-size:var(--t-bodysm); line-height:1.5; color:var(--ink); }
+
+  /* ONE ROW FOR LANGUAGE + LISTEN (2026-09-02). Replaced a label, four language
+     buttons (two permanently disabled), a full-width native <audio controls>
+     and a dashed placeholder — about a third of the sheet, for a control most
+     teachers touch once. Native audio controls cannot be restyled in the
+     Android WebView, which is most of why the old block looked bolted on. */
+  .sop-bar{ display:flex; align-items:center; gap:var(--s1); flex-wrap:wrap;
+    margin:0 0 var(--s3); }
+  .sop-langs{ display:flex; gap:0; }
+  .sop-langs button{ font:inherit; font-size:var(--t-caption); font-weight:600;
+    color:var(--ink-soft); background:var(--paper); border:1px solid var(--line);
+    padding:9px 13px; min-height:40px; cursor:pointer; }
+  .sop-langs button:first-child{ border-radius:var(--r-sm) 0 0 var(--r-sm); }
+  .sop-langs button:last-child{ border-radius:0 var(--r-sm) var(--r-sm) 0; margin-left:-1px; }
+  .sop-langs button:only-child{ border-radius:var(--r-sm); }
+  .sop-langs button[aria-pressed="true"]{ background:var(--cat); border-color:var(--cat); color:#fff;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.16); position:relative; z-index:1; }
+  .sop-langs button:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; position:relative; z-index:2; }
+  .sop-listen{ margin-left:auto; display:flex; align-items:center; gap:8px;
+    font:inherit; font-size:var(--t-caption); font-weight:600; color:var(--cat-deep);
+    background:var(--cat-soft); border:1px solid var(--cat-line); border-radius:999px;
+    padding:9px 15px; min-height:40px; cursor:pointer; }
+  .sop-listen .sop-listen-ic{ display:flex; }
+  .sop-listen svg{ width:14px; height:14px; display:block; }
+  .sop-listen .sop-time{ font-variant-numeric:tabular-nums; font-weight:400; color:var(--ink-faint); }
+  .sop-listen.is-playing{ background:var(--card); border-color:var(--cat); }
+  .sop-listen:focus-visible{ outline:3px solid var(--cat); outline-offset:2px; }
+  .sop-noaudio{ flex:1 1 100%; margin:0; font-size:var(--t-caption); color:var(--ink-faint); }
+  /* Every translation is a machine draft until the content team signs it off —
+     printed instructions make a bigger claim than narration did. */
+  .sop-draft{ margin:var(--s2) 0 0; padding:9px 13px; border-radius:var(--r-sm);
+    background:var(--paper); border:1px dashed var(--line);
+    font-size:var(--t-caption); line-height:1.45; color:var(--ink-faint); }
 
   /* Facilitator notes are the document's bullets, one per line — see the note
      in buildRefSheet. Same yellow surface as before; only the shape changed. */
