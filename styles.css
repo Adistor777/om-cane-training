@@ -1401,6 +1401,59 @@
   .bulk-row.is-dup{ border-left-color:var(--code-notes-deep); }
   .bulk-row.is-bad{ border-left-color:var(--code-video-deep); }
 
+  /* =========================================================================
+     PURPOSE STRIP + THE TWO-TAB REFERENCE SHEET (2026-09-02)
+     Every colour below is an existing token, so nothing new needs a contrast
+     check: --ink on --paper and --ink-faint on --paper are both already in
+     a11y-contrast's table.
+     ========================================================================= */
+
+  /* Under the lede on BOTH the student-picking screen and the record screen.
+     A hairline and a small label, no fill and no shadow: on the record screen
+     the category colour is spent on the Save button and the active result
+     selection (guardrail #1), and this must not become a third accent or a
+     second elevation tier (guardrail #2). The label is what stops it reading
+     as one more line of subtitle. */
+  /* .lede carries margin-bottom:var(--s4), which would leave the strip
+     floating a long way under the heading it belongs to. It claws back all but
+     --s2 of that gap, in the same tokens, so it tracks the type scale and the
+     teacher's text-size setting instead of drifting at 1.5x. */
+  .purpose-strip{ margin:calc(var(--s2) - var(--s4)) 0 var(--s4); padding-top:var(--s2);
+    border-top:1px solid var(--line); }
+  .purpose-k{ display:block; font-size:var(--t-micro); font-weight:600; letter-spacing:.04em;
+    text-transform:uppercase; color:var(--ink-faint); margin-bottom:3px; }
+  .purpose-v{ margin:0; font-size:var(--t-bodysm); line-height:1.5; color:var(--ink); max-width:60ch; }
+
+  /* "Who is doing this activity?" — was the picking screen's subtitle, now a
+     line beside the grid it refers to, so both screens' heads read the same. */
+  .roster-ask{ margin:0 0 var(--s2); font-size:var(--t-bodysm); color:var(--ink-soft); }
+
+  /* Tab strip inside the ? sheet. Reuses .sb-tab (the sound library's control)
+     for the buttons; this only pins the strip so it survives a long scroll —
+     the panel below it can run to eleven steps. */
+  /* The negative top margin + matching padding let the pinned strip cover the
+     sheet body's own top padding; without it, steps scroll visibly through the
+     1rem gutter above the tabs. */
+  .ref-tabs{ position:sticky; top:0; z-index:2;
+    margin:calc(var(--s2) * -1) 0 var(--s3); padding:var(--s2) 0 10px;
+    background:var(--card); }
+  .ref-panel:focus{ outline:none; }
+  .ref-purpose{ margin:10px 0 0; font-size:var(--t-bodysm); line-height:1.55; color:var(--ink); }
+  .ref-setup{ margin:10px 0 0; padding-left:20px; display:grid; gap:8px;
+    font-size:var(--t-bodysm); line-height:1.5; color:var(--ink); }
+
+  /* Facilitator notes are the document's bullets, one per line — see the note
+     in buildRefSheet. Same yellow surface as before; only the shape changed. */
+  .note-list{ margin:0; padding-left:19px; display:grid; gap:7px; }
+  .note-list li{ margin:0; }
+
+  /* 'fraction' field — "correct / total". The two boxes are deliberately
+     narrow and equal: a full-width pair would read as two unrelated questions,
+     which is the very thing this type exists to avoid. */
+  .fracrow{ display:flex; align-items:center; gap:10px; }
+  .fracrow input{ flex:0 1 96px; min-width:0; }
+  .frac-sep{ font-size:var(--t-title); color:var(--ink-faint); line-height:1; }
+
 /* ===========================================================================
    ACCESSIBILITY BLOCK — added 2026-07-28.
    Self-contained and appended LAST on purpose: reverting the whole feature is

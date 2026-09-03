@@ -3331,7 +3331,7 @@ function showChildPicker(catIndex, actIndex, dir, opts){
 
   // ? help — the SAME reference sheet as the record screen (demo, steps, note,
   // narration), fully hidden until the ? is used.
-  const sopBlock = buildRefSheet(act, 'pickerRefSheet');
+  const sopBlock = buildRefSheet(act, 'pickerRefSheet', cat);
 
   // Single add path: the "Add a new student" disclosure below the grid. A child
   // added from HERE joins the roster pre-selected (see handleProfileSave).
@@ -3345,14 +3345,21 @@ function showChildPicker(catIndex, actIndex, dir, opts){
 
   paint(`
     <div class="lede-row">
-      <h1 class="lede">${esc(act.name)}<small>Who is doing this activity? Tap everyone taking part.</small></h1>
-      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
+      <h1 class="lede">${esc(act.name)}<small>${esc(cat.category)}</small></h1>
+      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — steps, narration and how to prepare"
         aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'pickerRefSheet')">?</button>
       ${helpCallout()}
     </div>
+    ${purposeStrip(act)}
     ${sopBlock}
     ${hintOnce('roster', 'Tap every student taking part — you can pick several. Then <strong>Start</strong>. New students can be added right below.')}
     ${profiles.length ? `
+      <!-- The head of this screen now reads name / category / purpose, exactly
+           as the record screen does, so moving between the two never re-teaches
+           a teacher where to look. "Who is doing this activity?" was the
+           subtitle and has moved down here, beside the faces it is talking
+           about — an instruction belongs next to the thing it instructs. -->
+      <p class="roster-ask">Who is doing this activity? Tap everyone taking part.</p>
       <div class="roster-selbar">
         <!-- NOT a live region any more (2026-07-29). It used to be, and it was
              the ONLY thing that spoke when a child was tapped — so the teacher
@@ -3461,7 +3468,7 @@ async function startBatch(catIndex, actIndex){
    the popup on open and returns it on close (moving, not cloning, keeps any
    playing narration/demo element intact and its inline handlers wired).
    --------------------------------------------------------------------------- */
-function buildRefSheet(act, domId){
+function buildRefSheet(act, domId, cat){
   const sopSteps = act.sop.map(s=>`<li>${esc(s)}</li>`).join('');
   // A11Y (2026-07-28): the demo clip has no narration track — it is a silent
   // recording of a drill. A teacher who cannot see it gets NOTHING from it, and
@@ -3473,31 +3480,156 @@ function buildRefSheet(act, domId){
   const videoNote = act.videoFile
     ? `<p class="visually-hidden">This demonstration is a silent video. The written steps and the spoken narration below cover the same procedure.</p>`
     : '';
-  const noteHtml = act.facilitatorNote ? `<div class="note"><strong>Facilitator note</strong>${esc(act.facilitatorNote)}</div>` : '';
+  /* FACILITATOR NOTES ARE THE DOCUMENT'S BULLETS, NOT A PARAGRAPH (2026-09-02).
+     They arrived from the content team as a list every time and were being
+     joined into one block of prose, which is how a 120-word note ends up
+     unread — and how the two SAFETY sentences at the end of Near-Far with Cane
+     ended up at word 165 of 172. One line per bullet, IN THE DOCUMENT'S OWN
+     ORDER: the app does not re-group or re-rank them, because deciding which
+     sentence is a safety instruction is the content team's call, not ours.
+     The old single-string form still renders — four activities have not been
+     rewritten from a document yet. */
+  const noteList = Array.isArray(act.facilitatorNotes) ? act.facilitatorNotes.filter(Boolean) : null;
+  const noteHtml = (noteList && noteList.length)
+    ? `<div class="note"><strong>Facilitator notes</strong><ul class="note-list">${noteList.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`
+    : (act.facilitatorNote ? `<div class="note"><strong>Facilitator note</strong>${esc(act.facilitatorNote)}</div>` : '');
   // ACTIVITY META (2026-08-24) — the header block of the content team's SOP
   // document: what you need, how it is run, who it is for, how long it takes.
   // A teacher reads this BEFORE the steps, so it renders above them. Every key
   // is optional and an activity with no `meta` renders nothing at all, which
   // is why this is safe to add while eleven activities are still waiting for
   // their SOPs.
-  const META_ORDER = [['resources','What you need'],['type','How it is run'],['age','Age group'],['time','Time']];
+  /* META LABELS ARE THE DOCUMENT'S TERMS (2026-09-02). They used to be our
+     plainer rewordings — "What you need" for Resources, "How it is run" for
+     Type of Activity. A teacher reads this beside the printed SOP, and the two
+     have to say the same words. (The document heads Direction → Advanced with
+     "Tools" rather than "Resources"; that is a one-off inconsistency in the
+     document and everything here uses Resources.) */
+  const META_ORDER = [['resources','Resources'],['type','Type of Activity'],['age','Recommended Age group'],['time','Time']];
   const metaRows = act.meta ? META_ORDER.filter(function(e){ return act.meta[e[0]]; }).map(function(e){
     return `<div class="meta-row"><dt>${esc(e[1])}</dt><dd>${esc(act.meta[e[0]])}</dd></div>`; }).join('') : '';
   const metaHtml = metaRows
     ? `<div class="ref-block"><span class="section-label">Before you start</span><dl class="act-meta">${metaRows}</dl></div>`
     : '';
   const audioHtml = buildAudioHtml(act);
+  // The demo is only mentioned when there IS one. The old dashed placeholder
+  // ("add a filename in activities.js") was developer text shown to a teacher
+  // in a classroom, on the four activities that have no clip.
   const demoVideoHtml = act.videoFile
     ? `<div class="ref-block"><span class="section-label">Demonstration</span><video controls src="${esc(act.videoFile)}" style="width:100%;margin-top:10px;border-radius:14px;"></video></div>`
-    : `<div class="ref-block"><span class="section-label">Demonstration</span><div class="media-slot">${ICON.video}<span>Demo video slot — add a filename in activities.js (videoFile) when available.</span></div></div>`;
-  return `<div class="ref-src" id="${domId}" data-help-title="${esc(act.name)}" hidden>
-        ${videoNote}
-        ${demoVideoHtml}
-        ${metaHtml}
+    : '';
+  // Purpose is on screen already; it repeats here as the sheet's own framing,
+  // because Prepare is read on its own before a session.
+  const purposeHtml = act.purpose
+    ? `<div class="ref-block"><span class="section-label">Purpose</span><p class="ref-purpose">${esc(act.purpose)}</p></div>`
+    : '';
+  /* CATEGORY-LEVEL SETUP — the document's "Introduction (Set up)" for Terrain
+     Path. It belongs to the category, not to any one activity, so all three
+     terrain activities show it, in Prepare, where it is actually read. */
+  const setupList = cat && Array.isArray(cat.setup) ? cat.setup.filter(Boolean) : null;
+  const setupHtml = (setupList && setupList.length)
+    ? `<div class="ref-block"><span class="section-label">Setting up ${esc(cat.category)}</span><ul class="ref-setup">${setupList.map(s=>`<li>${esc(s)}</li>`).join('')}</ul></div>`
+    : '';
+
+  /* TWO TABS, SPLIT BY THE MOMENT (2026-09-02, "Draft B").
+     RUN IT is what you need with a child in front of you — the steps, the
+     facilitator notes, the narration. PREPARE is what you read once before a
+     session — purpose, resources, how the path is built, the demo clip.
+     Before this the sheet was one flat scroll of five blocks in the order
+     demo → meta → steps → notes → narration: the demo is wanted least and came
+     first, the steps are wanted at nearly every open and came third, and the
+     longest sheet (Terrain Identification With Cane, 11 steps) ran to roughly
+     four screenfuls inside a modal. The split also stops the sheet growing as
+     the content team delivers more.
+     Tabs and panels live INSIDE this .ref-src node on purpose: toggleRefSheet
+     MOVES these children into the popup rather than cloning them, so anything
+     kept outside would be left behind. Switching a tab only flips `hidden` —
+     no DOM moves, so a playing narration survives it.
+     The tab strip reuses .sb-tab, the sound library's control, so this adds no
+     new interaction vocabulary to learn. */
+  const runPanel = `
         <h2 class="section-label">Sequence of procedure</h2><ol class="sop-list">${sopSteps}</ol>
         ${noteHtml}
-        ${audioHtml}
+        ${audioHtml}`;
+  const prepPanel = `${purposeHtml}${metaHtml}${setupHtml}${videoNote}${demoVideoHtml}`;
+  // An activity with nothing to prepare (no purpose, no meta, no setup, no
+  // clip) gets no tab strip at all rather than an empty second tab.
+  const hasPrep = !!(purposeHtml || metaHtml || setupHtml || demoVideoHtml);
+  const inner = hasPrep ? `
+        <div class="ref-tabs sb-tabs" role="tablist" aria-label="Reference sections">
+          <button type="button" class="sb-tab" role="tab" id="${domId}_t_run" aria-selected="true"
+            aria-controls="${domId}_p_run" onclick="refTab(this)" onkeydown="refTabKey(event,this)">Run it</button>
+          <button type="button" class="sb-tab" role="tab" id="${domId}_t_prep" aria-selected="false" tabindex="-1"
+            aria-controls="${domId}_p_prep" onclick="refTab(this)" onkeydown="refTabKey(event,this)">Prepare</button>
+        </div>
+        <div class="ref-panel" id="${domId}_p_run" role="tabpanel" aria-labelledby="${domId}_t_run">${runPanel}</div>
+        <div class="ref-panel" id="${domId}_p_prep" role="tabpanel" aria-labelledby="${domId}_t_prep" hidden>${prepPanel}</div>`
+    : runPanel;
+  return `<div class="ref-src" id="${domId}" data-help-title="${esc(act.name)}" hidden>${inner}</div>`;
+}
+/* ---------------------------------------------------------------------------
+   PURPOSE STRIP (2026-09-02) — the activity's purpose, on the screen, on BOTH
+   the student-picking screen and the record screen, identically placed.
+
+   Why it is not in the ? sheet: purpose is the one piece of an SOP that is
+   true for the whole session and needed without being asked for. Behind the ?
+   it would be a sixth block in a sheet that was already too long; on the
+   screen it is answered before anyone taps anything — which is also what made
+   it possible to move other content OUT of the sheet.
+
+   Why a ruled strip and not a tinted card: on the record screen the category
+   colour is allowed in exactly two places, the Save button and the active
+   result selection (guardrail #1). A hairline and a small label separate it
+   from the category line without spending a third accent, and without adding
+   a second shadow tier (guardrail #2).
+
+   The label matters as much as the text. Without "Why this activity" the
+   purpose reads as one more line of grey subtitle under the heading and gets
+   skipped; with it, a teacher learns the position once and can find it without
+   reading. It is also what lets the picking screen carry both this and its own
+   "who is taking part" instruction without either being mistaken for the other.
+   --------------------------------------------------------------------------- */
+function purposeStrip(act){
+  if(!act || !act.purpose) return '';
+  return `<div class="purpose-strip">
+      <span class="purpose-k">Why this activity</span>
+      <p class="purpose-v">${esc(act.purpose)}</p>
     </div>`;
+}
+/* Tab switching for the reference sheet. Only `hidden` moves — see the note in
+   buildRefSheet about why the panels must stay inside the moved node. */
+function refTab(btn){
+  const strip = btn.parentElement;
+  if(!strip) return;
+  [...strip.children].forEach(b=>{
+    const on = b === btn;
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+    const panel = document.getElementById(b.getAttribute('aria-controls'));
+    if(panel) panel.hidden = !on;
+  });
+  // A tab switch is a new screenful; leaving it mid-scroll from the last one
+  // reads as a broken page.
+  const body = btn.closest('.help-card-body');
+  if(body) body.scrollTop = 0;
+}
+/* A tablist is arrow-navigable — TalkBack and a keyboard both expect it, and
+   the sound library's tabs are the one place in this app that already behaves
+   this way. Left/Right move and activate; Home/End jump to the ends. */
+function refTabKey(e, btn){
+  const strip = btn.parentElement;
+  if(!strip) return;
+  const tabs = [...strip.children];
+  const i = tabs.indexOf(btn);
+  let next = -1;
+  if(e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % tabs.length;
+  else if(e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i - 1 + tabs.length) % tabs.length;
+  else if(e.key === 'Home') next = 0;
+  else if(e.key === 'End') next = tabs.length - 1;
+  if(next < 0) return;
+  e.preventDefault();
+  refTab(tabs[next]);
+  tabs[next].focus();
 }
 /* ---------------------------------------------------------------------------
    CONTEXTUAL ONBOARDING (2026-07-21) — no tour, no spotlight overlay. Three
@@ -4307,14 +4439,15 @@ function showActivity(catIndex, actIndex, opts){
     saveBtnHtml = ''; // the save button lives on the review screen
   }
   // The ? sheet: shared with the child picker — demo, steps, note, narration.
-  const refSheet = buildRefSheet(act, 'actRefSheet');
+  const refSheet = buildRefSheet(act, 'actRefSheet', cat);
   paint(`
     <div class="lede-row">
       <h1 class="lede">${esc(act.name)}<small>${esc(cat.category)}</small></h1>
-      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — demo, steps and narration"
+      <button type="button" class="${helpBtnClass()}" aria-label="How to run ${esc(act.name)} — steps, narration and how to prepare"
         aria-haspopup="dialog" aria-expanded="false" onclick="toggleRefSheet(this,'actRefSheet')">?</button>
       ${helpCallout()}
     </div>
+    ${purposeStrip(act)}
     ${refSheet}
     ${childBar}
     ${buildSoundboard(act)}
@@ -4458,6 +4591,24 @@ function buildField(f, sfx){
   // blue (written reflection), fc-video plum (evidence). Constant across all
   // activities so the code transfers between screens; tints live in styles.css.
   if(f.type === 'count'){ return `<div class="field fc-count"><label for="${fid}">${esc(f.label)}</label><input type="number" id="${fid}" min="0" placeholder="0"></div>`; }
+  /* 'fraction' — two number boxes read as "correct / total" (2026-09-02).
+     Three lines in the SOP document are written as `___ / ___`: terrain changes
+     identified correctly, terrains correctly described, obstacles found
+     independently. Two separate count fields would have worked mechanically and
+     would have been our paraphrase — "4 out of 6 changes" only means anything
+     as a pair, and splitting it invents two labels the content team never wrote.
+     Saved as one value, "4 / 6", so the CSV keeps one column per document line.
+     Each box carries its OWN aria-label: a screen reader announcing two
+     unlabelled number fields under one heading gives no way to tell which is
+     which, and the visible "/" between them is decoration it never reads. */
+  if(f.type === 'fraction'){
+    return `<div class="field fc-count"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label>
+      <div class="fracrow" id="${fid}" role="group" aria-labelledby="lbl_${f.id}${sfx}">
+        <input type="number" class="frac-a" min="0" placeholder="0" aria-label="${esc(f.label)} — how many correct">
+        <span class="frac-sep" aria-hidden="true">/</span>
+        <input type="number" class="frac-b" min="0" placeholder="0" aria-label="${esc(f.label)} — out of how many">
+      </div></div>`;
+  }
   if(f.type === 'result'){
     return `<div class="field fc-judge"><label id="lbl_${f.id}${sfx}">${esc(f.label)}</label><div class="seg" id="${fid}" data-value="" role="group" aria-labelledby="lbl_${f.id}${sfx}">${['Independent','Prompted','Unable'].map(v=>`<button type="button" onclick="pickSeg('${fid}','${v}',this)" aria-pressed="false">${v}</button>`).join('')}</div></div>`;
   }
@@ -4506,6 +4657,17 @@ function buildField(f, sfx){
   }
   if(f.type === 'checkbox'){ return `<div class="field"><div class="checkrow"><input type="checkbox" id="${fid}"><label for="${fid}">${esc(f.label)}</label></div></div>`; }
   return `<div class="field fc-notes"><label for="${fid}">${esc(f.label)}</label><textarea id="${fid}" placeholder="Type any observations..."></textarea></div>`;
+}
+/* One reader for the 'fraction' pair, so the record screen, the batch flow and
+   the review summary can never disagree about what "empty" means. Returns ''
+   when the teacher touched neither box — an untouched field must not be saved
+   as "0 / 0", which would look like an observed score of nothing correct. */
+function fracValue(el){
+  if(!el) return '';
+  const a = (el.querySelector('.frac-a') || {}).value || '';
+  const b = (el.querySelector('.frac-b') || {}).value || '';
+  if(!a && !b) return '';
+  return (a || '0') + ' / ' + (b || '0');
 }
 function pickSeg(groupId, value, btn){
   const group = document.getElementById(groupId);
@@ -4557,6 +4719,7 @@ async function handleSave(activityId){
   act.dataFields.forEach(f=>{
     const el = document.getElementById('f_'+f.id);
     if(f.type === 'count')        values[f.label] = el.value || '0';
+    else if(f.type === 'fraction') values[f.label] = fracValue(el);
     else if(f.type === 'result' || f.type === 'mastery' || f.type === 'choice' || f.type === 'rating') values[f.label] = el.dataset.value || '—';
     else if(f.type === 'checkbox')values[f.label] = el.checked ? 'Yes' : 'No';
     else                          values[f.label] = el.value || '';
@@ -4638,6 +4801,7 @@ function batchHasData(pid){
     const el = document.getElementById('f_'+f.id+'_'+pid);
     if(!el) return false;
     if(f.type === 'count') return !!(el.value && el.value !== '0');
+    if(f.type === 'fraction') return !!fracValue(el);
     if(f.type === 'result' || f.type === 'mastery' || f.type === 'choice' || f.type === 'rating') return !!el.dataset.value;
     if(f.type === 'checkbox') return el.checked;
     return !!(el.value || '').trim();
@@ -4712,6 +4876,7 @@ function batchReview(){
             : `<strong>${esc(el.dataset.value)}</strong>`);
         }
         else if(f.type === 'count'){ if(el.value && el.value !== '0') bits.push(`${esc(el.value)} ${esc(f.label.toLowerCase())}`); }
+        else if(f.type === 'fraction'){ const fv = fracValue(el); if(fv) bits.push(`${esc(f.label.toLowerCase())} ${esc(fv)}`); }
         else if(f.type === 'teacherNotes' || !f.type){ if((el.value||'').trim()) bits.push('note ✎'); }
       });
       const allBits = segBits.concat(bits);
@@ -4765,6 +4930,7 @@ async function handleBatchSave(activityId){
       const el = document.getElementById('f_'+f.id+'_'+pid);
       if(!el) return;
       if(f.type === 'count'){ const v = el.value || ''; if(v && v !== '0') hasDetail = true; values[f.label] = v || '0'; }
+      else if(f.type === 'fraction'){ const v = fracValue(el); if(v) hasDetail = true; values[f.label] = v; }
       else if(f.type === 'result' || f.type === 'mastery' || f.type === 'choice' || f.type === 'rating'){
         const v = el.dataset.value || '';
         // The LAST scored field wins, and that is deliberate: Direction → Basic
