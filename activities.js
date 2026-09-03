@@ -18,13 +18,24 @@
    WHAT EACH FIELD MEANS (read once, then you'll just copy patterns):
    ---------------------------------------------------------------------------
    id            A short unique code. No spaces. Used internally. Make it unique.
+                 NEVER change an id — saved results are keyed to it. Renaming
+                 an activity is safe; changing its id orphans its records.
    name          The title the teacher sees.
+   purpose       ONE OR TWO SENTENCES saying what the activity is for. Unlike
+                 everything else here it is NOT hidden behind the ? — it prints
+                 on screen, under the activity name, on BOTH the student-picking
+                 screen and the recording screen, every time. Keep it to what a
+                 teacher needs to remember mid-session. Leave it out entirely
+                 and nothing renders; nothing breaks.
    withCane      true or false  — is this the "with cane" version of the skill?
                  (Your board shows most skills run without-cane then with-cane.)
    sop           The step-by-step instructions (the SOP). Each line in the list
                  is one step. Add or remove lines freely.
-   facilitatorNote  Optional grey-box reminder (e.g. "stand 3 steps away").
-                 Leave as "" (empty) if there isn't one.
+   facilitatorNotes  The Facilitator Notes, ONE LINE PER BULLET, in the order
+                 the document gives them. They are not re-ordered or grouped by
+                 the app — what you write is what a teacher reads.
+                 (The older single-paragraph `facilitatorNote: "..."` still
+                 renders for the few activities that have not been rewritten.)
    audioFile     Optional. Filename of a pre-made audio narration of the SOP
                  (e.g. "sound_id_hindi.mp3"). Leave "" for now — we add audio
                  in v1 using Sarvam. The slot is already here, ready.
@@ -34,9 +45,16 @@
                  resources / type / age / time; leave a key out and that line
                  simply does not appear. Nothing breaks if an activity has no
                  meta at all.
-   dataFields    What the teacher records after running the activity. Each field
-                 has a "type":
+   dataFields    What the teacher records after running the activity. These are
+                 the document's own "Record a Result" lines — the label is the
+                 wording the teacher sees AND the column heading in the exported
+                 CSV, so changing a label changes the research data's headings.
+                 Each field has a "type":
                     "count"        → a number box (e.g. number of steps)
+                    "fraction"     → two number boxes, "correct / total", for a
+                                     line written as ___ / ___ (e.g. "Terrain
+                                     changes identified correctly")
+                    "rating"       → 1 2 3 4 5 buttons, for "Rate 1–5"
                     "result"       → Independent / Prompted / Unable buttons
                     "mastery"      → Got it / With help / Not yet buttons
                     "choice"       → buttons YOU name, e.g.
@@ -91,6 +109,7 @@ const ACTIVITY_DATA = [
       {
         id: "dir-basic-commands",
         name: "Basic",
+        purpose: "To introduce and strengthen understanding of basic directions left, right, forward and backwards using simple, consistent commands. This activity also works as an icebreaker.",
         withCane: false,
         commandBoard: true,
         commands: [
@@ -110,19 +129,25 @@ const ACTIVITY_DATA = [
         meta: {
           resources: "None",
           type: "Group",
-          age: "8–12 years",
-          time: "15 minutes"
+          age: "08-12",
+          time: "15 minutes (Group)"
         },
         sop: [
-          "Ask the children to stand in a line facing the facilitator, about an arm's length apart.",
-          "Give simple commands from the app — Left, Right, Jump, Clap, Forward, Backwards, Stop, Turn Around.",
-          "Ask the children to perform the action for each command.",
-          "Start with one or two warm-up rounds so the children understand the activity.",
-          "After the warm-up, run at least five rounds, using different commands and changing their order.",
-          "Once the children are comfortable, use Surprise me twice to give commands in a random order.",
-          "If a child cannot tell left from right, go back to raising the left and right hand, then check with the left ear, right ear, left knee, right shoulder."
+          "Ask the children to stand in a line, facing the facilitator, with about an arm’s length of space between them.",
+          "Give simple commands from the application, such as Left, Right, Jump, Clap, Forward, Backwards, Stop, and Turn Around.",
+          "Ask children to perform the action corresponding to each command.",
+          "Start with 1–2 warm-up rounds so children understand the activity.",
+          "After the warm-up, conduct at least 5 rounds using different commands and changing their order.",
+          "Once children are comfortable, use “Surprise Me!” twice to give commands in a random order.",
+          "If a child is unable to identify left and right, reinforce the concept by repeatedly asking them to raise their left and right hands. Then check understanding by asking them to identify their left ear, right ear, left knee, right shoulder, etc."
         ],
-        facilitatorNote: "During the warm-up use a fixed sequence: Turn Left, Turn Right, Jump-Jump, Clap-Clap. Give one command at a time and wait for the children to finish the action before the next one. Adapt the activity for a child with an additional disability — skip Jump if the child has difficulty moving their legs. Use the regional language if a child does not understand the command in English. For a child who needs more support, demonstrate the action or give physical guidance before asking them to respond independently.",
+        facilitatorNotes: [
+          "During warm-up, use a fixed sequence: “Turn Left → Turn Right → Jump-Jump → Clap-Clap.”",
+          "Give one command at a time and wait for children to complete the action before giving the next command.",
+          "Adapt the activity if a child has an additional disability. For example, skip Jump if the child has difficulty moving their legs.",
+          "Use the regional language if the child does not understand the command in English.",
+          "For children who need additional support, demonstrate the action or provide physical guidance before asking them to respond independently."
+        ],
         /* HINDI IS A MACHINE DRAFT (2026-08-25) — the content team must verify it
            BEFORE any pilot audio is generated and before it reaches a school.
            This was asked for explicitly, which suspends the standing rule in
@@ -133,33 +158,18 @@ const ACTIVITY_DATA = [
            narrates the wrong step against the right text on screen. App button
            names (Surprise me) stay in English on purpose: that is what the
            teacher is looking at. */
-        sopTranslations: {
-          hi: [
-            "बच्चों को एक पंक्ति में, फ़ैसिलिटेटर की ओर मुँह करके, लगभग एक हाथ की दूरी पर खड़ा करें।",
-            "ऐप से सरल कमांड दें — बाएँ, दाएँ, कूदो, ताली, आगे, पीछे, रुको और पीछे मुड़ो।",
-            "हर कमांड के अनुसार बच्चों से वही क्रिया करने को कहें।",
-            "पहले एक या दो वार्म-अप राउंड कराएँ ताकि बच्चे गतिविधि समझ सकें।",
-            "वार्म-अप के बाद कम से कम पाँच राउंड कराएँ, हर बार अलग कमांड और अलग क्रम का उपयोग करते हुए।",
-            "जब बच्चे सहज हो जाएँ, तो Surprise me का दो बार उपयोग करके कमांड यादृच्छिक क्रम में दें।",
-            "यदि कोई बच्चा बाएँ और दाएँ में अंतर न कर पाए, तो पहले उससे बायाँ और दायाँ हाथ उठवाएँ, फिर बायाँ कान, दायाँ कान, बायाँ घुटना और दायाँ कंधा पहचानने को कहें।"
-          ]
-        },
         audioFile: "",
         videoFile: "demo-direction-basic.mp4",
         dataFields: [
-          // The SOP's "Record a Result": a rating before and a rating after.
-          // Both use the standing mastery scale so this activity is read the
-          // same way as every other. DECLARATION ORDER MATTERS — the last
-          // scored field is the one the derived Achieved column reads, so
-          // 'after' must stay below 'before'.
-          { id: "sense_before", label: "Direction sense before", type: "mastery" },
-          { id: "sense_after",  label: "Direction sense after",  type: "mastery" },
-          { id: "notes",        label: "Additional observations", type: "teacherNotes" }
+          { id: "dirbefore", label: "Rate direction sense before the activity", type: "rating" },
+          { id: "dirafter", label: "Rate direction sense after the activity", type: "rating" },
+          { id: "notes", label: "Additional observations/ comments", type: "teacherNotes" }
         ]
       },
       {
         id: "dir-advanced-commands",
         name: "Advanced",
+        purpose: "To introduce and develop children’s understanding of cardinal directions (North, South, East, West) and intercardinal directions (Northeast, Northwest, Southeast, Southwest) to support spatial orientation.",
         withCane: false,
         commandBoard: true,
         // compass: true lays the commands out as a COMPASS ROSE instead of a
@@ -190,14 +200,20 @@ const ACTIVITY_DATA = [
         },
         sop: [
           "Ask the child to stand facing the facilitator in a clear space.",
-          "Introduce the four basic directions — North, South, East and West.",
+          "Introduce the four basic directions: North, South, East, and West.",
           "Use the instructions from the app and ask the child to identify or point towards the given direction.",
-          "Once the child is comfortable, introduce North-East, North-West, South-East and South-West.",
-          "Run one or two practice rounds before recording responses.",
-          "Run at least five trials with each child, using different directions in a mixed order.",
-          "Use Surprise me to check whether the child can identify directions in a random order."
+          "Once the child is comfortable, introduce Northeast, Northwest, Southeast, and Southwest.",
+          "Conduct 1–2 practice rounds before recording responses.",
+          "Conduct at least 5 trials with each child, using different directions in a mixed order.",
+          "Use “Surprise Me!” to assess the child’s ability to identify directions in a random order."
         ],
-        facilitatorNote: "Make sure the children understand North, South, East and West before introducing the diagonal directions. Relate the directions to familiar surroundings where it helps — for example, \"the main gate is towards the North\". Use a consistent reference point throughout the activity. Use the regional language if the child does not understand the direction names in English. If a child cannot identify a direction, give a hint or use a familiar landmark to reinforce the concept.",
+        facilitatorNotes: [
+          "Ensure children understand North, South, East, and West before introducing the diagonal directions.",
+          "Relate the directions to familiar surroundings when helpful, e.g., “The main gate is towards the North.”",
+          "Use a consistent reference point throughout the activity.",
+          "Use the regional language if the child does not understand the direction names in English.",
+          "If a child is unable to identify a direction, provide a hint or use a familiar landmark to reinforce the concept."
+        ],
         /* HINDI IS A MACHINE DRAFT (2026-08-25) — the content team must verify it
            BEFORE any pilot audio is generated and before it reaches a school.
            This was asked for explicitly, which suspends the standing rule in
@@ -208,29 +224,14 @@ const ACTIVITY_DATA = [
            narrates the wrong step against the right text on screen. App button
            names (Surprise me) stay in English on purpose: that is what the
            teacher is looking at. */
-        sopTranslations: {
-          hi: [
-            "बच्चे को खुली जगह में फ़ैसिलिटेटर की ओर मुँह करके खड़ा करें।",
-            "चार मुख्य दिशाएँ बताएँ — उत्तर, दक्षिण, पूर्व और पश्चिम।",
-            "ऐप के निर्देशों का उपयोग करें और बच्चे से दी गई दिशा पहचानने या उस ओर इशारा करने को कहें।",
-            "जब बच्चा सहज हो जाए, तो उत्तर-पूर्व, उत्तर-पश्चिम, दक्षिण-पूर्व और दक्षिण-पश्चिम बताएँ।",
-            "प्रतिक्रियाएँ दर्ज करने से पहले एक या दो अभ्यास राउंड कराएँ।",
-            "हर बच्चे के साथ कम से कम पाँच प्रयास कराएँ, हर बार अलग दिशाएँ मिश्रित क्रम में दें।",
-            "यह जाँचने के लिए कि बच्चा यादृच्छिक क्रम में दिशाएँ पहचान पाता है या नहीं, Surprise me का उपयोग करें।"
-          ]
-        },
         audioFile: "",
         // Same drill format as Basic — reusing its demo until a cardinal-
         // specific video arrives; just swap the filename then.
         videoFile: "demo-direction-basic.mp4",
         dataFields: [
-          // The SOP asks for trials and correct responses and makes NO
-          // judgment call, so there is deliberately no mastery field here.
-          // Records from this activity carry no Achieved column at all, rather
-          // than a "No" nobody observed.
-          { id: "trials",  label: "Trials conducted",        type: "count" },
-          { id: "correct", label: "Correct responses",       type: "count" },
-          { id: "notes",   label: "Additional observations", type: "teacherNotes" }
+          { id: "trials", label: "Number of trials conducted", type: "count" },
+          { id: "correct", label: "Number of correct responses", type: "count" },
+          { id: "notes", label: "Additional observations/comments", type: "teacherNotes" }
         ]
       }
     ]
@@ -258,24 +259,29 @@ const ACTIVITY_DATA = [
     activities: [
       {
         id: "sound-which",
-        name: "Which Sound? (Identification)",
+        name: "Identification",
+        purpose: "To help children identify and differentiate between common and unfamiliar sounds in their surroundings.",
         withCane: false,
         soundboard: true,
         // SOP as delivered by the content team (SOP_CC_App.docx, 24 Aug 2026).
         meta: {
-          resources: "Speaker and mobile",
-          type: "Individual (children can be seated as a group)",
-          age: "8–12 years",
-          time: "10 minutes"
+          resources: "Speaker and Mobile",
+          type: "Individual (Seating can be in a group)",
+          age: "08-12",
+          time: "3 minutes (Individual)"
         },
         sop: [
           "Ask the children to sit beside each other, facing the facilitator.",
           "Play one sound at a time from the app, bringing the speaker close to each child individually.",
           "Ask the child to identify the sound.",
-          "Confirm the child's response before moving to the next sound.",
-          "Play two different sounds for each child."
+          "Confirm the child’s response before moving to the next sound.",
+          "Play 2 different sounds for each child."
         ],
-        facilitatorNote: "Adjust the speaker distance and the volume according to the surrounding environment. Tell the children to wait for their turn and not interrupt another child's response. If a child cannot identify a sound, give a simple hint rather than revealing the answer directly.",
+        facilitatorNotes: [
+          "Adjust the speaker distance and sound volume according to the surrounding environment.",
+          "Tell children to wait for their turn and not interrupt another child’s response.",
+          "If a child is unable to identify a sound, give a simple hint rather than revealing the answer directly."
+        ],
         /* HINDI IS A MACHINE DRAFT (2026-08-25) — the content team must verify it
            BEFORE any pilot audio is generated and before it reaches a school.
            This was asked for explicitly, which suspends the standing rule in
@@ -298,39 +304,40 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "demo-sound.mp4",
         dataFields: [
-          // "Overall: Confident / Required Hints" is the content team's own
-          // wording. It is a `choice` field — the options live here, so the
-          // scale can be reworded without a coder. achievedWhen names the
-          // option that means the child managed it unaided, which is what the
-          // derived Achieved column reads.
-          { id: "trials",  label: "Trials conducted",  type: "count" },
-          { id: "correct", label: "Correct responses", type: "count" },
-          { id: "overall", label: "Overall", type: "choice",
-            options: ["Confident", "Required hints"], achievedWhen: "Confident" },
-          { id: "notes",   label: "Additional observations", type: "teacherNotes" }
+          { id: "trials", label: "Number of trials conducted", type: "count" },
+          { id: "correct", label: "Number of correct responses", type: "count" },
+          { id: "overall", label: "Overall", type: "choice", options: ["Confident", "Required Hints"] },
+          { id: "notes", label: "Additional observations/comments", type: "teacherNotes" }
         ]
       },
       {
         id: "sound-source",
-        name: "Source of Sound? (Localization)",
+        name: "Localisation",
+        purpose: "To help children identify the direction and approximate location of a sound source using directional terms such as left, right, front, and back.",
         withCane: false,
         soundboard: true,
         // SOP as delivered by the content team (SOP_CC_App.docx, 24 Aug 2026).
         // Note this one needs TWO adults — it is the only activity on the board
         // that does, and a teacher running the app alone cannot do it.
         meta: {
-          resources: "Speaker, mobile and two people",
-          type: "Individual (children can be seated as a group)",
-          age: "8–12 years",
-          time: "10 minutes"
+          resources: "Speaker, Mobile and 2 People",
+          type: "Individual (Seating can be in a group)",
+          age: "08-12",
+          time: "5 minutes (each child)"
         },
         sop: [
-          "Ask the child to stand facing Person A, the facilitator. Person B stands with the speaker at a suitable distance from the child, in one of four directions — front, back, left or right.",
-          "Person B plays a sound from the app while Person A asks the child to identify the sound, and then the direction it is coming from.",
-          "Repeat the activity with a different child, changing the sound and the direction.",
-          "Run at least three trials with each child to assess their ability to localise sounds."
+          "Ask the child to stand facing Person A (facilitator). Person B stands at a suitable distance from the child in one of the four directions: front, back, left, or right, with the speaker.",
+          "Person B plays a sound from the app while Person A asks the child to: Identify the sound. Identify the direction from which the sound is coming.",
+          "Repeat the activity with a different child, changing the sound and direction.",
+          "Conduct at least 3 trials with each child to assess their ability to localise sounds."
         ],
-        facilitatorNote: "Adjust the speaker distance and volume according to the environment and to how clearly the child can hear the sound. Ask the children to wait for their turn and not interrupt another child's response. If a child cannot identify the sound or the direction, give a simple hint rather than revealing the answer. Person B should remain as quiet as possible while moving with the speaker — avoid footsteps and other movement cues, and if it is appropriate and safe, Person B may remove their footwear to move more quietly.",
+        facilitatorNotes: [
+          "Adjust the speaker distance and volume according to the environment and the child’s ability to hear the sound clearly.",
+          "Ask children to wait for their turn and not interrupt another child’s response.",
+          "If a child is unable to identify the sound or direction, give a simple hint rather than revealing the answer.",
+          "Person B should remain as quiet as possible while moving with the speaker.",
+          "Avoid footsteps or other movement cues. If appropriate and safe, Person B may remove footwear to minimise sound while moving."
+        ],
         /* HINDI IS A MACHINE DRAFT (2026-08-25) — the content team must verify it
            BEFORE any pilot audio is generated and before it reaches a school.
            This was asked for explicitly, which suspends the standing rule in
@@ -352,11 +359,10 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "",
         dataFields: [
-          { id: "trials",  label: "Trials conducted",  type: "count" },
-          { id: "correct", label: "Correct responses", type: "count" },
-          { id: "overall", label: "Overall", type: "choice",
-            options: ["Confident", "Required hints"], achievedWhen: "Confident" },
-          { id: "notes",   label: "Additional observations", type: "teacherNotes" }
+          { id: "trials", label: "Number of trials conducted", type: "count" },
+          { id: "correct", label: "Number of correct responses", type: "count" },
+          { id: "overall", label: "Overall", type: "choice", options: ["Confident", "Required Hints"] },
+          { id: "notes", label: "Additional observations/comments", type: "teacherNotes" }
         ]
       }
     ]
@@ -386,6 +392,7 @@ const ACTIVITY_DATA = [
       {
         id: "snddir-nearfar",
         name: "Near-Far w/o Cane",
+        purpose: "To develop children’s ability to judge the approximate distance of a sound source from their body using auditory cues.",
         withCane: false,
         soundboard: true,
         // SOP as delivered by the content team (SOP.docx, 25 Aug 2026).
@@ -393,21 +400,27 @@ const ACTIVITY_DATA = [
         // fields below are their list. Do not silently re-edit either — send
         // changes back to the content team.
         meta: {
-          resources: "Speaker, mobile and 2 people",
+          resources: "Speaker, Mobile and 2 people",
           type: "Individual",
-          age: "8–12 years",
-          time: "5 minutes"
+          age: "08-12",
+          time: "5 minutes (Individual)"
         },
         sop: [
           "Ask the child and Person A to stand in an open space. Person B stands in one of the four directions, at least 5 m away, and plays a sound using the speaker.",
           "Ask the child to identify the direction of the sound and orient their whole body towards it.",
-          "Ask: \"Is the sound close enough for you to touch?\" The child should answer without moving.",
+          "Ask: “Is the sound close enough for you to touch?” The child should answer without moving.",
           "Ask the child to try reaching towards the sound source without moving their feet.",
-          "Person B moves 2–3 steps closer while remaining outside the child's reach. Repeat the question and ask the child to reach towards the sound source.",
-          "Person B then moves to a position just within the child's reach. Ask the same question, then allow the child to try to reach the sound source.",
+          "Person B moves 2-3 steps closer while remaining outside the child’s reach. Repeat the question and ask the child to reach towards the sound source.",
+          "Person B then moves to a position just within the child’s reach. Ask the same question, then allow the child to try to reach the sound source.",
           "Repeat the activity if the child needs more practice to understand the difference between near and far."
         ],
-        facilitatorNote: "Adjust the speaker distance and sound volume according to the surrounding environment. Use familiar sounds from the app to create a simple context. For example, play a dog sound and ask, \"Is the dog near enough for you to touch?\" Person B should remain as quiet as possible while moving with the speaker. Avoid footsteps and other movement cues. If safe and appropriate, Person B may remove footwear to minimise sound. Ensure the child remains in a safe, clear space while reaching.",
+        facilitatorNotes: [
+          "Adjust the speaker distance and sound volume according to the surrounding environment.",
+          "Use familiar sounds from the app to create a simple context. For example, play a dog sound and ask, “Is the dog near enough for you to touch?”",
+          "Person B should remain as quiet as possible while moving with the speaker.",
+          "Avoid footsteps and other movement cues. If safe and appropriate, Person B may remove footwear to minimise sound.",
+          "Ensure the child remains in a safe, clear space while reaching."
+        ],
         /* HINDI IS A MACHINE DRAFT (2026-08-25) — content team must verify before
            any pilot audio is generated. Lines are 1:1 with `sop` above; see the
            fuller note on Direction -> Basic. */
@@ -425,15 +438,15 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "demo-snddir-nearfar.mp4",
         dataFields: [
-          { id: "oriented", label: "Correctly oriented towards the sound", type: "choice",
-            options: ["Yes", "No"], achievedWhen: "Yes" },
-          { id: "nearfar",  label: "Understanding of near and far", type: "rating" },
-          { id: "notes",    label: "Additional observations", type: "teacherNotes" }
+          { id: "oriented", label: "Correctly oriented towards the sound", type: "choice", options: ["Yes", "No"] },
+          { id: "nearfar", label: "Understanding of near and far", type: "rating" },
+          { id: "notes", label: "Additional observations/comments", type: "teacherNotes" }
         ]
       },
       {
         id: "snddir-nearfar-cane",
         name: "Near-Far with Cane",
+        purpose: "To help children understand how the cane extends their reach and develop the ability to judge the distance of a sound source from the cane tip using auditory cues and steps.",
         withCane: true,
         soundboard: true,
         // SOP as delivered by the content team (SOP.docx, 25 Aug 2026).
@@ -441,22 +454,30 @@ const ACTIVITY_DATA = [
         // fields below are their list. Do not silently re-edit either — send
         // changes back to the content team.
         meta: {
-          resources: "Speaker, mobile, cane (as per the child's height) and 2 people",
+          resources: "Speaker, Mobile, Cane (as per children’s height) and 2 people",
           type: "Individual",
-          age: "8–12 years",
+          age: "08-12",
           time: "10 minutes"
         },
         sop: [
           "Ask the child and Person A to stand in an open, clear space. Person B stands facing the child, at least 5 m away, and plays a sound using the speaker.",
-          "Give the child a cane appropriate to their height. Ask: \"Is the sound close enough for you to touch with the cane?\" The child should answer without moving.",
+          "Give the child a cane appropriate to their height. Ask: “Is the sound close enough for you to touch with the cane?” The child should answer without moving.",
           "Ask the child to reach towards the sound source using the cane, without moving their feet. Provide guidance on holding the cane if needed.",
-          "Person B moves 2–3 steps closer, while remaining outside the child's cane reach. Repeat the question and ask the child to reach towards the sound with the cane.",
-          "Person B moves to a position just within the child's cane reach. Ask the same question and allow the child to touch the sound source with the cane.",
+          "Person B moves 2–3 steps closer, while remaining outside the child’s cane reach. Repeat the question and ask the child to reach towards the sound with the cane.",
+          "Person B moves to a position just within the child’s cane reach. Ask the same question and allow the child to touch the sound source with the cane.",
           "Once the child is able to reach the source, explain that the cane extends their reach beyond their hand.",
           "To demonstrate this difference, keep the cane tip at the sound source. Ask the child to estimate how many steps they would need to take to reach the source without the cane. Discuss how the cane helped them reach the source from a greater distance.",
           "Repeat the activity if the child needs more practice to understand the difference between near and far and how the cane extends their reach."
         ],
-        facilitatorNote: "Adjust the speaker distance and sound volume according to the surrounding environment. Ensure the cane length is appropriate for the child's height (height × 0.75). Use familiar sounds from the app to create a simple context. For example, play a dog sound and ask, \"Is the dog near enough for you to touch with the cane?\" Person B should remain as quiet as possible while moving with the speaker. Avoid footsteps and other movement cues. If safe and appropriate, Person B may remove footwear to minimise sound. Ensure the child has sufficient clear space and is supervised while using the cane. Do not ask the child to walk towards the sound source until the facilitator confirms that the path is clear and safe.",
+        facilitatorNotes: [
+          "Adjust the speaker distance and sound volume according to the surrounding environment.",
+          "Ensure the cane length is appropriate for the child’s height. (Heightx0.75)",
+          "Use familiar sounds from the app to create a simple context. For example, play a dog sound and ask, “Is the dog near enough for you to touch with the cane?”",
+          "Person B should remain as quiet as possible while moving with the speaker.",
+          "Avoid footsteps and other movement cues. If safe and appropriate, Person B may remove footwear to minimise sound.",
+          "Ensure the child has sufficient clear space and is supervised while using the cane.",
+          "Do not ask the child to walk towards the sound source until the facilitator confirms that the path is clear and safe."
+        ],
         /* HINDI IS A MACHINE DRAFT (2026-08-25) — content team must verify before
            any pilot audio is generated. Lines are 1:1 with `sop` above; see the
            fuller note on Direction -> Basic. */
@@ -475,14 +496,15 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "demo-snddir-nearfar-cane.mp4",
         dataFields: [
-          { id: "nearfar",   label: "Understanding of near and far", type: "rating" },
+          { id: "nearfar", label: "Understanding of near and far", type: "rating" },
           { id: "canereach", label: "Understanding of cane-extended reach", type: "rating" },
-          { id: "notes",     label: "Additional observations", type: "teacherNotes" }
+          { id: "notes", label: "Additional observations/comments", type: "teacherNotes" }
         ]
       },
       {
         id: "snddir-steps-solo",
         name: "Count Steps",
+        purpose: "To develop children’s ability to estimate distance by counting steps and understand the relationship between the number of steps and the distance to a sound source or object.",
         withCane: false,
         soundboard: true,
         // SOP as delivered by the content team (SOP.docx, 25 Aug 2026).
@@ -490,9 +512,9 @@ const ACTIVITY_DATA = [
         // fields below are their list. Do not silently re-edit either — send
         // changes back to the content team.
         meta: {
-          resources: "Phone and speaker",
+          resources: "Phone and Speaker",
           type: "Individual",
-          age: "8–12 years",
+          age: "08-12",
           time: "15 minutes"
         },
         sop: [
@@ -503,7 +525,13 @@ const ACTIVITY_DATA = [
           "If the child reaches the sound source in fewer than the estimated steps, then make them compare the estimated number of steps with the actual number of steps taken.",
           "Repeat the activity at least 3 times using different distances."
         ],
-        facilitatorNote: "Adjust the speaker distance and sound volume according to the surrounding environment. Encourage the child to walk at their natural pace and take comfortable, consistent steps. Ask the child to maintain a similar step length throughout the activity rather than deliberately taking shorter or longer steps to match the estimate. Encourage the child to compare their estimated and actual number of steps after each round. Ensure the walking path is clear and safe.",
+        facilitatorNotes: [
+          "Adjust the speaker distance and sound volume according to the surrounding environment.",
+          "Encourage the child to walk at their natural pace and take comfortable, consistent steps.",
+          "Ask the child to maintain a similar step length throughout the activity rather than deliberately taking shorter or longer steps to match the estimate.",
+          "Encourage the child to compare their estimated and actual number of steps after each round.",
+          "Ensure the walking path is clear and safe."
+        ],
         /* HINDI IS A MACHINE DRAFT (2026-08-25) — content team must verify before
            any pilot audio is generated. Lines are 1:1 with `sop` above; see the
            fuller note on Direction -> Basic. */
@@ -520,14 +548,15 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "demo-snddir-steps-solo.mp4",
         dataFields: [
-          { id: "rounds",   label: "Rounds conducted", type: "count" },
-          { id: "estimate", label: "Understanding of distance estimation", type: "rating" },
-          { id: "notes",    label: "Additional observations", type: "teacherNotes" }
+          { id: "rounds", label: "No. of Rounds conducted", type: "count" },
+          { id: "dist", label: "Understanding of distance estimation", type: "rating" },
+          { id: "notes", label: "Additional Observations/Comments", type: "teacherNotes" }
         ]
       },
       {
         id: "snddir-steps-group",
         name: "Count Steps (Group)",
+        purpose: "To develop children’s ability to estimate distance by counting steps and understand the relationship between the number of steps and the distance to a sound source or object.",
         withCane: false,
         soundboard: true,
         group: true,
@@ -536,9 +565,9 @@ const ACTIVITY_DATA = [
         // fields below are their list. Do not silently re-edit either — send
         // changes back to the content team.
         meta: {
-          resources: "Phone, speaker and 2 people",
+          resources: "Phone, Speaker and 2 people.",
           type: "Group",
-          age: "8–12 years",
+          age: "08-12",
           time: "30 minutes"
         },
         sop: [
@@ -551,7 +580,13 @@ const ACTIVITY_DATA = [
           "Repeat the activity by allowing each child to take a turn as the sound source and the person estimating the distance.",
           "Conduct at least 3 rounds, changing the positions and distances between children."
         ],
-        facilitatorNote: "Ensure all children are standing in a clear and safe space. Ask the child to keep the sound source in the same position until their friend reaches them. Encourage the child to walk naturally and maintain a similar step length throughout. After each round, discuss the difference between the estimated and actual number of steps. Adjust the distance between children according to the available space and the children's abilities.",
+        facilitatorNotes: [
+          "Ensure all children are standing in a clear and safe space.",
+          "Ask the child to keep the sound source in the same position until their friend reaches them.",
+          "Encourage the child to walk naturally and maintain a similar step length throughout.",
+          "After each round, discuss the difference between the estimated and actual number of steps.",
+          "Adjust the distance between children according to the available space and the children’s abilities."
+        ],
         /* HINDI IS A MACHINE DRAFT (2026-08-25) — content team must verify before
            any pilot audio is generated. Lines are 1:1 with `sop` above; see the
            fuller note on Direction -> Basic. */
@@ -570,9 +605,9 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "demo-snddir-steps-group.mp4",
         dataFields: [
-          { id: "rounds",   label: "Rounds conducted", type: "count" },
-          { id: "estimate", label: "Understanding of distance estimation", type: "rating" },
-          { id: "notes",    label: "Additional observations", type: "teacherNotes" }
+          { id: "rounds", label: "No. of Rounds conducted", type: "count" },
+          { id: "dist", label: "Understanding of distance estimation", type: "rating" },
+          { id: "notes", label: "Additional Observations/Comments", type: "teacherNotes" }
         ]
       }
     ]
@@ -647,27 +682,35 @@ const ACTIVITY_DATA = [
       },
       {
         id: "slt-withcane-toy",
-        name: "Straight Line Travel — With Cane + Push Toy",
+        name: "With Push Toy",
+        purpose: "To encourage independent straight-line movement towards a sound source while building a positive, playful association with mobility and distance judgement.",
         withCane: true,
         soundboard: true,
         // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
         // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
         // Do not silently re-edit either - send changes back to the content team.
         meta: {
-          resources: "Push toy, cane (as per height), speaker, 1 facilitator",
+          resources: "Push Toy, Cane (as per height), Speaker,1 Facilitator",
           type: "Individual",
-          age: "8-12 years",
+          age: "08-12 yrs",
           time: "15 minutes"
         },
         sop: [
           "Give the child a push toy without the cane and allow them to explore it freely. Observe their initial response and interest.",
           "Build curiosity through a simple story. Remove the cane tip, attach the push toy to the cane, and allow the child to explore it again.",
           "Ask the child to stand in an open, clear space. Place the speaker approximately 5 m away and continue the story.",
-          "Example: play a dog sound and use a frog push toy - “Can you take the frog to meet the dog?”",
+          "Example: Play a dog sound and use a frog push toy: “Can you take the frog to meet the dog?”",
           "Ask the child to move towards the sound source using the cane with the push toy. Observe how they naturally hold and move the cane.",
           "Once the child reaches the sound source, observe how accurately they locate it with the push toy. Provide directional guidance only if needed."
         ],
-        facilitatorNote: "Allow enough time for the child to freely explore the push toy, both with and without the cane. Use simple stories and familiar sounds to make the activity playful and purposeful. The concept of push toys might not be interesting enough for some mature children, in which case this activity can be skipped only for them. Adjust the speaker distance and volume according to the environment. Keep the travel path clear and safe. Avoid correcting the child's cane hold immediately; first observe their natural grip, posture, and movement.",
+        facilitatorNotes: [
+          "Allow enough time for the child to freely explore the push toy, both with and without the cane.",
+          "Use simple stories and familiar sounds to make the activity playful and purposeful.",
+          "The Concept of Push toys might not be interesting enough for some mature kids, in which case this activity can be skipped only for them.",
+          "Adjust the speaker distance and volume according to the environment.",
+          "Keep the travel path clear and safe.",
+          "Avoid correcting the child’s cane hold immediately; first observe their natural grip, posture, and movement."
+        ],
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
         /* HINDI REMOVED 2026-09-01. The previous hi[] was 1:1 with the OLD
@@ -679,36 +722,44 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "demo-slt-withcane-toy.mp4",
         dataFields: [
-          { id: "steps",  label: "Number of steps",        type: "count" },
-          { id: "veer",   label: "Times drifted off line", type: "count" },
-          { id: "result", label: "Did the child get it?",  type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",        type: "teacherNotes" }
+          { id: "toyresp", label: "Response to Push Toy", type: "choice", options: ["Excited", "Neutral", "Not Interested"] },
+          { id: "confid", label: "Confidence while walking", type: "rating" },
+          { id: "notes", label: "Additional Observations/Comments", type: "teacherNotes" }
         ]
       },
       {
         id: "slt-withcane",
-        name: "Straight Line Travel — With Cane",
+        name: "With Cane",
+        purpose: "To develop independent straight-line walking towards a sound source while building distance judgement, confidence, and familiarity with cane use.",
         withCane: true,
         soundboard: true,
         // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
         // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
         // Do not silently re-edit either - send changes back to the content team.
         meta: {
-          resources: "Cane, roller tip, speaker",
+          resources: "Cane, Roller Tip, Speaker",
           type: "Individual",
-          age: "8-12 years",
+          age: "08-12 yrs",
           time: "15 minutes"
         },
         sop: [
           "Give the child a cane appropriate to their height and allow them to hold and explore it comfortably.",
-          "Demonstrate the features of the cane - how it folds, reopens, grips, and its tips.",
+          "Demonstrate the features of the Cane (How it folds, reopens, grips, and tips)",
           "Introduce the cane tip through a simple narrative: “Imagine the cane tip has a tyre like a car. When you move it from left to right, it rolls smoothly and helps you find what is in your path.”",
           "Demonstrate a gentle left-to-right movement of the cane and ask the child to try it slightly angled in front of the body, holding it in a way that feels comfortable.",
           "Place a speaker approximately 5 m away and ask the child to move towards the sound while continuing the left-to-right cane movement.",
           "Allow the child to walk at their natural pace. Observe their cane hold, posture, movement, and confidence without immediately correcting them.",
           "Once the child reaches the sound source, appreciate the attempt and discuss how the cane helped them explore the path ahead."
         ],
-        facilitatorNote: "Keep the introduction simple; the aim is to build familiarity with cane movement, not teach perfect cane technique at this stage. Allow the child to choose a comfortable way of holding the cane. Encourage a smooth and relaxed left-to-right movement rather than forceful movement. Give physical guidance only if the child is unable to understand the movement through verbal instructions or demonstration. Adjust the speaker distance and volume according to the environment. Ensure the walking path is clear and safe. Observe the child's natural grip, cane angle, posture, movement pattern, and confidence.",
+        facilitatorNotes: [
+          "Keep the introduction simple; the aim is to build familiarity with cane movement, not teach perfect cane technique at this stage.",
+          "Allow the child to choose a comfortable way of holding the cane.",
+          "Encourage a smooth and relaxed left-to-right movement rather than forceful movement.",
+          "Give physical guidance only if the child is unable to understand the movement through verbal instructions or demonstration.",
+          "Adjust the speaker distance and volume according to the environment.",
+          "Ensure the walking path is clear and safe.",
+          "Observe the child’s natural grip, cane angle, posture, movement pattern, and confidence."
+        ],
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1.
         // No toy-faded demo filmed yet — wire the filename once it exists.
@@ -721,10 +772,9 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "",
         dataFields: [
-          { id: "steps",  label: "Number of steps",        type: "count" },
-          { id: "veer",   label: "Times drifted off line", type: "count" },
-          { id: "result", label: "Did the child get it?",  type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",        type: "teacherNotes" }
+          { id: "ltr", label: "Able to perform left-to-right cane movement", type: "choice", options: ["Yes", "With Support", "No"] },
+          { id: "confid", label: "Confidence while walking with the cane", type: "rating" },
+          { id: "notes", label: "Additional observations/comments", type: "teacherNotes" }
         ]
       }
     ]
@@ -735,47 +785,52 @@ const ACTIVITY_DATA = [
      stage inside Straight Line Travel, Category 4: slt-withcane-toy.
      Old id `push-race` retired; pre-pilot orphan records accepted.)
      ============================================================== */
-  /* ===== Terrain Game — three stages ============================
-     Rebuilt 2026-07-14 from field videos + the course photo. The
-     course is a LANE of contrasting floor textures laid end to end
-     (e.g. yoga mat → grass mat → tactile paving → doormat), with
-     small red discs as pick-up obstacles for stage 3:
+  /* ===== TERRAIN PATH — three stages ============================
+     Renamed from "Terrain Game" 2026-09-02 to the document's own
+     heading. The three activity names are the document's too:
 
-       1. Introduction      — the child learns each surface: feet
-                              first (with footwear), then the cane.
-       2. Walk the Course   — the child travels the whole lane with
-                              the cane, naming each surface change.
-       3. Find the Obstacle — a red disc on every mat but one; the
-                              child sweeps, finds, and picks each up.
+       1. Terrain Identification with Feet  (id terrain-intro)
+       2. Terrain Identification With Cane  (id terrain-walk)
+       3. Find the Obstacles                (id terrain-obstacle)
 
-     The category-level ? sheet teaches the TEACHER how to build the
-     course (help lines + setup video + room photo). The data to
-     watch across stages: SURFACES NAMED (recognition) rising, and
-     TIMES HESITATED (confidence at transitions) falling. */
+     Ids are unchanged, so every saved record followed the rename —
+     records key on the id, never on the name.
+
+     `setup` below is the document's own "Introduction (Set up)"
+     section, transcribed. It is CATEGORY-level, not an activity: it
+     describes how to build the path, and it renders in the Prepare
+     tab of the ? sheet on all three terrain activities, which is
+     where a teacher reads it. The invented July setup lines it
+     replaced were written from a course photo before the content
+     team had delivered this section. */
   {
-    category: "Terrain Game",
-    description: "A lane of changing floor textures — the child learns each surface, walks the course with the cane, then hunts obstacles across it.",
-    help: [
-      "Build a straight lane of 4–5 contrasting textures laid end to end — e.g. yoga mat → grass mat → tactile paving → doormat. Any mats you have work; what matters is that each one feels and sounds different underfoot.",
-      "Leave no gaps between mats — every step should land on a texture, and each border is a 'surface change' the child learns to catch.",
-      "Keep small red discs (or toffees) handy — they become the obstacles in stage 3.",
-      "Run the stages in order: Introduction → Walk the Course → Find the Obstacle. Two lanes side by side let two children run without waiting."
+    category: "Terrain Path",
+    description: "A path of contrasting floor textures — the child learns each surface by foot, then by cane, then hunts obstacles along it.",
+    setup: [
+      "How Many Terrain Surfaces Are Recommended? Use at least 4 contrasting terrain surfaces so children can experience and differentiate a variety of tactile and auditory feedback.",
+      "Recommended Terrain Size: Each terrain section can be approximately 2 ft × 6 ft, providing enough space for the child to walk and explore the surface using their feet and cane.",
+      "Arrangement of the Terrain Path: The terrain sections can be arranged in different layouts depending on the available space. A U-shaped path is recommended as it introduces turns, allowing children to practise re-orientation and maintaining their position on the path while changing direction.",
+      "Suggested Terrain Surfaces — choose surfaces that provide clearly different tactile and auditory feedback, for example: Yoga Mat (soft and smooth); Yoga Mat + Anti-slip Tape (rough/textured, representing a road-like surface); Artificial Grass (soft and textured); Anti-slip Bathroom Mat (soft and bumpy); Tactile Tile (hard and textured; can also be used around turns).",
+      "Order of Terrains: Begin with familiar and easily distinguishable surfaces, then gradually introduce less familiar or more challenging textures. This helps children build confidence before making finer surface distinctions.",
+      "Securing the Terrain Path: Secure all mats firmly to prevent slipping or movement during the activity. Velcro-based strips can be attached underneath the mats to connect and hold the terrain sections in place.",
+      "Before every session, check that the mats, edges, Velcro strips, and surrounding walking area are stable and free from tripping hazards."
     ],
     helpVideo: "demo-terrain-setup.mp4",
     helpImage: "help-terrain-setup.jpg",
     activities: [
       {
         id: "terrain-intro",
-        name: "Terrain — Introduction",
+        name: "Terrain Identification with Feet",
+        purpose: "Develop awareness of different ground surfaces through foot feedback, build vocabulary to describe how surfaces feel and sound, and use these cues to support mental mapping and orientation.",
         withCane: false,
         // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
         // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
         // Do not silently re-edit either - send changes back to the content team.
         meta: {
-          resources: "Terrain mats, 1 facilitator",
+          resources: "Terrain Mats, 1 Facilitator",
           type: "Individual",
-          age: "8-12 years",
-          time: "10 minutes"
+          age: "08-12",
+          time: "10 minutes (Individual)"
         },
         sop: [
           "Take the child to the starting point of the terrain path. Explain that there are different surfaces along the path and ask them to say “Change” whenever they feel the surface change under their feet.",
@@ -785,7 +840,13 @@ const ACTIVITY_DATA = [
           "Ask whether the surface feels or sounds familiar and if it reminds them of any place or surface they have experienced before.",
           "Continue walking and repeat the same exploration for each new terrain."
         ],
-        facilitatorNote: "Allow the child to describe the surface in their own words first before suggesting vocabulary. There is no single correct way to describe how a surface feels or sounds; focus on whether the child can notice and differentiate changes. If a child is getting confused, use the floor feedback to create a comparison. If the child's cognitive level allows, relate surfaces to familiar environments where possible, such as grass, tiles, concrete, carpet, mud, or gravel. Ensure the terrain path is clear of unintended obstacles and safe for exploration.",
+        facilitatorNotes: [
+          "Allow the child to describe the surface in their own words first before suggesting vocabulary.",
+          "There is no single correct way to describe how a surface feels or sounds; focus on whether the child can notice and differentiate changes.",
+          "If a child is getting confused, use the floor feedback to create a comparison understanding.",
+          "If the child’s cognitive level allows, relate surfaces to familiar environments, when possible, such as grass, tiles, concrete, carpet, mud, or gravel.",
+          "Ensure the terrain path is clear of unintended obstacles and safe for exploration."
+        ],
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated. Steps line up 1:1
         // with `sop` above, as required by generate-audio.js.
@@ -798,23 +859,25 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "",
         dataFields: [
-          { id: "surfaces", label: "Surfaces named correctly", type: "count" },
-          { id: "result",   label: "Did the child get it?",    type: "mastery" },
-          { id: "notes",    label: "Teacher's notes",          type: "teacherNotes" }
+          { id: "changes", label: "Terrain changes identified correctly", type: "fraction" },
+          { id: "describe", label: "Terrains correctly described/differentiated", type: "fraction" },
+          { id: "vocab", label: "Ability to describe terrain using sound/feel vocabulary", type: "rating" },
+          { id: "notes", label: "Additional observations/comments", type: "teacherNotes" }
         ]
       },
       {
         id: "terrain-walk",
-        name: "Terrain — Walk the Course",
+        name: "Terrain Identification With Cane",
+        purpose: "To help children identify and differentiate ground surfaces through cane feedback while developing controlled cane movement and orientation to surface boundaries.",
         withCane: true,
         // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
         // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
         // Do not silently re-edit either - send changes back to the content team.
         meta: {
-          resources: "Terrain mats, cane with roller tip (as per height), 1 small training cone, 1 candy, 1 facilitator",
+          resources: "Terrain Mats, Cane with Roller Tip (as per height), 1 small training cone, 1 candy, 1 Facilitator",
           type: "Individual",
-          age: "8-12 years",
-          time: "10 minutes"
+          age: "08-12",
+          time: "10 minutes (Individual)"
         },
         sop: [
           "Place a training cone with a reward/object inside it on the last terrain mat.",
@@ -829,7 +892,16 @@ const ACTIVITY_DATA = [
           "Ask the child to identify and retrieve the object from the training cone.",
           "Help the child return to a standing position, re-establish their cane position and left-to-right arc, and continue moving."
         ],
-        facilitatorNote: "Introduce the grip and cane movement before starting the terrain path. Initially provide verbal or physical guidance as required, then gradually reduce assistance. Encourage the child to notice differences in sound and tactile feedback from each terrain. Use the mat boundaries as learning references but encourage the child to gradually rely on cane feedback rather than continuous facilitator instructions. Avoid forcing an exact arc width - the aim is a controlled and consistent arc that provides useful coverage. When an obstacle is detected, encourage the child to stop first and gather information before approaching it. Ensure the terrain path and surrounding area are clear of unintended hazards. Adapt squatting, bending, grip, or retrieval methods according to the child's physical abilities.",
+        facilitatorNotes: [
+          "Introduce the grip and cane movement before starting the terrain path.",
+          "Initially provide verbal or physical guidance as required, then gradually reduce assistance.",
+          "Encourage the child to notice differences in sound and tactile feedback from each terrain.",
+          "Use the mat boundaries as learning references but encourage the child to gradually rely on cane feedback rather than continuous facilitator instructions.",
+          "Avoid forcing an exact arc width. The aim is a controlled and consistent arc that provides useful coverage.",
+          "When an obstacle is detected, encourage the child to stop first and gather information before approaching it.",
+          "Ensure the terrain path and surrounding area are clear of unintended hazards.",
+          "Adapt squatting, bending, grip, or retrieval methods according to the child’s physical abilities."
+        ],
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated.
         /* HINDI REMOVED 2026-09-01. The previous hi[] was 1:1 with the OLD
@@ -841,27 +913,29 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "demo-terrain-walk.mp4",
         dataFields: [
-          { id: "surfaces", label: "Surfaces named correctly",  type: "count" },
-          { id: "hesit",    label: "Times hesitated / stopped", type: "count" },
-          { id: "result",   label: "Did the child get it?",     type: "mastery" },
-          { id: "notes",    label: "Teacher's notes",           type: "teacherNotes" }
+          { id: "changes", label: "Terrain changes identified correctly", type: "fraction" },
+          { id: "bounds", label: "Ability to use mat boundaries for orientation", type: "rating" },
+          { id: "arc", label: "Ability to maintain left-to-right cane movement", type: "rating" },
+          { id: "assist", label: "Level of overall assistance required", type: "choice", options: ["None", "Verbal Hint", "Physical Assistance"] },
+          { id: "notes", label: "Additional observations/comments", type: "teacherNotes" }
         ]
       },
       {
         id: "terrain-obstacle",
-        name: "Terrain — Find the Obstacle",
+        name: "Find the Obstacles",
+        purpose: "To help children independently apply their terrain identification, cane movement, orientation, and obstacle detection skills to locate and retrieve objects along a terrain path.",
         withCane: true,
         // SOP as delivered by the content team (SOP_CC_App.docx, FINAL, 1 Sep 2026).
         // 'Steps' and 'Facilitator Notes' are their sections, transcribed.
         // Do not silently re-edit either - send changes back to the content team.
         meta: {
-          resources: "Terrain mats, cane with roller tip (as per height), small training cones, reward (candy), 1 facilitator",
+          resources: "Terrain Mats, Cane with Roller Tip (as per height), small training cones, reward (candy), 1 Facilitator",
           type: "Individual",
-          age: "8-12 years",
+          age: "08-12",
           time: "10 minutes"
         },
         sop: [
-          "Pre-requisite: the child should have completed Terrain Identification with Cane and practised detecting, approaching, and locating an obstacle before attempting this activity.",
+          "Pre-requisite: The child should have completed Terrain Identification with Cane and practised detecting, approaching, and locating an obstacle before attempting this activity.",
           "Place one obstacle with a small reward on each terrain along the path.",
           "Take the child to the starting point and provide a cane appropriate to their height.",
           "Explain that rewards are placed, one on each mat, along the path, and they need to find them using their cane.",
@@ -873,7 +947,15 @@ const ACTIVITY_DATA = [
           "After retrieving each reward, ask the child to re-orient to the path before continuing.",
           "Continue until the child has explored the complete terrain path and found all the rewards."
         ],
-        facilitatorNote: "Conduct this activity only after the child has practised the terrain path with a cane. Give the child enough time to problem-solve independently before providing assistance. Avoid immediately correcting cane movement, direction, or orientation - step in only when the child is stuck or there is a safety concern. Use verbal hints before providing physical assistance. Observe whether the child independently uses previously learnt skills such as terrain feedback, mat boundaries, cane arc, obstacle detection, and re-orientation. Do not guide the child towards the rewards through unintended cues. Keep the complete path clear of unintended hazards.",
+        facilitatorNotes: [
+          "Conduct this activity only after the child has practised the terrain path with a cane.",
+          "Give the child enough time to problem-solve independently before providing assistance.",
+          "Avoid immediately correcting cane movement, direction, or orientation. Step in only when the child is stuck or there is a safety concern.",
+          "Use verbal hints before providing physical assistance.",
+          "Observe whether the child independently uses previously learnt skills such as terrain feedback, mat boundaries, cane arc, obstacle detection, and re-orientation.",
+          "Do not guide the child towards the rewards through unintended cues.",
+          "Keep the complete path clear of unintended hazards."
+        ],
         // DRAFT translation (machine-drafted 2026-07-14) — content team must
         // verify wording BEFORE pilot audio is generated.
         /* HINDI REMOVED 2026-09-01. The previous hi[] was 1:1 with the OLD
@@ -885,9 +967,12 @@ const ACTIVITY_DATA = [
         audioFile: "",
         videoFile: "",
         dataFields: [
-          { id: "found",  label: "Obstacles found",          type: "count" },
-          { id: "result", label: "Did the child get it?",    type: "mastery" },
-          { id: "notes",  label: "Teacher's notes",          type: "teacherNotes" }
+          { id: "found", label: "Obstacles/rewards found independently", type: "fraction" },
+          { id: "bounds", label: "Ability to use mat boundaries for orientation", type: "rating" },
+          { id: "arc", label: "Ability to maintain left-to-right cane movement", type: "rating" },
+          { id: "assist", label: "Level of overall assistance required", type: "choice", options: ["None", "Verbal Hint", "Physical Assistance"] },
+          { id: "reorient", label: "Ability to re-orient after collecting the reward", type: "choice", options: ["Independent", "With Support", "Unable"] },
+          { id: "notes", label: "Additional observations/comments", type: "teacherNotes" }
         ]
       }
     ]
