@@ -11,6 +11,16 @@ cd "$(dirname "$0")/.."
 
 fail() { echo "GATE FAILED: $*" >&2; exit 1; }
 
+# Gate logs go in a private temp DIRECTORY, not fixed /tmp/<name>.log paths.
+# Found 2026-09-02: run over the desktop bridge, the redirect to
+# $GATE_LOGS/a11y-smoke.log failed with "Permission denied" (the file belonged to an
+# earlier real-terminal run), so node never ran — and the failure branch then
+# cat'd that stale log and reported a PREVIOUS DAY'S failure, complete with the
+# previous day's activity names, as if it were this run. A gate that cannot
+# write its own log must not be able to report someone else's result.
+GATE_LOGS="$(mktemp -d "${TMPDIR:-/tmp}/om-gates.XXXXXX")"
+trap 'rm -rf "$GATE_LOGS"' EXIT
+
 # ---- 1. School-ID consistency guard (app.js seedSchools vs supabase/schema.sql)
 app_ids=$(grep -o "id:'sch_[a-z_]*'" app.js | grep -o "sch_[a-z_]*" | sort -u)
 sql_ids=$(grep -o "('sch_[a-z_]*'" supabase/schema.sql | grep -o "sch_[a-z_]*" | sort -u)
@@ -51,24 +61,24 @@ catch (e) { console.error("BUILD FAILED: JS parse error: " + e.message); process
 # axe-core is a dev-only dependency and may be absent on a fresh clone — the
 # contrast check has no dependencies and always runs; the axe sweep skips with
 # a warning rather than blocking a build.
-node scripts/a11y-contrast.js > /tmp/a11y-contrast.log 2>&1 \
-  || { cat /tmp/a11y-contrast.log; fail "contrast check failed — see the pairs above"; }
+node scripts/a11y-contrast.js > $GATE_LOGS/a11y-contrast.log 2>&1 \
+  || { cat $GATE_LOGS/a11y-contrast.log; fail "contrast check failed — see the pairs above"; }
 echo "OK  contrast (all four colour modes)"
 
 # a11y-nochange.js defends the DESIGN, not the accessibility: it asserts the
 # rem tokens still compute to their old px values, and that no rule in the
 # appended a11y block escapes its mode gate into the default look. The first
 # draft of that block changed three things at 1x; this is why.
-node scripts/a11y-nochange.js > /tmp/a11y-nochange.log 2>&1 \
-  || { cat /tmp/a11y-nochange.log; fail "the a11y block is leaking into the default design"; }
+node scripts/a11y-nochange.js > $GATE_LOGS/a11y-nochange.log 2>&1 \
+  || { cat $GATE_LOGS/a11y-nochange.log; fail "the a11y block is leaking into the default design"; }
 echo "OK  default look unchanged (token parity + rule scoping)"
 
 # a11y-flows.js drives the real FLOWS, not the resting states: picking a school
 # injects the login fields, saving repaints and eats the confirmation, the batch
 # flow swaps which child you are scoring. Every bug found in the pre-handover
 # check on 2026-07-28 was of that kind, and every one passed the static audit.
-node scripts/a11y-flows.js > /tmp/a11y-flows.log 2>&1 \
-  || { cat /tmp/a11y-flows.log; fail "an accessibility FLOW is broken — see above"; }
+node scripts/a11y-flows.js > $GATE_LOGS/a11y-flows.log 2>&1 \
+  || { cat $GATE_LOGS/a11y-flows.log; fail "an accessibility FLOW is broken — see above"; }
 echo "OK  screen-reader flows (sign in, save, batch scoring, dialogs)"
 
 # a11y-smoke.js activates every non-destructive control on every screen. A
@@ -76,8 +86,8 @@ echo "OK  screen-reader flows (sign in, save, batch scoring, dialogs)"
 # nothing announced. A sighted teacher sees nothing happen and works around it;
 # someone using a screen reader cannot tell that apart from having misheard
 # which button they were on.
-node scripts/a11y-smoke.js > /tmp/a11y-smoke.log 2>&1 \
-  || { cat /tmp/a11y-smoke.log; fail "a control throws — see above"; }
+node scripts/a11y-smoke.js > $GATE_LOGS/a11y-smoke.log 2>&1 \
+  || { cat $GATE_LOGS/a11y-smoke.log; fail "a control throws — see above"; }
 echo "OK  smoke (every control on every screen, nothing throws)"
 
 # a11y-runtime-theme.js checks the display modes actually TAKE EFFECT at
@@ -86,13 +96,13 @@ echo "OK  smoke (every control on every screen, nothing throws)"
 # was writing the light palette inline on <body> and inline beats an attribute
 # selector on <html>. A stylesheet-reading test proves what the CSS says, not
 # what the teacher sees.
-node scripts/a11y-runtime-theme.js > /tmp/a11y-theme.log 2>&1 \
-  || { cat /tmp/a11y-theme.log; fail "a display mode is not taking effect — see above"; }
+node scripts/a11y-runtime-theme.js > $GATE_LOGS/a11y-theme.log 2>&1 \
+  || { cat $GATE_LOGS/a11y-theme.log; fail "a display mode is not taking effect — see above"; }
 echo "OK  display modes take effect at runtime (dark / high contrast)"
 
 if node -e "require.resolve('axe-core')" >/dev/null 2>&1; then
-  node scripts/a11y-audit.js > /tmp/a11y-audit.log 2>&1 \
-    || { cat /tmp/a11y-audit.log; fail "accessibility audit failed — see above"; }
+  node scripts/a11y-audit.js > $GATE_LOGS/a11y-audit.log 2>&1 \
+    || { cat $GATE_LOGS/a11y-audit.log; fail "accessibility audit failed — see above"; }
   echo "OK  accessibility audit (axe sweep + regression assertions)"
 else
   echo "WARN  axe-core not installed — skipping the axe sweep."
@@ -103,8 +113,8 @@ fi
 # 40 assertions over the storage seam, CSV export, the group seam and the record
 # envelope. It was never wired into the build and so ran only when somebody
 # remembered — the same failure mode the a11y gates were created to end.
-node scripts/test-batch1.js > /tmp/test-batch1.log 2>&1 \
-  || { cat /tmp/test-batch1.log; fail "unit suite failed — see above"; }
+node scripts/test-batch1.js > $GATE_LOGS/test-batch1.log 2>&1 \
+  || { cat $GATE_LOGS/test-batch1.log; fail "unit suite failed — see above"; }
 echo "OK  unit suite (scripts/test-batch1.js)"
 
 echo

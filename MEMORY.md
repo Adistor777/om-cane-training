@@ -125,7 +125,31 @@ for g in a11y-contrast a11y-nochange a11y-flows a11y-smoke a11y-runtime-theme; d
   node scripts/$g.js > $L/$g.log 2>&1 && echo "PASS $g" || { echo "FAIL $g"; tail -20 $L/$g.log; }
 done
 ```
-Worth fixing properly in `gates.sh` with `mktemp`.
+**FIXED the same day.** `gates.sh` now writes into a private
+`mktemp -d` with a `trap` cleanup, so a gate that cannot write its own log
+cannot report someone else's result. All eight gates pass over the bridge now.
+
+## `cap sync` DOES WORK OVER THE BRIDGE — IT NEEDED DELETE PERMISSION (2026-09-02)
+MEMORY has said since July that the sandbox cannot run `./scripts/build.sh`
+because `cap sync` needs to unlink files and the mount forbids it. That is only
+true *by default*. With file deletion granted on the connected folder, the whole
+build runs end to end over the bridge — gates, the `rsync --delete` mirror of
+`audio/`, `npx cap sync android`, and the built-asset byte-compare — and prints
+`BUILD OK`. First time this project has built without Aditya's own terminal.
+
+**Two traps around that grant:**
+1. **It does not survive a bridge reconnect.** The device dropped mid-session;
+   after it came back, `rm` in the same folder returned `Operation not
+   permitted` again with no warning, and `rsync --delete` failed four files into
+   the audio mirror. Re-request it; do not assume a grant from earlier in the
+   session still holds.
+2. **A failed `rm` still leaves what you were probing with.** Two `_probe.tmp`
+   files sat in `audio/` and `www/` until the grant came back, because the tool
+   that could have removed them was the one being tested.
+
+What still cannot be done from here: `./gradlew assembleDebug` / `installDebug`
+(Android SDK + a device), and anything reaching `api.sarvam.ai`.
+
 
 ## A SECOND SOP DOCUMENT, AND THE `rating` TYPE (2026-08-25 pm)
 `SOP.docx` covered the four Sound + Direction activities — Near-Far w/o Cane,
