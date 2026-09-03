@@ -1,5 +1,5 @@
 # TRACKER.md — O&M Cane Training
-_Last updated: 2026-09-02 (SOP document verbatim, purpose on screen, the ? sheet split in two)_
+_Last updated: 2026-09-02 pm (Adi's pass: spacing, Demo/Instructions, written translations)_
 
 ## STATE (2026-08-21) — the requirements sheet is now the outer target
 **Read `OM-Requirements.md` (Adi, 21 Aug) first.** It is the source of truth for
@@ -149,6 +149,62 @@ of the deleted Sound category).
 - [!] **LESSON: `forEach` skips sparse-array holes**, so the check written to
       verify the regroup passed on a broken file. The 40-test suite caught it.
       Verify arrays with `length` + an index scan.
+
+## Done 2026-09-02 pm (Adi's pass over the built version — nine changes)
+All on `main`, `2787af4`. Gates 8/8 green, `BUILD OK`, `www/` and the Android
+assets are current. **NOT INSTALLED and NOT PUSHED** — five commits ahead of
+origin. Everything below is subtraction except the last two.
+
+- [x] **No category subtitle on either activity screen.** Tapping Direction and
+      landing on a screen that says "Direction" again under the title told the
+      teacher what they had just done. The header crumb carries the category on
+      BOTH screens now — the picking screen's crumb had been repeating the
+      activity name sitting an inch below it.
+- [x] **The picking screen's roster line is one row.** It was three things
+      saying the same thing: an instruction paragraph, a bare count, and a Start
+      button naming the number. Now it teaches while empty ("Tap everyone taking
+      part") and counts once used.
+- [x] **`slt-nocane` DELETED.** Straight Line Travel is two activities. The
+      final document delivers two straight-line stages and never described a
+      without-cane baseline. Id retired, never reused; pre-pilot records under it
+      are orphaned knowingly. **`demo-slt-nocane.mp4` is now unreferenced** —
+      safe to delete from the Mac. 16 activities.
+- [x] **Tabs are Demo then Instructions**, drawn as a SEGMENTED CONTROL. The
+      pills "didn't feel like a button" — two loose outlines on the card, the
+      unselected one with no fill and no tray. Now a recessed tray, two equal
+      halves, chosen = filled and pressed in (the app's existing selection
+      grammar, same shape as the result picker).
+- [x] **"Sequence of procedure" → "Steps"** — the document's own heading.
+- [x] **The narration block is ONE ROW.** It was a label, four language buttons
+      (two permanently disabled), a full-width native `<audio controls>` and a
+      dashed placeholder. Native audio controls cannot be restyled in the Android
+      WebView, which is most of why it read as bolted on. Now: language left,
+      a Listen pill with a clock right, and a small controller that toasts play
+      rejections rather than swallowing them.
+- [x] **SOP translations are WRITTEN now, not only spoken.** The same buttons
+      switch the steps on the page and the narration together. Only languages
+      this activity has text for are offered. A translation renders only when it
+      is line-for-line with the English — a mismatch falls back to English rather
+      than printing a step the narration contradicts.
+- [x] **Every translation carries a visible draft line** until the content team
+      signs it off. `verifiedTranslations: ["hi"]` on the activity clears it —
+      a content edit, no code change.
+- [x] **Purpose no longer repeats inside the sheet.** It is on the screen behind
+      it, on both screens, permanently.
+
+### FIRST THING NEXT SESSION
+- [ ] **Five commits are unpushed** (`209432f..2787af4`). The bridge shell has no
+      GitHub credentials — `git push origin main` has to run in Aditya's terminal.
+- [ ] **Nothing from 2 Sep has been seen on a phone.** `bash scripts/install.sh`
+      with a real device. The nine changes above are all visual or interaction
+      changes and NO GATE CAN JUDGE ANY OF THEM.
+- [ ] **The `?` callout bubble overlaps the purpose strip.** `.help-tip` is
+      absolutely positioned at `top:56px` inside `.lede-row` and floats over
+      whatever follows — which is now the purpose. Pre-existing behaviour, new
+      collision, unresolved because it cannot be judged without seeing it.
+- [ ] **Open questions from the transcription** — see the six under 2 Sep am:
+      `slt-nocane` is now closed (deleted); the Direction "Rate 1-5" question,
+      the missing `achievedWhen`s, and the Sarvam top-up are all still open.
 
 ## Done 2026-09-02 (the SOP document verbatim · purpose on screen · the ? sheet split)
 Adi re-sent `SOP_CC_App.docx` with one instruction: everything in it, the

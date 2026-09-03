@@ -1,5 +1,65 @@
 # MEMORY.md — O&M Cane Training
 
+## ADI'S PASS OVER THE BUILT VERSION (2026-09-02 pm)
+Nine changes, eight of them subtraction. Worth keeping because the pattern
+repeats: **almost every complaint was the same thing said twice.**
+
+- **The category was on the screen twice.** Tap Direction, land on a screen
+  headed "Basic" with "Direction" under it. The header crumb now carries the
+  category on BOTH activity screens and the lede carries only the name — and on
+  the picking screen the crumb had been repeating the activity name sitting an
+  inch below it, so that screen was saying its own title twice.
+- **The roster line said the count three times** — an instruction paragraph, a
+  bare "3 of 12 selected", and a Start button naming the number. One row now,
+  which teaches while empty and counts once used.
+- **Purpose was on the screen and repeated in the sheet.** Removed from the
+  sheet.
+
+### Tabs: pills do not read as a control
+"Run it / Prepare" as pills "didn't feel like a button" — and he was right about
+why, even without naming it: an unselected pill had no fill and no tray, so
+nothing said *these two belong together and one of them is on*. They are a
+SEGMENTED CONTROL now — recessed tray, two equal halves, chosen = filled and
+pressed in. That is the app's existing selection grammar and the same shape as
+the result picker a teacher taps on every record.
+**Renamed and reordered on his call: Demo first, then Instructions**, and Demo
+opens by default. That is the opposite of the "steps are wanted at nearly every
+open" reasoning that produced the original order — his model is that a teacher
+meets an activity by watching it before reading it. Flipping it back is one word.
+
+### The narration block was a third of the sheet
+A label, four language buttons two of which were permanently disabled, a
+full-width native `<audio controls>`, and a dashed placeholder — for a control
+most teachers touch once. **Native audio controls cannot be restyled in the
+Android WebView**, which is most of why it read as bolted on; anything better
+has to be a custom control. Now one row: language left, a Listen pill with a
+clock right, `SOPA` driving a hidden `<audio>`. Play rejections are toasted, per
+the standing rule from the August silence.
+
+### Translations are WRITTEN now, and that raised the stakes
+The same buttons switch the steps ON THE PAGE and the narration together — they
+were never two different questions, and a teacher who reads Hindi more easily
+than she hears English had been getting nothing. Only languages THIS activity
+has text for are offered, so no permanently disabled Tamil and Bengali on every
+screen.
+- **A translation renders only when it is line-for-line with the English**;
+  otherwise it falls back to English. A mismatch would number a step differently
+  from the step the narration speaks, and nothing would flag it.
+- **Every translation carries a visible draft line** until the content team signs
+  it off. Narrating an unverified machine draft was already a stretch; printing
+  it as the instructions a teacher follows while running a physical activity with
+  a blind child is a bigger claim. `verifiedTranslations: ["hi"]` on the activity
+  clears it — a content edit, no code change.
+- One app-wide setting now governs both, so Settings reads "Activity steps
+  language", not "Narration language".
+
+### Two content casualties
+`slt-nocane` DELETED — the final document delivers two straight-line stages and
+never described a without-cane baseline. Id retired, never reused;
+`demo-slt-nocane.mp4` is unreferenced. And "Sequence of procedure" became
+**"Steps"**, which is the document's own heading, so the screen and the paper
+match there too.
+
 ## WE KEPT REWRITING THE CONTENT TEAM INTO HOUSE STYLE (found 2026-09-02)
 Adi re-sent `SOP_CC_App.docx` asking for everything in it with **the terms
 exactly as written**. Diffing the document against the app showed that both
